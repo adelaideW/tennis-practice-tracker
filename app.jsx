@@ -208,7 +208,7 @@ function App() {
               onClick={() => setRoute(k)}
               aria-label={p.l}>
               <svg viewBox="0 0 24 24">{NAV_ICONS[k]}</svg>
-              <span>{p.l}</span>
+              <span className="nav-tooltip">{p.l}</span>
             </button>
           ))}
         </nav>

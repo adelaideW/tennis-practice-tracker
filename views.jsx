@@ -2,44 +2,100 @@
 const { useState: useS1, useMemo: useM1, useEffect: useE1, useRef: useR1 } = React;
 
 // ============== TODAY / DASHBOARD ==============
+
+function DonutChart({ value, max, centerLabel }) {
+  const r = 42, cx = 56, cy = 56;
+  const circ = 2 * Math.PI * r;
+  const pct = max > 0 ? Math.min(value / max, 1) : 0;
+  const dash = pct * circ;
+  return (
+    <svg width="112" height="112" viewBox="0 0 112 112">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--surface-2)" strokeWidth="10"/>
+      <circle cx={cx} cy={cy} r={r} fill="none"
+        stroke="var(--accent)" strokeWidth="10"
+        strokeDasharray={`${dash} ${circ}`}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${cx} ${cy})`}
+        style={{transition:'stroke-dasharray 0.6s ease'}}
+      />
+      <text x={cx} y={cy - 6} textAnchor="middle" dominantBaseline="central"
+        fill="var(--ink)" fontSize="22" fontWeight="700" fontFamily="var(--sans)"
+      >{value}</text>
+      <text x={cx} y={cy + 14} textAnchor="middle"
+        fill="var(--ink-3)" fontSize="8" fontFamily="var(--mono)" letterSpacing="1.2"
+      >{centerLabel.toUpperCase()}</text>
+    </svg>
+  );
+}
+
+function ActivityChart({ entries }) {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const iso = d.toISOString().slice(0, 10);
+    const mins = entries.filter(e => e.date.slice(0, 10) === iso).reduce((a, e) => a + (e.duration || 60), 0);
+    days.push({ label: d.toLocaleDateString('en-US', { weekday: 'short' }), mins });
+  }
+  const maxMins = Math.max(...days.map(d => d.mins), 60);
+  const W = 260, H = 72, padX = 12, padY = 8;
+  const pts = days.map((d, i) => {
+    const x = padX + (i / 6) * (W - 2 * padX);
+    const y = H - padY - (d.mins / maxMins) * (H - 2 * padY);
+    return { x, y, mins: d.mins, label: d.label };
+  });
+  const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+  const area = `${pts[0].x},${H} ` + polyline + ` ${pts[pts.length - 1].x},${H}`;
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H + 20}`} style={{overflow:'visible', display:'block'}}>
+      <defs>
+        <linearGradient id="actGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.25"/>
+          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+      <polygon points={area} fill="url(#actGrad)"/>
+      <polyline points={polyline} fill="none" stroke="var(--accent)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+      {pts.map((p, i) => (
+        <g key={i}>
+          {p.mins > 0 && <circle cx={p.x} cy={p.y} r={3.5} fill="var(--accent)" stroke="var(--surface)" strokeWidth="1.5"/>}
+          <text x={p.x} y={H + 16} textAnchor="middle" fill="var(--ink-3)" fontSize="8" fontFamily="var(--mono)" letterSpacing="0.6">{p.label.toUpperCase()}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 function Today({ state, setRoute, setFocus }) {
   const today = new Date();
   const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
-  const week = useM1(() => {
-    const out = [];
-    const d0 = new Date(today);
-    const day = d0.getDay();
-    const offset = day === 0 ? -6 : 1 - day;
-    d0.setDate(d0.getDate() + offset);
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(d0); d.setDate(d0.getDate() + i);
-      const iso = d.toISOString().slice(0, 10);
-      const done = state.entries.some(e => e.date.slice(0, 10) === iso);
-      out.push({
-        d: d.getDate(),
-        l: d.toLocaleDateString('en-US', { weekday: 'short' }),
-        done,
-        isToday: iso === today.toISOString().slice(0, 10),
-      });
-    }
-    return out;
-  }, [state.entries]);
-
   const totalSessions = state.entries.length;
   const totalMinutes = state.entries.reduce((a, e) => a + (e.duration || 60), 0);
-  const totalHours = (totalMinutes / 60).toFixed(1);
+  const totalHours = parseFloat((totalMinutes / 60).toFixed(1));
 
   const streak = useM1(() => {
     const days = new Set(state.entries.map(e => e.date.slice(0, 10)));
     if (!days.size) return 0;
-    let s = 0;
-    let probe = new Date();
-    while (days.has(probe.toISOString().slice(0, 10))) {
-      s++; probe.setDate(probe.getDate() - 1);
-    }
+    let s = 0, probe = new Date();
+    while (days.has(probe.toISOString().slice(0, 10))) { s++; probe.setDate(probe.getDate() - 1); }
     return s;
   }, [state.entries]);
+
+  const topSkills = useM1(() => {
+    const counts = {};
+    state.entries.forEach(e => (e.tags || []).forEach(k => { counts[k] = (counts[k] || 0) + 1; }));
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4);
+    const max = sorted[0]?.[1] || 1;
+    const COLORS = ['var(--accent)', 'var(--teal)', '#e87d32', '#c87de8'];
+    return sorted.map(([k, count], i) => ({
+      label: (PRACTICE_TAGS.find(p => p.k === k) || {}).l || k,
+      pct: Math.round((count / max) * 100),
+      color: COLORS[i],
+    }));
+  }, [state.entries]);
+
+  const recentSessions = state.entries.slice(0, 3);
 
   const [loading, setLoading] = useS1(false);
   const focus = state.focus;
@@ -79,9 +135,7 @@ ${recent}`;
         cues: ['Stay loose', 'Watch contact', 'Recover behind baseline'],
         generated: new Date().toISOString(),
       });
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
@@ -97,70 +151,108 @@ ${recent}`;
         </div>
       </div>
 
-      <div className="today-grid mb-28">
-        <div className="focus-card">
-          <div className="ball-deco" aria-hidden="true"></div>
-          <div className="kicker">Today's Focus · AI brief</div>
-          <h2>{focus ? '"' + (focus.cues?.[0] || 'Stay loose and present') + '"' : 'Generate your focus brief'}</h2>
-          <div className="focus-body">
-            {focus ? (
-              <>
-                <div>{focus.body}</div>
-                {focus.cues?.length > 0 && (
-                  <ul>
-                    {focus.cues.slice(0, 4).map((c, i) => <li key={i}>{c}</li>)}
-                  </ul>
-                )}
-              </>
-            ) : (
-              <div>Generate a personalized focus brief based on your recent practice notes. Three cues to lock in before you step on court.</div>
-            )}
+      <div className="dash-grid mb-28">
+
+        {/* Overview card */}
+        <div className="overview-card">
+          <div className="overview-card-title">
+            Practice Overview
+            <span className="overview-week-badge">All-time</span>
           </div>
-          <div className="focus-cta">
-            <button className="btn-primary" onClick={generateFocus} disabled={loading}>
-              {loading && <span className="spinner"></span>}
-              {focus ? 'Regenerate' : 'Generate brief'}
+          <div className="overview-body">
+            <div className="overview-sessions">
+              <div className="big-num">{totalSessions}</div>
+              <div className="big-label">Sessions logged</div>
+              <div className="big-delta">{streak > 0 ? `↑ ${streak}-day streak` : 'Start a streak today'}</div>
+            </div>
+            <div className="overview-donut">
+              <DonutChart value={totalHours} max={Math.max(totalHours, 20)} centerLabel="hrs" />
+            </div>
+          </div>
+        </div>
+
+        {/* Top skills card */}
+        <div className="skills-card">
+          <div className="skills-card-title">Top Skills Practiced</div>
+          {topSkills.length === 0 ? (
+            <div style={{color:'var(--ink-3)',fontStyle:'italic',fontSize:13}}>Log sessions to see your top skills.</div>
+          ) : (
+            topSkills.map((s, i) => (
+              <div key={i} className="skill-row">
+                <div className="skill-left">
+                  <div className="skill-dot" style={{background: s.color}}></div>
+                  <div className="skill-name">{s.label}</div>
+                </div>
+                <div className="skill-bar-wrap">
+                  <div className="skill-bar" style={{width: s.pct + '%', background: s.color}}></div>
+                </div>
+                <div className="skill-pct">{s.pct}%</div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Activity chart card */}
+        <div className="activity-card">
+          <div className="activity-card-title">7-Day Activity</div>
+          <ActivityChart entries={state.entries} />
+        </div>
+
+        {/* Recent sessions card */}
+        <div className="recent-card">
+          <div className="recent-card-title">Recent Sessions</div>
+          {recentSessions.length === 0 ? (
+            <div style={{color:'var(--ink-3)',fontStyle:'italic',fontSize:13}}>No sessions yet. <span style={{cursor:'pointer',color:'var(--accent)'}} onClick={() => setRoute('log')}>Log your first →</span></div>
+          ) : (
+            recentSessions.map((e, i) => (
+              <div key={e.id} className="recent-row">
+                <div className="recent-dot">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                    <polyline points="9,22 9,12 15,12 15,22"/>
+                  </svg>
+                </div>
+                <div className="recent-info">
+                  <div className="recent-date">{new Date(e.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                  <div className="recent-tags">
+                    {(e.tags || []).slice(0, 3).map(k => (PRACTICE_TAGS.find(p => p.k === k) || {}).l).filter(Boolean).join(' · ') || 'Open session'}
+                  </div>
+                </div>
+                <div className="recent-dur">{e.duration || 60}m</div>
+              </div>
+            ))
+          )}
+          {recentSessions.length > 0 && (
+            <button onClick={() => setRoute('log')} style={{marginTop:12,background:'none',border:'none',color:'var(--accent)',fontSize:12,fontFamily:'var(--mono)',letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',padding:0}}>
+              View all →
             </button>
-            <button className="btn-ghost" onClick={() => setRoute('log')}>Log a session →</button>
-          </div>
-        </div>
-
-        <div className="stat-stack">
-          <div className="stat">
-            <div className="num">{totalSessions}</div>
-            <div className="lbl">Sessions <span className="sub">all-time</span></div>
-          </div>
-          <div className="stat">
-            <div className="num">{totalHours}</div>
-            <div className="lbl">Hours <span className="sub">on court</span></div>
-          </div>
-          <div className="stat">
-            <div className="num">{streak}</div>
-            <div className="lbl">Day streak <span className="sub">{streak > 0 ? 'keep it going' : 'play today'}</span></div>
-          </div>
+          )}
         </div>
       </div>
 
-      <div className="section-title">This week</div>
-      <div className="week-strip mb-28">
-        {week.map((w, i) => (
-          <div key={i} className={`day-cell ${w.done ? 'done' : ''} ${w.isToday ? 'today' : ''}`}>
-            <span>{w.l}</span>
-            <span className="d">{w.d}</span>
-            <span>{w.done ? 'Played' : '—'}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="section-title">Quick links</div>
-      <div className="today-grid">
-        <div className="card" style={{cursor: 'pointer'}} onClick={() => setRoute('tips')}>
-          <h3>Practice Tips →</h3>
-          <p className="muted" style={{margin: 0}}>26 coach-grade tips across volleys, overheads, ground strokes & the mental game.</p>
+      {/* AI Focus Brief */}
+      <div className="focus-card mb-28">
+        <div className="ball-deco" aria-hidden="true"></div>
+        <div className="kicker">Today's Focus · AI brief</div>
+        <h2>{focus ? '"' + (focus.cues?.[0] || 'Stay loose and present') + '"' : 'Generate your focus brief'}</h2>
+        <div className="focus-body">
+          {focus ? (
+            <>
+              <div>{focus.body}</div>
+              {focus.cues?.length > 0 && (
+                <ul>{focus.cues.slice(0, 4).map((c, i) => <li key={i}>{c}</li>)}</ul>
+              )}
+            </>
+          ) : (
+            <div>Generate a personalized focus brief based on your recent practice notes. Three cues to lock in before you step on court.</div>
+          )}
         </div>
-        <div className="card" style={{cursor: 'pointer'}} onClick={() => setRoute('calendar')}>
-          <h3>Tour Calendar →</h3>
-          <p className="muted" style={{margin: 0}}>Grand Slams, Masters 1000s, Rome results & Roland-Garros live tracker.</p>
+        <div className="focus-cta">
+          <button className="btn-primary" onClick={generateFocus} disabled={loading}>
+            {loading && <span className="spinner"></span>}
+            {focus ? 'Regenerate' : 'Generate brief'}
+          </button>
+          <button className="btn-ghost" onClick={() => setRoute('log')}>Log a session →</button>
         </div>
       </div>
     </>
