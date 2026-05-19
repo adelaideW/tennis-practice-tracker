@@ -59,6 +59,8 @@ input, textarea, select { font-family: inherit; }
   display: grid;
   grid-template-columns: var(--rail-w) 1fr;
   min-height: 100vh;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 /* ============ Rail ============ */
