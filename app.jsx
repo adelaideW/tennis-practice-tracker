@@ -142,12 +142,36 @@ function App() {
     root.style.setProperty('--ball-deep', pal.deep);
   }, [tweaks.accent]);
 
+  const NAV_ICONS = {
+    today: (
+      <>
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        <polyline points="9,22 9,12 15,12 15,22"/>
+      </>
+    ),
+    tips: <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>,
+    calendar: (
+      <>
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+      </>
+    ),
+    log: (
+      <>
+        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </>
+    ),
+    toolkit: <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>,
+  };
   const pages = {
-    today:    { l: 'Today',         icon: '01' },
-    tips:     { l: 'Practice Tips', icon: '02' },
-    calendar: { l: 'Calendar & News',icon: '03' },
-    log:      { l: 'Practice Log',  icon: '04' },
-    toolkit:  { l: 'Toolkit',       icon: '05' },
+    today:    { l: 'Today' },
+    tips:     { l: 'Practice Tips' },
+    calendar: { l: 'Calendar & News' },
+    log:      { l: 'Practice Log' },
+    toolkit:  { l: 'Toolkit' },
   };
 
   const addEntry = (entry) => {
@@ -160,31 +184,24 @@ function App() {
   return (
     <div className="app" data-screen-label={`00 ${pages[route].l}`}>
       <aside className="rail">
-        <div className="brand">
-          <span className="mark" aria-hidden="true"></span>
-          <span className="wordmark">Baseline</span>
-          <span className="tag">v1.0</span>
-        </div>
+        <div className="brand" title="Baseline" aria-label="Baseline"></div>
 
         <nav className="nav">
-          <div className="nav-section">Practice</div>
           {Object.entries(pages).map(([k, p]) => (
             <button key={k}
               className={`nav-item ${route === k ? 'active' : ''}`}
-              onClick={() => setRoute(k)}>
-              <span className="dot"></span>
-              <span>{p.l}</span>
+              onClick={() => setRoute(k)}
+              aria-label={p.l}>
+              <svg viewBox="0 0 24 24">{NAV_ICONS[k]}</svg>
+              <span className="nav-tooltip">{p.l}</span>
             </button>
           ))}
         </nav>
 
-        <div className="foot">
-          <span>Stored locally</span>
-          <span>{state.entries.length} sessions · streak {state.streak}</span>
-        </div>
+        <div className="foot" title={`${state.entries.length} sessions`}>v1</div>
       </aside>
 
-      <main className="content" data-screen-label={`${pages[route].icon} ${pages[route].l}`}>
+      <main className="content" data-screen-label={pages[route].l}>
         {route === 'today' && <window.Today state={state} setRoute={setRoute} setFocus={setFocus} />}
         {route === 'tips' && <window.Tips />}
         {route === 'calendar' && <window.Calendar />}

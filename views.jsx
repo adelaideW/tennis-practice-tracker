@@ -220,9 +220,161 @@ function Tips() {
 }
 
 // ============== CALENDAR & NEWS ==============
+
+const TOURNEY_URLS = {
+  'Australian Open':        'https://ausopen.com',
+  'Dubai / Acapulco / Santiago': 'https://www.dubaidutyfreetennischampionships.com',
+  'Indian Wells Masters':   'https://bnpparibasopen.com',
+  'Miami Open':             'https://miamiopen.com',
+  'Monte-Carlo Masters':    'https://www.montecarlomasters.mc',
+  'Madrid Open':            'https://www.mutuamadridopen.com',
+  'Italian Open · Rome':    'https://www.internazionalibnlditalia.it',
+  'Roland-Garros':          'https://www.rolandgarros.com',
+  "Queen's Club / Halle":   'https://www.queensclub.co.uk',
+  'Wimbledon':              'https://www.wimbledon.com',
+  'Canadian Open · Toronto':'https://rogerscup.com',
+  'Cincinnati Open':        'https://www.wsopen.com',
+  'US Open':                'https://www.usopen.org',
+  'ATP Finals · Turin':     'https://www.nittoatpfinals.com',
+};
+
+const TOURNEY_YOUTUBE = {
+  'Australian Open':      'https://www.youtube.com/results?search_query=Australian+Open+2026+final+highlights',
+  'Indian Wells Masters': 'https://www.youtube.com/results?search_query=BNP+Paribas+Open+Indian+Wells+2026+final+highlights',
+  'Miami Open':           'https://www.youtube.com/results?search_query=Miami+Open+2026+final+highlights',
+  'Monte-Carlo Masters':  'https://www.youtube.com/results?search_query=Monte+Carlo+Masters+2026+final+highlights',
+  'Madrid Open':          'https://www.youtube.com/results?search_query=Mutua+Madrid+Open+2026+final+highlights',
+  'Italian Open · Rome':  'https://www.youtube.com/results?search_query=Internazionali+BNL+Italia+2026+final+highlights',
+};
+
+const ROME_2026 = {
+  men: {
+    qf: [
+      { w: 'A. Zverev',  wSub: 'GER',  l: 'C. Alcaraz',         lSub: 'ESP', score: '6—3  7—5' },
+      { w: 'J. Sinner',  wSub: 'ITA',  l: 'H. Hurkacz',         lSub: 'POL', score: '7—6(4)  6—4' },
+      { w: 'C. Ruud',    wSub: 'NOR',  l: 'A. de Minaur',       lSub: 'AUS', score: '6—4  6—2' },
+      { w: 'T. Paul',    wSub: 'USA',  l: 'F. Auger-Aliassime', lSub: 'CAN', score: '6—7(3)  7—5  6—3' },
+    ],
+    sf: [
+      { w: 'A. Zverev', wSub: 'GER', l: 'C. Ruud',    lSub: 'NOR', score: '6—4  6—3' },
+      { w: 'J. Sinner', wSub: 'ITA', l: 'T. Paul',    lSub: 'USA', score: '6—3  6—4' },
+    ],
+    final: { w: 'A. Zverev', wSub: 'GER · #4 seed', l: 'J. Sinner', lSub: 'ITA · #1 seed', score: '6—3  4—6  6—2' },
+    youtube: 'https://www.youtube.com/results?search_query=Internazionali+BNL+Italia+2026+men+final+Zverev+Sinner+highlights',
+  },
+  women: {
+    sf: [
+      { w: 'I. Świątek',   wSub: 'POL', l: 'C. Gauff',     lSub: 'USA', score: '6—3  6—1' },
+      { w: 'A. Sabalenka', wSub: 'BLR', l: 'M. Keys',      lSub: 'USA', score: '7—5  6—4' },
+    ],
+    final: { w: 'I. Świątek', wSub: 'POL · #1 seed', l: 'A. Sabalenka', lSub: 'BLR · #2 seed', score: '6—2  6—3' },
+    youtube: 'https://www.youtube.com/results?search_query=Internazionali+BNL+Italia+2026+women+final+Swiatek+highlights',
+  },
+};
+
+function RomeModal({ onClose }) {
+  useE1(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const MatchRow = ({ round, w, wSub, l, lSub, score }) => (
+    <div className="match-row">
+      <div className="match-round-badge">{round}</div>
+      <div className={`match-player winner`}>{w}<br/><span style={{fontFamily:'var(--mono)',fontSize:'9px',color:'var(--ink-3)',letterSpacing:'0.1em',textTransform:'uppercase'}}>{wSub}</span></div>
+      <div className="match-score">{score}</div>
+      <div className={`match-player loser`}>{l}<br/><span style={{fontFamily:'var(--mono)',fontSize:'9px',color:'var(--ink-3)',letterSpacing:'0.1em',textTransform:'uppercase'}}>{lSub}</span></div>
+    </div>
+  );
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <div className="deco" aria-hidden="true"></div>
+          <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
+          <div className="kicker">Masters 1000 · Concluded</div>
+          <h2>Italian Open · Rome 2026</h2>
+          <div className="modal-meta">May 6–17 · Foro Italico, Rome · Clay · Prize $7,250,000</div>
+        </div>
+
+        <div className="modal-body">
+
+          {/* Men's draw */}
+          <div className="modal-section">
+            <div className="modal-section-title">Men's Singles · Champion</div>
+            <div className="final-box">
+              <div className="final-finalist champion">
+                <div className="f-name">A. Zverev</div>
+                <div className="f-sub">GER · #4 seed</div>
+                <div style={{marginTop:8}}><span className="trophy-pill">🏆 Champion</span></div>
+              </div>
+              <div className="final-vs">
+                <div className="final-score-sets">6—3  4—6  6—2</div>
+                <div className="final-score-label">Final</div>
+              </div>
+              <div className="final-finalist">
+                <div className="f-name" style={{color:'var(--ink-3)'}}>J. Sinner</div>
+                <div className="f-sub">ITA · #1 seed</div>
+              </div>
+            </div>
+
+            <div className="modal-section-title" style={{marginTop:16}}>Men's Draw Results</div>
+            {ROME_2026.men.sf.map((m, i) => <MatchRow key={i} round="SF" {...m} />)}
+            {ROME_2026.men.qf.map((m, i) => <MatchRow key={i} round="QF" {...m} />)}
+
+            <div className="yt-row" style={{marginTop:14}}>
+              <a className="yt-btn" href={ROME_2026.men.youtube} target="_blank" rel="noopener noreferrer">
+                <svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-2.75 12.42 12.42 0 00-5.64-1.28A11.67 11.67 0 002 14.07a11.67 11.67 0 0011.86 7.27 4.76 4.76 0 003.77-2.68 12.54 12.54 0 004.37-5.86 4.76 4.76 0 00-2.41-6.11zM10 15V9l5 3-5 3z"/></svg>
+                Men's Final Highlights
+              </a>
+            </div>
+          </div>
+
+          {/* Women's draw */}
+          <div className="modal-section">
+            <div className="modal-section-title">Women's Singles · Champion</div>
+            <div className="final-box">
+              <div className="final-finalist champion">
+                <div className="f-name">I. Świątek</div>
+                <div className="f-sub">POL · #1 seed</div>
+                <div style={{marginTop:8}}><span className="trophy-pill">🏆 Champion</span></div>
+              </div>
+              <div className="final-vs">
+                <div className="final-score-sets">6—2  6—3</div>
+                <div className="final-score-label">Final</div>
+              </div>
+              <div className="final-finalist">
+                <div className="f-name" style={{color:'var(--ink-3)'}}>A. Sabalenka</div>
+                <div className="f-sub">BLR · #2 seed</div>
+              </div>
+            </div>
+
+            <div className="modal-section-title" style={{marginTop:16}}>Women's Draw Results</div>
+            {ROME_2026.women.sf.map((m, i) => <MatchRow key={i} round="SF" {...m} />)}
+
+            <div className="yt-row" style={{marginTop:14}}>
+              <a className="yt-btn" href={ROME_2026.women.youtube} target="_blank" rel="noopener noreferrer">
+                <svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-2.75 12.42 12.42 0 00-5.64-1.28A11.67 11.67 0 002 14.07a11.67 11.67 0 0011.86 7.27 4.76 4.76 0 003.77-2.68 12.54 12.54 0 004.37-5.86 4.76 4.76 0 00-2.41-6.11zM10 15V9l5 3-5 3z"/></svg>
+                Women's Final Highlights
+              </a>
+              <a href={TOURNEY_URLS['Italian Open · Rome']} target="_blank" rel="noopener noreferrer" className="tourney-link" style={{fontSize:12, padding:'8px 14px', borderRadius:'var(--r-sm)'}}>
+                Official Website ↗
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Calendar() {
   const [news, setNews] = useS1(SEED_NEWS);
   const [loading, setLoading] = useS1(false);
+  const [modal, setModal] = useS1(null);
 
   const refreshNews = async () => {
     setLoading(true);
@@ -239,6 +391,8 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
 
   return (
     <>
+      {modal === 'rome' && <RomeModal onClose={() => setModal(null)} />}
+
       <div className="page-head">
         <div>
           <div className="kicker">Tour Pulse · 2026 Season</div>
@@ -254,58 +408,87 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
             <span className="mono-small">Slams · Masters 1000</span>
           </div>
           <div>
-            {CALENDAR_2026.map((t, i) => (
-              <div key={i} className="tourney">
-                <div className="date">
-                  <div className="m">{t.m}</div>
-                  <div className="d">{t.d.split('—')[0]}</div>
+            {CALENDAR_2026.map((t, i) => {
+              const url = TOURNEY_URLS[t.name];
+              const ytUrl = TOURNEY_YOUTUBE[t.name];
+              const isRome = t.name === 'Italian Open · Rome';
+              return (
+                <div
+                  key={i}
+                  className={`tourney ${isRome ? 'clickable' : ''}`}
+                  onClick={isRome ? () => setModal('rome') : undefined}
+                  title={isRome ? 'Click for full results' : undefined}
+                >
+                  <div className="date">
+                    <div className="m">{t.m}</div>
+                    <div className="d">{t.d.split('—')[0]}</div>
+                  </div>
+                  <div className="tourney-info">
+                    <div className="name">
+                      {t.name}
+                      {isRome && <span style={{fontSize:11,color:'var(--purple)',fontFamily:'var(--mono)',letterSpacing:'0.05em'}}>→ results</span>}
+                    </div>
+                    <div className="meta">
+                      {t.d} · {t.meta}
+                      {url && (
+                        <a className="tourney-link" href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                          Official ↗
+                        </a>
+                      )}
+                      {ytUrl && t.state === 'done' && (
+                        <a className="tourney-link" href={ytUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{color:'#cc0000', background:'rgba(255,0,0,0.06)', borderColor:'rgba(255,0,0,0.18)'}}>
+                          ▶ Highlights
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <div className={`pill ${t.state}`}>
+                    {t.state === 'live' ? 'On Court' : t.state === 'up' ? 'Upcoming' : 'Concluded'}
+                  </div>
                 </div>
-                <div>
-                  <div className="name">{t.name}</div>
-                  <div className="meta">{t.d} · {t.meta}</div>
-                </div>
-                <div className={`pill ${t.state}`}>
-                  {t.state === 'live' ? 'On Court' : t.state === 'up' ? 'Upcoming' : 'Concluded'}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
-        <div style={{display: 'flex', flexDirection: 'column', gap: 20}}>
-          <div className="result-card">
+        <div style={{display: 'flex', flexDirection: 'column', gap: 16}}>
+          <div className="result-card" onClick={() => setModal('rome')}>
             <div className="head">
-              <h3>Rome Open · Final</h3>
-              <span className="mono-small">May 17 · Foro Italico</span>
+              <div>
+                <h3>Rome Open · Men's Final</h3>
+                <span className="mono-small">May 17 · Foro Italico · Click for full draw</span>
+              </div>
+              <span style={{fontSize:18}}>🏆</span>
             </div>
             <div>
               <div className="result-row">
-                <div className="who">A. Zverev<span className="sub">GER · #4 seed</span></div>
-                <div className="score">6—3  4—6  6—2</div>
+                <div className="who winner">A. Zverev<span className="sub">GER · #4 seed</span></div>
+                <div className="score winner-score">6—3  4—6  6—2</div>
               </div>
               <div className="result-row">
                 <div className="who">J. Sinner<span className="sub">ITA · #1 seed</span></div>
-                <div className="score muted">3—6  6—4  2—6</div>
+                <div className="score" style={{color:'var(--ink-3)'}}>3—6  6—4  2—6</div>
               </div>
             </div>
-            <div className="mono-small">
-              Champion · Zverev claims first Rome Masters · Sinner runner-up on home clay
-            </div>
+            <div className="mono-small">Zverev claims first Rome title · Sinner runner-up on home clay</div>
           </div>
 
-          <div className="result-card">
+          <div className="result-card" onClick={() => setModal('rome')}>
             <div className="head">
-              <h3>Rome Open · Women's Final</h3>
-              <span className="mono-small">May 16</span>
+              <div>
+                <h3>Rome Open · Women's Final</h3>
+                <span className="mono-small">May 16 · Click for full draw</span>
+              </div>
+              <span style={{fontSize:18}}>🏆</span>
             </div>
             <div>
               <div className="result-row">
-                <div className="who">I. Świątek<span className="sub">POL · #1 seed</span></div>
-                <div className="score">6—2  6—3</div>
+                <div className="who winner">I. Świątek<span className="sub">POL · #1 seed</span></div>
+                <div className="score winner-score">6—2  6—3</div>
               </div>
               <div className="result-row">
                 <div className="who">A. Sabalenka<span className="sub">BLR · #2 seed</span></div>
-                <div className="score muted">2—6  3—6</div>
+                <div className="score" style={{color:'var(--ink-3)'}}>2—6  3—6</div>
               </div>
             </div>
             <div className="mono-small">Świątek's 4th Rome title · perfect 11-0 on Roman clay</div>
@@ -316,7 +499,7 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
               <h3 style={{margin: 0}}>Tour News</h3>
               <button className="btn-secondary" onClick={refreshNews} disabled={loading} style={{padding: '6px 12px', fontSize: 11}}>
                 {loading && <span className="spinner"></span>}
-                Refresh feed
+                Refresh
               </button>
             </div>
             <div>
