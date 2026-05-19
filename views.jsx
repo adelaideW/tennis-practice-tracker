@@ -528,7 +528,7 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
                         </a>
                       )}
                       {ytUrl && t.state === 'done' && (
-                        <a className="tourney-link" href={ytUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{color:'#cc0000', background:'rgba(255,0,0,0.06)', borderColor:'rgba(255,0,0,0.18)'}}>
+                        <a className="tourney-link" href={ytUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{color:'#c0392b', background:'rgba(100,0,0,0.18)', borderColor:'rgba(140,30,20,0.35)'}}>
                           ▶ Highlights
                         </a>
                       )}
