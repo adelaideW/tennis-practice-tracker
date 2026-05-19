@@ -179,6 +179,7 @@ function App() {
     setState(s => ({ ...s, entries: [e, ...s.entries], lastSession: e.date }));
   };
   const deleteEntry = (id) => setState(s => ({ ...s, entries: s.entries.filter(e => e.id !== id) }));
+  const editEntry = (id, updates) => setState(s => ({ ...s, entries: s.entries.map(e => e.id === id ? { ...e, ...updates } : e) }));
   const setFocus = (focus) => setState(s => ({ ...s, focus }));
 
   return (
@@ -208,7 +209,7 @@ function App() {
         {route === 'today' && <window.Today state={state} setRoute={setRoute} setFocus={setFocus} />}
         {route === 'tips' && <window.Tips />}
         {route === 'calendar' && <window.Calendar />}
-        {route === 'log' && <window.Log state={state} addEntry={addEntry} deleteEntry={deleteEntry} />}
+        {route === 'log' && <window.Log state={state} addEntry={addEntry} deleteEntry={deleteEntry} editEntry={editEntry} />}
         {route === 'toolkit' && <window.Toolkit />}
       </main>
 

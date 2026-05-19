@@ -519,21 +519,41 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
 }
 
 // ============== PRACTICE LOG ==============
-function Log({ state, addEntry, deleteEntry }) {
+function Log({ state, addEntry, deleteEntry, editEntry }) {
   const [tags, setTags] = useS1([]);
   const [intensity, setIntensity] = useS1(2);
   const [duration, setDuration] = useS1(60);
   const [notes, setNotes] = useS1('');
   const [aiSummary, setAiSummary] = useS1(null);
   const [aiLoading, setAiLoading] = useS1(false);
+  const [editingId, setEditingId] = useS1(null);
 
   const toggle = (k) => {
     setTags(t => t.includes(k) ? t.filter(x => x !== k) : [...t, k]);
   };
 
+  const startEdit = (e) => {
+    setEditingId(e.id);
+    setTags(e.tags || []);
+    setIntensity(e.intensity ?? 2);
+    setDuration(e.duration || 60);
+    setNotes(e.notes || '');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setTags([]); setNotes(''); setIntensity(2); setDuration(60);
+  };
+
   const submit = () => {
     if (!tags.length && !notes.trim()) return;
-    addEntry({ tags, intensity, duration, notes });
+    if (editingId) {
+      editEntry(editingId, { tags, intensity, duration, notes });
+      setEditingId(null);
+    } else {
+      addEntry({ tags, intensity, duration, notes });
+    }
     setTags([]); setNotes(''); setIntensity(2); setDuration(60);
   };
 
@@ -575,8 +595,15 @@ ${recent}`;
       </div>
 
       <div className="log-grid mb-28">
-        <div className="card">
-          <div className="section-title" style={{margin: '0 0 14px'}}>Today's Checklist</div>
+        <div className="card" style={editingId ? {outline: '2px solid var(--orange)', outlineOffset: '-1px'} : {}}>
+          <div className="section-title" style={{margin: '0 0 14px'}}>
+            {editingId ? 'Editing Session' : 'Today\'s Checklist'}
+            {editingId && (
+              <span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--orange)',letterSpacing:'0.1em',textTransform:'uppercase'}}>
+                · {new Date(state.entries.find(e=>e.id===editingId)?.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}
+              </span>
+            )}
+          </div>
           <div className="checklist">
             {PRACTICE_TAGS.map(t => (
               <div
@@ -623,8 +650,13 @@ ${recent}`;
           />
 
           <div className="row gap-8 mt-12">
-            <button className="btn-primary" onClick={submit}>Save session</button>
-            <button className="btn-secondary" onClick={() => { setTags([]); setNotes(''); }}>Clear</button>
+            <button className="btn-primary" onClick={submit}>
+              {editingId ? 'Update session' : 'Save session'}
+            </button>
+            {editingId
+              ? <button className="btn-secondary" onClick={cancelEdit}>Cancel</button>
+              : <button className="btn-secondary" onClick={() => { setTags([]); setNotes(''); }}>Clear</button>
+            }
           </div>
         </div>
 
@@ -665,10 +697,16 @@ ${recent}`;
                   {new Date(e.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                   · {INTENSITY[e.intensity] || 'Moderate'}
                   · {e.duration || 60} min
-                  <button
-                    onClick={() => deleteEntry(e.id)}
-                    style={{marginLeft: 'auto', background: 'none', border: 0, color: 'var(--ink-3)', cursor: 'pointer', fontSize: 11}}
-                  >× delete</button>
+                  <span style={{marginLeft:'auto',display:'flex',gap:8}}>
+                    <button
+                      onClick={() => startEdit(e)}
+                      style={{background:'none',border:0,color:'var(--orange)',cursor:'pointer',fontSize:11,fontFamily:'var(--mono)',letterSpacing:'0.08em',textTransform:'uppercase',padding:0}}
+                    >Edit</button>
+                    <button
+                      onClick={() => deleteEntry(e.id)}
+                      style={{background:'none',border:0,color:'var(--ink-3)',cursor:'pointer',fontSize:11,fontFamily:'var(--mono)',letterSpacing:'0.08em',textTransform:'uppercase',padding:0}}
+                    >Delete</button>
+                  </span>
                 </div>
                 <div className="what">
                   {(e.tags || []).map(k => {
