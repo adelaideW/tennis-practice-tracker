@@ -77,44 +77,40 @@ input, textarea, select { font-family: inherit; }
 
 .brand {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 10px;
-  padding: 6px 8px 20px;
+  padding: 20px 8px 20px;
   border-bottom: 1px solid var(--border-2);
   margin-bottom: 16px;
+  text-align: center;
 }
-.brand .mark {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  background: var(--orange);
-  flex-shrink: 0;
-  position: relative;
-  display: flex; align-items: center; justify-content: center;
+.brand-logo svg {
+  width: 52px;
+  height: 52px;
+  display: block;
+  filter: drop-shadow(0 2px 6px rgba(180,200,0,0.3));
 }
-.brand .mark::before {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255,255,255,0.4);
-  border-right-color: transparent;
-  border-bottom-color: transparent;
-  transform: rotate(-30deg);
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
-.brand .wordmark {
+.brand-name {
   font-family: var(--serif);
-  font-size: 20px;
-  letter-spacing: -0.01em;
+  font-size: 22px;
+  font-style: italic;
+  letter-spacing: 0.06em;
   line-height: 1;
   color: var(--ink);
 }
-.brand .tag {
+.brand-sub {
   font-family: var(--mono);
   font-size: 9px;
-  color: var(--ink-4);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-left: auto;
+  letter-spacing: 0.14em;
+  color: var(--ink-4);
 }
 
 .nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }

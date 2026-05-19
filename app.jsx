@@ -185,7 +185,21 @@ function App() {
   return (
     <div className="app" data-screen-label={`00 ${pages[route].l}`}>
       <aside className="rail">
-        <div className="brand" title="Baseline" aria-label="Baseline"></div>
+        <div className="brand">
+          <div className="brand-logo" aria-hidden="true">
+            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="20" cy="20" r="19" fill="#d4ed26" stroke="#b5cb0e" strokeWidth="1.5"/>
+              <path d="M3 15 Q20 8 37 15" stroke="white" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
+              <path d="M3 25 Q20 32 37 25" stroke="white" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
+              <path d="M15 1.5 Q8 20 15 38.5" stroke="white" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
+              <path d="M25 1.5 Q32 20 25 38.5" stroke="white" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <div className="brand-text">
+            <div className="brand-name">ACE</div>
+            <div className="brand-sub">Practice Tracker</div>
+          </div>
+        </div>
 
         <nav className="nav">
           {Object.entries(pages).map(([k, p]) => (
