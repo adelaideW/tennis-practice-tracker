@@ -46,6 +46,69 @@
   --rail-w:  72px;
 }
 
+/* ============ Light mode overrides ============ */
+[data-theme="light"] {
+  --bg:        #f0f0ea;
+  --surface:   #ffffff;
+  --surface-2: #e8e8e2;
+  --surface-3: #dcdcd4;
+  --border:    rgba(0,0,0,0.09);
+  --border-2:  rgba(0,0,0,0.05);
+
+  --ink:   #111111;
+  --ink-2: rgba(0,0,0,0.65);
+  --ink-3: rgba(0,0,0,0.40);
+  --ink-4: rgba(0,0,0,0.22);
+
+  --accent:      #5a8800;
+  --accent-deep: #477000;
+  --accent-glow: rgba(90,136,0,0.12);
+  --teal:        #0e8f84;
+  --teal-deep:   #0a736a;
+
+  --ball:      #5a8800;
+  --ball-deep: #477000;
+
+  --rail-bg: #e2e2da;
+
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.07);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.10);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.14);
+}
+
+[data-theme="light"] .focus-card {
+  background: linear-gradient(135deg, #eaf3d0, #d8ecb0);
+  border-color: rgba(90,136,0,0.2);
+}
+[data-theme="light"] .focus-card .ball-deco {
+  background: radial-gradient(circle at 35% 35%, #a8cc40, #7aaa00);
+  opacity: 0.2;
+}
+[data-theme="light"] .modal-header { background: var(--surface-2); }
+[data-theme="light"] .modal-header .deco {
+  background: radial-gradient(circle at 35% 35%, #a8cc40, #7aaa00);
+}
+[data-theme="light"] .timer { background: var(--surface-2); }
+[data-theme="light"] .nav-item.active { background: var(--surface-3); }
+[data-theme="light"] .tourney .pill.live { background: rgba(160,30,20,0.12); }
+[data-theme="light"] .yt-btn { background: #7a1515; box-shadow: 0 2px 8px rgba(100,0,0,0.2); }
+[data-theme="light"] .yt-btn:hover { background: #5e1010; }
+
+/* Theme toggle button */
+.theme-toggle {
+  width: 36px; height: 36px;
+  border-radius: var(--r-sm);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--ink-3);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 140ms, color 140ms, border-color 140ms;
+  margin-top: 10px;
+}
+.theme-toggle:hover { background: var(--surface-2); color: var(--ink-2); border-color: var(--border); }
+.theme-toggle svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; height: 100%; }
 body {
