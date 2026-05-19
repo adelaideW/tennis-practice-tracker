@@ -193,12 +193,15 @@ function App() {
               onClick={() => setRoute(k)}
               aria-label={p.l}>
               <svg viewBox="0 0 24 24">{NAV_ICONS[k]}</svg>
-              <span className="nav-tooltip">{p.l}</span>
+              <span>{p.l}</span>
             </button>
           ))}
         </nav>
 
-        <div className="foot" title={`${state.entries.length} sessions`}>v1</div>
+        <div className="foot">
+          <div className="foot-row">Stored locally</div>
+          <div className="foot-row">{state.entries.length} sessions logged</div>
+        </div>
       </aside>
 
       <main className="content" data-screen-label={pages[route].l}>
