@@ -1,0 +1,1007 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nova — Voice AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&family=Instrument+Serif&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#05060a;
+    --bg-1:#0a0d18;
+    --ink:#e7ecff;
+    --ink-dim:#8892b8;
+    --ink-faint:#4a5170;
+    --accent:#7cdcff;
+    --accent-2:#b48bff;
+    --accent-3:#ff89d0;
+    --line:rgba(255,255,255,.06);
+    --panel:rgba(10,13,24,.62);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg-0);color:var(--ink);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+
+  .stage{
+    position:fixed;inset:0;
+    background:
+      radial-gradient(120% 80% at 70% 20%, rgba(124,220,255,.08), transparent 60%),
+      radial-gradient(100% 70% at 20% 80%, rgba(180,139,255,.07), transparent 60%),
+      radial-gradient(60% 50% at 50% 50%, rgba(8,10,20,0) 0%, var(--bg-0) 80%),
+      linear-gradient(180deg,#06070d 0%,#04050a 100%);
+  }
+  .grid{
+    position:fixed;inset:0;pointer-events:none;opacity:.35;mix-blend-mode:screen;
+    background-image:
+      linear-gradient(rgba(124,220,255,.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,220,255,.06) 1px, transparent 1px);
+    background-size:64px 64px;
+    mask-image: radial-gradient(60% 60% at 50% 50%, #000 0%, transparent 75%);
+    -webkit-mask-image: radial-gradient(60% 60% at 50% 50%, #000 0%, transparent 75%);
+  }
+  .noise{
+    position:fixed;inset:0;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='.7'/></svg>");
+  }
+
+  .top{
+    position:fixed;top:0;left:0;right:0;z-index:5;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:22px 28px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim);
+  }
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 14px var(--accent)}
+  .brand b{color:var(--ink);font-weight:500;letter-spacing:.3em}
+  .meta{display:flex;gap:24px}
+  .meta span{display:flex;align-items:center;gap:8px}
+  .meta i{width:6px;height:6px;border-radius:50%;background:var(--ink-faint);display:inline-block}
+  .meta .live i{background:#5eff9a;box-shadow:0 0 10px #5eff9a;animation:blink 1.4s infinite}
+  @keyframes blink{50%{opacity:.35}}
+
+  .bottom{
+    position:fixed;left:0;right:0;bottom:0;z-index:5;
+    display:flex;align-items:flex-end;justify-content:space-between;
+    padding:22px 28px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim);
+    pointer-events:none;
+  }
+  .legend{display:grid;gap:6px}
+  .legend kbd{
+    font-family:'JetBrains Mono',monospace;color:var(--ink);
+    background:rgba(255,255,255,.04);border:1px solid var(--line);
+    padding:2px 6px;border-radius:4px;font-size:10px;margin-right:4px;
+  }
+  .vumeter{display:flex;align-items:flex-end;gap:3px;height:28px}
+  .vumeter span{width:3px;background:linear-gradient(180deg,var(--accent),var(--accent-2));border-radius:2px;opacity:.6;height:4px;transition:height .08s linear}
+
+  canvas.orb{position:fixed;inset:0;width:100%;height:100%;cursor:pointer;z-index:1}
+
+  .center-label{
+    position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
+    z-index:3;pointer-events:none;text-align:center;
+    transition:opacity .4s ease, transform .6s cubic-bezier(.2,.8,.2,1);
+  }
+  .center-label .eyebrow{
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.4em;color:var(--accent);
+    text-transform:uppercase;margin-bottom:14px;opacity:.85;
+  }
+  .center-label h1{
+    margin:0;font-family:'Instrument Serif',serif;font-weight:400;
+    font-size:38px;line-height:1.1;color:#fff;letter-spacing:-.01em;
+  }
+  .center-label h1 em{color:var(--accent);font-style:italic;font-family:'Instrument Serif',serif}
+  .center-label .hint{
+    margin-top:20px;font-family:'JetBrains Mono',monospace;font-size:10px;
+    letter-spacing:.35em;color:var(--ink-faint);text-transform:uppercase;
+  }
+  body.listening .center-label{opacity:0;transform:translate(-50%,-50%) scale(.96)}
+
+  .caption{
+    position:fixed;left:50%;bottom:130px;transform:translateX(-50%);
+    z-index:4;max-width:620px;text-align:center;padding:0 24px;
+    font-family:'Instrument Serif',serif;font-size:24px;line-height:1.35;color:#fff;
+    opacity:0;transition:opacity .3s ease;pointer-events:none;
+    text-shadow:0 0 30px rgba(124,220,255,.35);
+  }
+  body.listening .caption{opacity:.95}
+  .caption .dim{color:var(--ink-faint)}
+
+  .panel{
+    position:fixed;top:0;right:0;bottom:0;width:380px;z-index:6;
+    background:var(--panel);
+    backdrop-filter:blur(24px) saturate(140%);
+    -webkit-backdrop-filter:blur(24px) saturate(140%);
+    border-left:1px solid var(--line);
+    transform:translateX(0);
+    transition:transform .5s cubic-bezier(.2,.8,.2,1);
+    display:flex;flex-direction:column;
+  }
+  body.panel-hidden .panel{transform:translateX(100%)}
+  .panel-head{
+    padding:22px 24px 16px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-dim);
+  }
+  .panel-head .title{display:flex;align-items:center;gap:10px;color:var(--ink)}
+  .panel-head .title i{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+  .panel-head .title .off{background:var(--ink-faint);box-shadow:none}
+  .panel-head .close{
+    background:transparent;border:1px solid var(--line);color:var(--ink-dim);
+    width:30px;height:30px;border-radius:50%;cursor:pointer;display:grid;place-items:center;
+    transition:.2s;
+  }
+  .panel-head .close:hover{color:var(--ink);border-color:rgba(255,255,255,.18)}
+
+  .panel-body{
+    flex:1;overflow-y:auto;padding:22px 24px;
+    display:flex;flex-direction:column;gap:20px;
+    scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent;
+  }
+  .panel-body::-webkit-scrollbar{width:6px}
+  .panel-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
+
+  .turn{display:flex;flex-direction:column;gap:6px;animation:fade .4s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .turn .who{
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.25em;text-transform:uppercase;
+    color:var(--ink-faint);display:flex;align-items:center;gap:8px;
+  }
+  .turn .who .swatch{width:6px;height:6px;border-radius:50%}
+  .turn .who time{margin-left:auto;color:var(--ink-faint)}
+  .turn.user .swatch{background:var(--accent)}
+  .turn.ai .swatch{background:var(--accent-2)}
+  .turn .text{font-size:15px;line-height:1.55;color:var(--ink)}
+  .turn.ai .text{color:#d6dcff}
+  .turn.partial .text{color:var(--ink-dim)}
+  .turn.partial .text::after{content:"▍";color:var(--accent);animation:blink 1s infinite;margin-left:2px}
+
+  .empty{
+    margin:auto;text-align:center;color:var(--ink-faint);
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+    padding:40px 20px;
+  }
+  .empty svg{display:block;margin:0 auto 14px;opacity:.5}
+
+  .panel-foot{
+    padding:14px 24px;border-top:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);
+  }
+  .panel-foot button{
+    background:transparent;border:1px solid var(--line);color:var(--ink-dim);
+    padding:6px 10px;border-radius:4px;font:inherit;cursor:pointer;letter-spacing:.2em;
+    transition:.2s;
+  }
+  .panel-foot button:hover{color:var(--ink);border-color:rgba(255,255,255,.18)}
+
+  .reveal{
+    position:fixed;top:50%;right:0;transform:translateY(-50%);
+    z-index:7;display:flex;align-items:center;gap:10px;
+    background:rgba(10,13,24,.7);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-right:none;border-radius:8px 0 0 8px;
+    padding:12px 14px;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--ink-dim);
+    opacity:0;pointer-events:none;transition:opacity .4s ease, color .2s, transform .4s;
+  }
+  body.panel-hidden .reveal{opacity:1;pointer-events:auto}
+  .reveal:hover{color:var(--ink)}
+  .reveal .badge{
+    min-width:18px;height:18px;padding:0 5px;border-radius:9px;
+    background:var(--accent);color:#001019;font-weight:600;font-size:10px;
+    display:grid;place-items:center;letter-spacing:0;font-family:'Inter';
+  }
+  .reveal .badge.hide{display:none}
+
+  .status{
+    position:fixed;top:22px;left:50%;transform:translateX(-50%);z-index:5;
+    display:flex;align-items:center;gap:10px;
+    padding:8px 14px;border-radius:999px;
+    background:rgba(10,13,24,.6);backdrop-filter:blur(14px);
+    border:1px solid var(--line);
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--ink-dim);
+  }
+  .status .pulse{width:8px;height:8px;border-radius:50%;background:var(--ink-faint);position:relative}
+  body.listening .status .pulse{background:#5eff9a;box-shadow:0 0 10px #5eff9a}
+  body.listening .status .pulse::after{
+    content:"";position:absolute;inset:-4px;border-radius:50%;border:1px solid #5eff9a;
+    animation:ring 1.4s ease-out infinite;
+  }
+  @keyframes ring{from{opacity:.6;transform:scale(.6)}to{opacity:0;transform:scale(1.8)}}
+  body.denied .status .pulse{background:#ff6a6a;box-shadow:0 0 10px #ff6a6a}
+  body.ai-speaking .status .pulse{background:var(--accent-2);box-shadow:0 0 10px var(--accent-2)}
+  body.ai-speaking .status .pulse::after{
+    content:"";position:absolute;inset:-4px;border-radius:50%;border:1px solid var(--accent-2);
+    animation:ring 1.4s ease-out infinite;
+  }
+
+  @media (max-width:760px){
+    .panel{width:100%}
+    .center-label h1{font-size:28px}
+    .caption{font-size:18px;bottom:110px}
+    .meta{display:none}
+    .top{padding:16px 18px}
+    .bottom{padding:16px 18px}
+  }
+</style>
+</head>
+<body class="idle panel-hidden-init">
+  <div class="stage"></div>
+  <div class="grid"></div>
+  <div class="noise"></div>
+
+  <header class="top">
+    <div class="brand"><span class="dot"></span><b>NOVA</b><span>·</span><span>v0.4 · voice core</span></div>
+    <div class="meta">
+      <span class="live"><i></i>session 0421</span>
+      <span><i></i>en · us</span>
+      <span><i></i>49 ms</span>
+    </div>
+  </header>
+
+  <div class="status" id="status">
+    <span class="pulse"></span><span id="statusText">tap orb to speak</span>
+  </div>
+
+  <canvas class="orb" id="orb"></canvas>
+
+  <div class="center-label" id="centerLabel">
+    <div class="eyebrow">◊ ready</div>
+    <h1>Say something,<br><em>I'm listening.</em></h1>
+    <div class="hint">click anywhere to begin</div>
+  </div>
+
+  <div class="caption" id="caption"></div>
+
+  <footer class="bottom">
+    <div class="legend">
+      <div><kbd>Space</kbd> talk / stop</div>
+      <div><kbd>T</kbd> toggle transcript</div>
+    </div>
+    <div class="vumeter" id="vumeter"></div>
+  </footer>
+
+  <aside class="panel" id="panel">
+    <div class="panel-head">
+      <div class="title"><i id="panelDot" class="off"></i><span>Transcript</span></div>
+      <button class="close" id="hidePanel" aria-label="Hide transcript">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+    <div class="panel-body" id="panelBody">
+      <div class="empty" id="empty">
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/>
+        </svg>
+        Awaiting input
+      </div>
+    </div>
+    <div class="panel-foot">
+      <span id="wordCount">0 words</span>
+      <button id="clearBtn">Clear</button>
+    </div>
+  </aside>
+
+  <button class="reveal" id="reveal">
+    <span class="badge hide" id="revealBadge">0</span>
+    <span>Show transcript</span>
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>
+  </button>
+
+<script>
+(() => {
+  // ============================================================
+  //  ORB RENDERER — reactive blob + ring + halo
+  // ============================================================
+  const canvas = document.getElementById('orb');
+  const ctx = canvas.getContext('2d');
+  let DPR = Math.min(window.devicePixelRatio || 1, 2);
+  let W = 0, H = 0, CX = 0, CY = 0;
+
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.style.width = W+'px'; canvas.style.height = H+'px';
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    CX = W/2; CY = H/2;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Audio level (0..1) — smoothed
+  let level = 0;          // displayed level (eased)
+  let targetLevel = 0;    // instantaneous from analyser
+  let pulse = 0;          // click pulse
+  let speakingT = 0;      // 0..1 ease into listening visual
+  let aiSpeakT = 0;       // 0..1 ease while AI is replying
+  let aiSpeakLevel = 0;   // synthetic level while AI replies
+
+  // Embers (slow drifting motes)
+  const embers = [];
+  for(let i=0;i<60;i++){
+    embers.push({
+      x:Math.random(), y:Math.random(),
+      vy:0.00003 + Math.random()*0.00009,
+      size:0.4+Math.random()*1.6,
+      tw:Math.random()*Math.PI*2,
+      hue: Math.random()<.5 ? 200 : 270
+    });
+  }
+  // Orbiting glints
+  const glints = [];
+  for(let i=0;i<10;i++){
+    glints.push({
+      a: Math.random()*Math.PI*2,
+      r: 1.0 + Math.random()*0.6,
+      speed: (Math.random()<.5?-1:1)*(0.0003 + Math.random()*0.0007),
+      size: 1+Math.random()*1.2,
+      hue: 190 + Math.random()*120
+    });
+  }
+
+  function noise(a, t, seed){
+    return (
+      Math.sin(a*3 + t*0.45 + seed) +
+      Math.sin(a*5 - t*0.62 + seed*1.3) * 0.55 +
+      Math.sin(a*7 + t*0.82 + seed*0.7) * 0.32 +
+      Math.sin(a*11 - t*1.0 + seed*2.1) * 0.16
+    );
+  }
+
+  function drawBackground(t){
+    // embers
+    for(const e of embers){
+      e.y -= e.vy;
+      if(e.y < -0.05){ e.y = 1.05; e.x = Math.random(); }
+      const x = e.x*W, y = e.y*H;
+      const flick = 0.35 + 0.65*Math.abs(Math.sin(t*0.001 + e.tw));
+      ctx.fillStyle = `hsla(${e.hue}, 90%, 80%, ${0.12*flick})`;
+      ctx.beginPath(); ctx.arc(x,y,e.size,0,Math.PI*2); ctx.fill();
+    }
+  }
+
+  function drawBlob(t){
+    const baseR = Math.min(W,H) * 0.18;
+    const lvl = level; // 0..1
+    const breathe = 1 + Math.sin(t*0.0011)*0.018;
+    const grow = 1 + lvl*0.35 + pulse*0.25 + speakingT*0.04;
+    const R = baseR * breathe * grow;
+
+    // ---- OUTER HALO (multi-layer radial glow)
+    const haloR = R * (2.4 + lvl*0.4);
+    const halo = ctx.createRadialGradient(CX, CY, R*0.6, CX, CY, haloR);
+    halo.addColorStop(0, `rgba(124,220,255,${0.18 + lvl*0.25})`);
+    halo.addColorStop(0.35, `rgba(180,139,255,${0.10 + lvl*0.15})`);
+    halo.addColorStop(0.7, `rgba(255,137,208,${0.04 + lvl*0.06})`);
+    halo.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(CX-haloR, CY-haloR, haloR*2, haloR*2);
+
+    // ---- CONCENTRIC THIN RINGS (wireframe layer)
+    ctx.save();
+    ctx.translate(CX, CY);
+    const ringCount = 3;
+    for(let i=0;i<ringCount;i++){
+      const rr = R * (1.25 + i*0.22 + Math.sin(t*0.0007 + i)*0.02);
+      const segs = 180;
+      ctx.beginPath();
+      for(let s=0;s<=segs;s++){
+        const a = (s/segs)*Math.PI*2;
+        const wob = 1 + noise(a, t*0.001, i*1.7) * (0.012 + lvl*0.04);
+        const x = Math.cos(a)*rr*wob;
+        const y = Math.sin(a)*rr*wob;
+        if(s===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = `rgba(124,220,255,${(0.18 - i*0.04) + lvl*0.1})`;
+      ctx.lineWidth = 0.7;
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // ---- BLOB (organic shape) with two layered fills
+    function drawBlobLayer(seed, scale, fillStops, alpha){
+      ctx.save();
+      ctx.translate(CX, CY);
+      const segs = 240;
+      ctx.beginPath();
+      for(let s=0;s<=segs;s++){
+        const a = (s/segs)*Math.PI*2;
+        const n = noise(a, t*0.001, seed);
+        const dist = R * scale * (1 + n * (0.05 + lvl*0.22) + pulse*0.06);
+        const x = Math.cos(a)*dist;
+        const y = Math.sin(a)*dist;
+        if(s===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.closePath();
+      const grad = ctx.createRadialGradient(0, -R*0.2, R*0.05, 0, 0, R*scale*1.3);
+      for(const [stop, col] of fillStops) grad.addColorStop(stop, col);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // back/violet layer
+    drawBlobLayer(2.3, 1.06, [
+      [0, 'rgba(190,150,255,0.55)'],
+      [0.5, 'rgba(120,90,210,0.35)'],
+      [1, 'rgba(40,20,90,0.0)']
+    ], 0.85);
+
+    // front/cyan layer
+    drawBlobLayer(0.7, 1.0, [
+      [0, 'rgba(220,250,255,0.95)'],
+      [0.25, 'rgba(124,220,255,0.75)'],
+      [0.7, 'rgba(80,140,230,0.25)'],
+      [1, 'rgba(20,40,90,0.0)']
+    ], 0.95);
+
+    // inner core hot spot
+    ctx.save();
+    ctx.translate(CX, CY);
+    const coreG = ctx.createRadialGradient(0, -R*0.15, 0, 0, -R*0.15, R*0.7);
+    coreG.addColorStop(0, 'rgba(255,255,255,0.95)');
+    coreG.addColorStop(0.3, 'rgba(200,235,255,0.5)');
+    coreG.addColorStop(1, 'rgba(124,220,255,0)');
+    ctx.fillStyle = coreG;
+    ctx.beginPath(); ctx.arc(0, -R*0.15, R*0.7, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    // ---- ORBITING GLINTS
+    ctx.save();
+    ctx.translate(CX, CY);
+    for(const g of glints){
+      g.a += g.speed * (1 + lvl*3);
+      const rr = R * g.r * (1 + Math.sin(t*0.001 + g.a*2)*0.04);
+      const x = Math.cos(g.a)*rr;
+      const y = Math.sin(g.a)*rr*0.85;
+      ctx.fillStyle = `hsla(${g.hue}, 95%, 80%, ${0.55 + lvl*0.4})`;
+      ctx.shadowColor = `hsla(${g.hue}, 95%, 80%, 0.8)`;
+      ctx.shadowBlur = 12;
+      ctx.beginPath(); ctx.arc(x,y,g.size,0,Math.PI*2); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+
+    // ---- WAVEFORM ARC (visible while speaking)
+    if(speakingT > 0.01){
+      ctx.save();
+      ctx.translate(CX, CY);
+      const arcR = R*1.55;
+      const bars = 64;
+      for(let i=0;i<bars;i++){
+        const a = (i/bars)*Math.PI*2 - Math.PI/2;
+        const seed = i*0.37;
+        const amp = (0.3 + Math.abs(noise(seed, t*0.003, i*0.2))*0.7) * (lvl*0.7 + 0.15);
+        const len = 4 + amp * 48 * speakingT;
+        const x1 = Math.cos(a)*arcR;
+        const y1 = Math.sin(a)*arcR;
+        const x2 = Math.cos(a)*(arcR+len);
+        const y2 = Math.sin(a)*(arcR+len);
+        const alpha = (0.25 + lvl*0.6) * speakingT;
+        const grad = ctx.createLinearGradient(x1,y1,x2,y2);
+        grad.addColorStop(0, `rgba(124,220,255,${alpha})`);
+        grad.addColorStop(1, `rgba(180,139,255,0)`);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  let last = performance.now();
+  function frame(now){
+    const dt = Math.min(50, now - last); last = now;
+    // dt-normalized smoothing (target ~60fps)
+    const k = 1 - Math.pow(0.001, dt/1000); // ~0.05/frame at 60fps for very smooth
+    const kFast = 1 - Math.pow(0.01, dt/1000);
+    // Asymmetric attack/release for silkier motion
+    const effectiveTarget = Math.max(targetLevel, aiSpeakLevel * aiSpeakT);
+    if(effectiveTarget > level){
+      level += (effectiveTarget - level) * 0.18;  // medium attack
+    } else {
+      level += (effectiveTarget - level) * 0.05;  // slow release
+    }
+    pulse *= 0.94;
+    const wantSpeak = (state === 'listening' || aiSpeakT > 0.01) ? 1 : 0;
+    speakingT += (wantSpeak - speakingT) * 0.05;
+
+    ctx.clearRect(0,0,W,H);
+    drawBackground(now);
+    drawBlob(now);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // ============================================================
+  //  VU meter bars (bottom-right)
+  // ============================================================
+  const vu = document.getElementById('vumeter');
+  const VU_BARS = 28;
+  const vuEls = [];
+  for(let i=0;i<VU_BARS;i++){ const s=document.createElement('span'); vu.appendChild(s); vuEls.push(s); }
+  const vuHist = new Array(VU_BARS).fill(0);
+  function updateVU(){
+    // shift left
+    for(let i=0;i<VU_BARS-1;i++) vuHist[i] = vuHist[i+1];
+    vuHist[VU_BARS-1] = level;
+    for(let i=0;i<VU_BARS;i++){
+      const h = 3 + vuHist[i]*26;
+      vuEls[i].style.height = h+'px';
+      vuEls[i].style.opacity = 0.3 + vuHist[i]*0.7;
+    }
+    requestAnimationFrame(updateVU);
+  }
+  requestAnimationFrame(updateVU);
+
+  // ============================================================
+  //  AUDIO + SPEECH RECOGNITION
+  // ============================================================
+  const body = document.body;
+  const statusEl = document.getElementById('status');
+  const statusText = document.getElementById('statusText');
+  const captionEl = document.getElementById('caption');
+  const panelBody = document.getElementById('panelBody');
+  const emptyEl = document.getElementById('empty');
+  const wordCountEl = document.getElementById('wordCount');
+  const panelDot = document.getElementById('panelDot');
+  const revealBadge = document.getElementById('revealBadge');
+
+  let state = 'idle'; // idle | listening | denied
+  let audioCtx, analyser, micStream, srcNode, raf;
+  let recognition = null;
+  let partialEl = null;
+  let turns = []; // {who:'user'|'ai', text, time}
+
+  function setStatus(text){ statusText.textContent = text; }
+  function setState(s){
+    state = s;
+    body.classList.toggle('listening', s==='listening');
+    body.classList.toggle('idle', s==='idle');
+    body.classList.toggle('denied', s==='denied');
+    panelDot.classList.toggle('off', s!=='listening');
+    if(s==='listening'){ setStatus('listening · tap to stop'); }
+    else if(s==='denied'){ setStatus('microphone blocked'); }
+    else { setStatus('tap orb to speak'); }
+  }
+
+  async function startMic(){
+    if(state === 'listening') return;
+    try{
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation:true, noiseSuppression:true } });
+    }catch(err){
+      // No mic — still go into "listening" visual mode with synthetic level so demo is alive
+      setState('denied');
+      setStatus('mic blocked · using demo motion');
+      startDemoMode();
+      startRecognitionSafe();
+      pulse = 1;
+      return;
+    }
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') await audioCtx.resume();
+    srcNode = audioCtx.createMediaStreamSource(micStream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 1024;
+    analyser.smoothingTimeConstant = 0.7;
+    srcNode.connect(analyser);
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+
+    // smooth rolling average for silky motion
+    let rollAvg = 0;
+    function tick(){
+      analyser.getByteTimeDomainData(buf);
+      let sum = 0;
+      for(let i=0;i<buf.length;i++){ const v = (buf[i]-128)/128; sum += v*v; }
+      const rms = Math.sqrt(sum/buf.length);
+      // light curve + rolling avg to remove jitter
+      const raw = Math.min(1, Math.pow(rms*2.6, 0.9));
+      rollAvg = rollAvg*0.7 + raw*0.3;
+      targetLevel = rollAvg;
+      raf = requestAnimationFrame(tick);
+    }
+    tick();
+    setState('listening');
+    pulse = 1;
+    startRecognitionSafe();
+  }
+
+  function stopMic(){
+    if(raf) cancelAnimationFrame(raf);
+    if(srcNode){ try{srcNode.disconnect()}catch(e){} srcNode = null; }
+    if(micStream){ micStream.getTracks().forEach(t=>t.stop()); micStream=null; }
+    stopDemoMode();
+    targetLevel = 0;
+    stopRecognition();
+    finalizePartial();
+    try{ if('speechSynthesis' in window) speechSynthesis.cancel(); }catch(e){}
+    stopAISpeakingMotion();
+    setState('idle');
+    captionEl.textContent='';
+  }
+
+  function toggleMic(){ state==='listening' ? stopMic() : startMic(); }
+
+  // Demo motion when mic blocked
+  let demoRaf;
+  function startDemoMode(){
+    setState('listening'); // visual only
+    let t = 0;
+    function loop(){
+      t += 0.04;
+      // simulate speech-like envelope
+      const env = (Math.sin(t*0.8)*0.5+0.5) * (Math.sin(t*3.2)*0.4+0.6);
+      targetLevel = Math.max(0.05, env * 0.7 + Math.random()*0.08);
+      demoRaf = requestAnimationFrame(loop);
+    }
+    loop();
+  }
+  function stopDemoMode(){ if(demoRaf) cancelAnimationFrame(demoRaf); demoRaf=null; }
+
+  // -------- Speech Recognition --------
+  function startRecognitionSafe(){
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){ return; }
+    try{
+      recognition = new SR();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+      recognition.onresult = (e)=>{
+        let interim = '', finalTxt = '';
+        for(let i=e.resultIndex;i<e.results.length;i++){
+          const r = e.results[i];
+          if(r.isFinal) finalTxt += r[0].transcript;
+          else interim += r[0].transcript;
+        }
+        if(interim){ showPartial(interim); }
+        if(finalTxt){ commitFinal(finalTxt.trim()); }
+      };
+      recognition.onerror = ()=>{};
+      recognition.onend = ()=>{
+        // auto restart while still listening
+        if(state === 'listening'){
+          try{ recognition.start(); }catch(e){}
+        }
+      };
+      recognition.start();
+    }catch(e){}
+  }
+  function stopRecognition(){
+    if(recognition){
+      try{ recognition.onend = null; recognition.stop(); }catch(e){}
+      recognition = null;
+    }
+  }
+
+  function ensurePartial(){
+    if(!partialEl){
+      emptyEl.style.display = 'none';
+      partialEl = document.createElement('div');
+      partialEl.className = 'turn user partial';
+      partialEl.innerHTML = `
+        <div class="who"><span class="swatch"></span>You <time>${nowTime()}</time></div>
+        <div class="text"></div>`;
+      panelBody.appendChild(partialEl);
+      scrollPanel();
+    }
+    return partialEl;
+  }
+  function showPartial(text){
+    const el = ensurePartial();
+    el.querySelector('.text').textContent = text;
+    captionEl.textContent = text;
+    bumpUnread();
+    scrollPanel();
+  }
+  let pendingFinal = '';
+  let pendingTimer = null;
+  function commitFinal(text){
+    if(!text) return;
+    if(partialEl){
+      partialEl.classList.remove('partial');
+      partialEl.querySelector('.text').textContent = text;
+      partialEl = null;
+    } else {
+      addTurn('user', text);
+    }
+    turns.push({who:'user',text,time:Date.now()});
+    updateWordCount();
+    captionEl.textContent = text;
+    bumpUnread();
+
+    // Debounce multi-segment finals into one AI reply (waits for ~1s of silence)
+    pendingFinal = (pendingFinal + ' ' + text).trim();
+    if(pendingTimer) clearTimeout(pendingTimer);
+    pendingTimer = setTimeout(()=>{
+      const q = pendingFinal.trim();
+      pendingFinal = '';
+      pendingTimer = null;
+      if(q) aiReply(q);
+    }, 1100);
+  }
+  function finalizePartial(){
+    if(partialEl){
+      const txt = partialEl.querySelector('.text').textContent.trim();
+      if(txt){ partialEl.classList.remove('partial'); turns.push({who:'user',text:txt,time:Date.now()}); }
+      else partialEl.remove();
+      partialEl = null;
+      updateWordCount();
+    }
+  }
+
+  function addTurn(who, text){
+    emptyEl.style.display = 'none';
+    const el = document.createElement('div');
+    el.className = 'turn ' + who;
+    el.innerHTML = `
+      <div class="who"><span class="swatch"></span>${who==='user'?'You':'Nova'} <time>${nowTime()}</time></div>
+      <div class="text"></div>`;
+    el.querySelector('.text').textContent = text;
+    panelBody.appendChild(el);
+    scrollPanel();
+  }
+
+  // Conversation history for context
+  const history = [];
+  let aiSpeakRaf = null;
+
+  function startAISpeakingMotion(){
+    aiSpeakT = 1;
+    body.classList.add('ai-speaking');
+    if(state !== 'listening') setStatus('nova is replying');
+    if(aiSpeakRaf) cancelAnimationFrame(aiSpeakRaf);
+    let t = 0;
+    function loop(){
+      t += 0.045;
+      // smooth speech-like envelope
+      const env = (Math.sin(t*1.1)*0.5+0.5) * (Math.sin(t*2.7)*0.35+0.65);
+      aiSpeakLevel = 0.25 + env*0.55;
+      aiSpeakRaf = requestAnimationFrame(loop);
+    }
+    loop();
+  }
+  function stopAISpeakingMotion(){
+    if(aiSpeakRaf) cancelAnimationFrame(aiSpeakRaf);
+    aiSpeakRaf = null;
+    aiSpeakLevel = 0;
+    aiSpeakT = 0;
+    body.classList.remove('ai-speaking');
+    if(state === 'listening') setStatus('listening · tap to stop');
+    else setStatus('tap orb to speak');
+  }
+
+  async function aiReply(userText){
+    history.push({ role:'user', content:userText });
+
+    // Show "thinking" partial bubble
+    emptyEl.style.display = 'none';
+    const thinking = document.createElement('div');
+    thinking.className = 'turn ai partial';
+    thinking.innerHTML = `
+      <div class="who"><span class="swatch"></span>Nova <time>${nowTime()}</time></div>
+      <div class="text">thinking</div>`;
+    panelBody.appendChild(thinking);
+    scrollPanel();
+
+    // ---- Intent: weather ----
+    let weatherCtx = '';
+    const weatherMatch = /\b(weather|forecast|temperature|temp|how (hot|cold|warm)|raining|snowing|humidity)\b/i.test(userText);
+    if(weatherMatch){
+      thinking.querySelector('.text').textContent = 'checking weather';
+      let loc = '';
+      const locM = userText.match(/(?:weather|forecast|temperature|temp)\s+(?:in|at|for)\s+([a-z\u00C0-\u017F\s,.'-]+?)(?:\?|$|\.)/i)
+                || userText.match(/in\s+([A-Z][a-z\u00C0-\u017F]+(?:[\s,][A-Z][a-z\u00C0-\u017F]+)*)/);
+      if(locM) loc = locM[1].trim();
+      try{
+        const url = `https://wttr.in/${encodeURIComponent(loc)}?format=j1`;
+        const res = await fetch(url);
+        if(res.ok){
+          const data = await res.json();
+          const cur = data.current_condition && data.current_condition[0];
+          const area = data.nearest_area && data.nearest_area[0];
+          const place = area ? `${area.areaName?.[0]?.value || ''}${area.region?.[0]?.value ? ', ' + area.region[0].value : ''}${area.country?.[0]?.value ? ', ' + area.country[0].value : ''}` : (loc||'your location');
+          if(cur){
+            const desc = cur.weatherDesc?.[0]?.value || '';
+            const tempF = cur.temp_F, tempC = cur.temp_C;
+            const feelsF = cur.FeelsLikeF, feelsC = cur.FeelsLikeC;
+            const wind = cur.windspeedMiles, windDir = cur.winddir16Point;
+            const hum = cur.humidity;
+            const today = data.weather?.[0];
+            const hi = today?.maxtempF, lo = today?.mintempF;
+            const hiC = today?.maxtempC, loC = today?.mintempC;
+            weatherCtx = `Live weather data for ${place}: currently ${desc}, ${tempF}°F (${tempC}°C), feels like ${feelsF}°F (${feelsC}°C). Humidity ${hum}%. Wind ${wind} mph ${windDir}. Today's high ${hi}°F (${hiC}°C), low ${lo}°F (${loC}°C).`;
+          }
+        }
+      }catch(err){ /* fall through, AI will say it couldn't get it */ }
+    }
+
+    let reply = '';
+    try{
+      const sys = "You are Nova, a warm, futuristic voice AI assistant. Reply in 1-2 short, conversational sentences suitable for being spoken aloud. No markdown, no lists, no emoji. Be helpful and direct. When weather data is provided, use ONLY that data — do not invent numbers.";
+      const ctxBlock = weatherCtx ? `\n\n[Live tool data — you MUST use this, do not invent]\n${weatherCtx}` : '';
+      const historyBlock = history.length>1
+        ? "\n\nRecent context:\n" + history.slice(-6,-1).map(m=>`${m.role}: ${m.content}`).join('\n')
+        : '';
+      const prompt = {
+        messages: [
+          { role: 'user', content: sys + ctxBlock + "\n\nUser: " + userText + historyBlock }
+        ]
+      };
+      reply = await window.claude.complete(prompt);
+      reply = (reply || '').trim();
+    }catch(err){
+      reply = "I'm having trouble reaching my brain right now — try again in a moment.";
+    }
+    if(!reply) reply = "I didn't catch a useful answer there — could you rephrase?";
+
+    history.push({ role:'assistant', content: reply });
+
+    // Replace thinking bubble with the real reply
+    thinking.classList.remove('partial');
+    thinking.querySelector('.text').textContent = '';
+    scrollPanel();
+
+    // Animated typewriter + reactive motion + TTS in parallel
+    startAISpeakingMotion();
+    speakText(reply);
+
+    const textEl = thinking.querySelector('.text');
+    const chars = [...reply];
+    let i = 0;
+    const speed = 22;
+    await new Promise(res => {
+      const tick = ()=>{
+        const step = 1 + (Math.random()<0.2 ? 1 : 0);
+        for(let s=0;s<step && i<chars.length;s++,i++){
+          textEl.textContent += chars[i];
+        }
+        scrollPanel();
+        if(i < chars.length){
+          setTimeout(tick, speed + (chars[i-1]==='.' || chars[i-1]==='?' ? 120 : 0));
+        } else res();
+      };
+      tick();
+    });
+
+    // Wait for TTS to finish before clearing the AI-speaking state
+    await ttsDonePromise;
+    stopAISpeakingMotion();
+
+    turns.push({who:'ai', text:reply, time:Date.now()});
+    updateWordCount();
+    bumpUnread();
+  }
+
+  // ============================================================
+  //  TEXT-TO-SPEECH (with mic muting to avoid feedback)
+  // ============================================================
+  let ttsDonePromise = Promise.resolve();
+  let preferredVoice = null;
+  function pickVoice(){
+    if(!('speechSynthesis' in window)) return null;
+    const voices = speechSynthesis.getVoices();
+    if(!voices.length) return null;
+    // Prefer high-quality natural female English voices
+    const wishlist = [
+      /Samantha/i, /Ava/i, /Allison/i, /Karen/i, /Serena/i, /Moira/i,
+      /Google US English/i, /Microsoft.*(Aria|Jenny|Zira)/i,
+      /en[-_]US.*female/i, /en[-_]GB/i
+    ];
+    for(const re of wishlist){
+      const v = voices.find(v => re.test(v.name));
+      if(v) return v;
+    }
+    return voices.find(v => /^en/i.test(v.lang)) || voices[0];
+  }
+  if('speechSynthesis' in window){
+    // Voices load async
+    speechSynthesis.onvoiceschanged = ()=>{ preferredVoice = pickVoice(); };
+    preferredVoice = pickVoice();
+  }
+
+  function speakText(text){
+    if(!('speechSynthesis' in window) || !text) { ttsDonePromise = Promise.resolve(); return; }
+    try{ speechSynthesis.cancel(); }catch(e){}
+    const u = new SpeechSynthesisUtterance(text);
+    if(!preferredVoice) preferredVoice = pickVoice();
+    if(preferredVoice) u.voice = preferredVoice;
+    u.rate = 1.02;
+    u.pitch = 1.0;
+    u.volume = 1.0;
+    // Mute mic / pause recognition during TTS so the AI doesn't hear itself
+    const wasListening = (state === 'listening');
+    if(wasListening && recognition){
+      try{ recognition.onend = null; recognition.stop(); }catch(e){}
+      recognition = null;
+    }
+    if(micStream){ micStream.getAudioTracks().forEach(t => t.enabled = false); }
+
+    ttsDonePromise = new Promise(resolve => {
+      u.onend = u.onerror = ()=>{
+        if(micStream){ micStream.getAudioTracks().forEach(t => t.enabled = true); }
+        if(wasListening && state === 'listening' && !recognition){
+          // small delay so the tail of the TTS audio doesn't get captured
+          setTimeout(()=> startRecognitionSafe(), 220);
+        }
+        resolve();
+      };
+    });
+    speechSynthesis.speak(u);
+  }
+
+  function updateWordCount(){
+    const words = turns.reduce((n,t)=> n + t.text.split(/\s+/).filter(Boolean).length, 0);
+    wordCountEl.textContent = words + (words===1?' word':' words');
+  }
+
+  function nowTime(){
+    const d = new Date();
+    return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }
+  function scrollPanel(){
+    panelBody.scrollTop = panelBody.scrollHeight;
+  }
+
+  // ============================================================
+  //  PANEL TOGGLE
+  // ============================================================
+  const panel = document.getElementById('panel');
+  const hideBtn = document.getElementById('hidePanel');
+  const reveal = document.getElementById('reveal');
+  const clearBtn = document.getElementById('clearBtn');
+  let unread = 0;
+
+  function setPanelHidden(hidden){
+    body.classList.toggle('panel-hidden', hidden);
+    if(!hidden){ unread = 0; updateBadge(); }
+  }
+  function updateBadge(){
+    if(unread>0){ revealBadge.textContent = unread>99?'99+':unread; revealBadge.classList.remove('hide'); }
+    else { revealBadge.classList.add('hide'); }
+  }
+  function bumpUnread(){
+    if(body.classList.contains('panel-hidden')){ unread++; updateBadge(); }
+  }
+
+  hideBtn.addEventListener('click', (e)=>{ e.stopPropagation(); setPanelHidden(true); });
+  reveal.addEventListener('click', (e)=>{ e.stopPropagation(); setPanelHidden(false); });
+  clearBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    panelBody.innerHTML = '';
+    panelBody.appendChild(emptyEl);
+    emptyEl.style.display = '';
+    turns = []; partialEl = null;
+    updateWordCount();
+  });
+
+  // ============================================================
+  //  CLICK + KEY HANDLERS
+  // ============================================================
+  // Click anywhere except panel + controls toggles mic
+  document.addEventListener('click', (e)=>{
+    if(e.target.closest('.panel')) return;
+    if(e.target.closest('.reveal')) return;
+    if(e.target.closest('.top')) return;
+    toggleMic();
+  });
+
+  window.addEventListener('keydown', (e)=>{
+    if(e.code === 'Space'){ e.preventDefault(); toggleMic(); }
+    else if(e.key === 't' || e.key === 'T'){ setPanelHidden(!body.classList.contains('panel-hidden')); }
+    else if(e.key === 'Escape'){ if(state==='listening') stopMic(); }
+  });
+
+  // Start with panel visible (remove the init class quickly so transition feels right)
+  requestAnimationFrame(()=> body.classList.remove('panel-hidden-init'));
+
+  // Initialize
+  updateWordCount();
+})();
+</script>
+</body>
+</html>
