@@ -612,6 +612,26 @@ input, textarea, select { font-family: inherit; }
 .result-row .score { font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em; color: var(--ink-2); text-align: right; align-self: center; }
 .result-row .score.winner-score { color: var(--ink); font-weight: 700; }
 
+.recent-results-card { display: flex; flex-direction: column; gap: 0; }
+.recent-results-list { display: flex; flex-direction: column; gap: 0; }
+.tour-result-snippet { padding: 14px 0; border-bottom: 1px solid var(--border-2); }
+.tour-result-snippet:last-child { border-bottom: 0; }
+.tour-result-snippet.clickable { cursor: pointer; border-radius: var(--r-sm); margin: 0 -8px; padding: 14px 8px; transition: background 130ms; }
+.tour-result-snippet.clickable:hover { background: var(--surface-2); }
+.tour-result-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.tour-result-when { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+.tour-result-round { font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); }
+.tour-result-event { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+.tour-tag { font-family: var(--mono); font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink-3); }
+.tour-tag.atp { background: rgba(140,30,20,0.2); border-color: rgba(160,40,30,0.35); color: #c0392b; }
+.tour-tag.wta { background: var(--accent-glow); border-color: rgba(200,232,50,0.25); color: var(--accent); }
+.daily-refresh-pill { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; background: var(--accent-glow); color: var(--accent); border: 1px solid rgba(200,232,50,0.25); white-space: nowrap; }
+.see-more-results { width: 100%; margin-top: 14px; justify-content: center; }
+.week-results-modal { max-width: 640px; }
+.week-results-day { margin-bottom: 20px; }
+.week-results-day:last-child { margin-bottom: 0; }
+.week-results-day-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+
 /* ============ Tournament Detail Modal ============ */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 180ms ease; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

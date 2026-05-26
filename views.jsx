@@ -1,4 +1,4 @@
-/* global React, PRACTICE_TAGS, INTENSITY, TIPS, CALENDAR_2026, SEED_NEWS */
+/* global React, PRACTICE_TAGS, INTENSITY, TIPS, CALENDAR_2026, SEED_NEWS, TOUR_RESULTS_WEEK */
 const { useState: useS1, useMemo: useM1, useEffect: useE1, useRef: useR1 } = React;
 
 // ============== TODAY / DASHBOARD ==============
@@ -365,6 +365,142 @@ const ROME_2026 = {
   },
 };
 
+const TOUR_DAILY_KEY = 'tennis-tour-daily-v1';
+const TOUR_RESULTS_PREVIEW = 4;
+const TOUR_RESULTS_WINDOW_DAYS = 7;
+
+function formatResultWhen(iso) {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function formatDailyLabel(isoOrDate) {
+  const d = isoOrDate ? new Date(isoOrDate) : new Date();
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function getResultsInPastDays(results, days = TOUR_RESULTS_WINDOW_DAYS) {
+  const cut = new Date();
+  cut.setDate(cut.getDate() - days);
+  const cutIso = cut.toISOString().slice(0, 10);
+  return results
+    .filter((r) => r.date >= cutIso)
+    .sort((a, b) => b.date.localeCompare(a.date) || String(b.id).localeCompare(String(a.id)));
+}
+
+function applyDailyTourRefresh(setNews, setDailyLabel) {
+  const today = new Date().toISOString().slice(0, 10);
+  let stored = {};
+  try {
+    stored = JSON.parse(localStorage.getItem(TOUR_DAILY_KEY) || '{}');
+  } catch (_) { /* keep defaults */ }
+
+  if (stored.date === today && Array.isArray(stored.news)) {
+    setNews(stored.news);
+    setDailyLabel(stored.label || formatDailyLabel(stored.refreshedAt));
+    return;
+  }
+
+  const dayNum = Math.floor(Date.now() / 86400000);
+  const rotated = [...SEED_NEWS];
+  const shift = dayNum % rotated.length;
+  const news = [...rotated.slice(shift), ...rotated.slice(0, shift)];
+  const refreshedAt = new Date().toISOString();
+  const label = formatDailyLabel(refreshedAt);
+  localStorage.setItem(
+    TOUR_DAILY_KEY,
+    JSON.stringify({ date: today, news, refreshedAt, label }),
+  );
+  setNews(news);
+  setDailyLabel(label);
+}
+
+function TourResultSnippet({ match, onOpen }) {
+  const clickable = Boolean(match.modal && onOpen);
+  return (
+    <div
+      className={`tour-result-snippet${clickable ? ' clickable' : ''}`}
+      onClick={clickable ? onOpen : undefined}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={clickable ? (e) => { if (e.key === 'Enter') onOpen(); } : undefined}
+    >
+      <div className="tour-result-meta">
+        <span className="tour-result-when">{formatResultWhen(match.date)}</span>
+        <span className={`tour-tag ${match.tour === 'WTA' ? 'wta' : 'atp'}`}>{match.tour}</span>
+        <span className="tour-result-round">{match.round}</span>
+      </div>
+      <div className="tour-result-event">{match.tournament}</div>
+      <div className="result-row">
+        <div className="who winner">
+          {match.winner}
+          <span className="sub">{match.winnerSub}</span>
+        </div>
+        <div className="score winner-score">{match.score}</div>
+      </div>
+      <div className="result-row">
+        <div className="who">
+          {match.loser}
+          <span className="sub">{match.loserSub}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WeekResultsModal({ results, onClose, onOpenTourney }) {
+  useE1(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const byDate = useM1(() => {
+    const groups = {};
+    results.forEach((m) => {
+      if (!groups[m.date]) groups[m.date] = [];
+      groups[m.date].push(m);
+    });
+    return Object.keys(groups)
+      .sort((a, b) => b.localeCompare(a))
+      .map((date) => ({ date, matches: groups[date] }));
+  }, [results]);
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal week-results-modal">
+        <div className="modal-header">
+          <div className="deco" aria-hidden="true"></div>
+          <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
+          <div className="kicker">Past {TOUR_RESULTS_WINDOW_DAYS} days</div>
+          <h2>Week in results</h2>
+          <div className="modal-meta">{results.length} matches · ATP &amp; WTA</div>
+        </div>
+        <div className="modal-body">
+          {byDate.map(({ date, matches }) => (
+            <div key={date} className="week-results-day">
+              <div className="week-results-day-label">{formatResultWhen(date)}</div>
+              {matches.map((m) => (
+                <TourResultSnippet
+                  key={m.id}
+                  match={m}
+                  onOpen={m.modal === 'rome' ? onOpenTourney : undefined}
+                />
+              ))}
+            </div>
+          ))}
+          {!results.length && (
+            <p className="mono-small" style={{ margin: 0 }}>No results in this window yet.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RomeModal({ onClose }) {
   useE1(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -468,6 +604,21 @@ function Calendar() {
   const [news, setNews] = useS1(SEED_NEWS);
   const [loading, setLoading] = useS1(false);
   const [modal, setModal] = useS1(null);
+  const [showWeekResults, setShowWeekResults] = useS1(false);
+  const [dailyLabel, setDailyLabel] = useS1(() => formatDailyLabel());
+
+  const weekResults = useM1(
+    () => getResultsInPastDays(TOUR_RESULTS_WEEK, TOUR_RESULTS_WINDOW_DAYS),
+    [],
+  );
+  const recentResults = useM1(
+    () => weekResults.slice(0, TOUR_RESULTS_PREVIEW),
+    [weekResults],
+  );
+
+  useE1(() => {
+    applyDailyTourRefresh(setNews, setDailyLabel);
+  }, []);
 
   const refreshNews = async () => {
     setLoading(true);
@@ -485,13 +636,24 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
   return (
     <>
       {modal === 'rome' && <RomeModal onClose={() => setModal(null)} />}
+      {showWeekResults && (
+        <WeekResultsModal
+          results={weekResults}
+          onClose={() => setShowWeekResults(false)}
+          onOpenTourney={() => { setShowWeekResults(false); setModal('rome'); }}
+        />
+      )}
 
       <div className="page-head">
         <div>
           <div className="kicker">Tour Pulse · 2026 Season</div>
           <h1>The <em>world</em> of tennis.</h1>
         </div>
-        <div className="meta">Live tracker<br />ATP · WTA · Slams</div>
+        <div className="meta">
+          Daily refresh · {dailyLabel}
+          <br />
+          ATP · WTA · Slams
+        </div>
       </div>
 
       <div className="cal-grid mb-28">
@@ -545,46 +707,37 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
         </div>
 
         <div style={{display: 'flex', flexDirection: 'column', gap: 16}}>
-          <div className="result-card" onClick={() => setModal('rome')}>
-            <div className="head">
+          <div className="card recent-results-card">
+            <div className="row between mb-12">
               <div>
-                <h3>Rome Open · Men's Final</h3>
-                <span className="mono-small">May 17 · Foro Italico · Click for full draw</span>
+                <h3 style={{margin: 0}}>Recent Results</h3>
+                <span className="mono-small">Updated {dailyLabel} · last {TOUR_RESULTS_WINDOW_DAYS} days</span>
               </div>
-              <span style={{fontSize:18}}>🏆</span>
+              <span className="daily-refresh-pill" title="Refreshes automatically each day">Daily</span>
             </div>
-            <div>
-              <div className="result-row">
-                <div className="who winner">A. Zverev<span className="sub">GER · #4 seed</span></div>
-                <div className="score winner-score">6—3  4—6  6—2</div>
-              </div>
-              <div className="result-row">
-                <div className="who">J. Sinner<span className="sub">ITA · #1 seed</span></div>
-                <div className="score" style={{color:'var(--ink-3)'}}>3—6  6—4  2—6</div>
-              </div>
+            <div className="recent-results-list">
+              {recentResults.map((m) => (
+                <TourResultSnippet
+                  key={m.id}
+                  match={m}
+                  onOpen={m.modal === 'rome' ? () => setModal('rome') : undefined}
+                />
+              ))}
+              {!recentResults.length && (
+                <p className="mono-small" style={{margin: 0}}>No results in the past week.</p>
+              )}
             </div>
-            <div className="mono-small">Zverev claims first Rome title · Sinner runner-up on home clay</div>
-          </div>
-
-          <div className="result-card" onClick={() => setModal('rome')}>
-            <div className="head">
-              <div>
-                <h3>Rome Open · Women's Final</h3>
-                <span className="mono-small">May 16 · Click for full draw</span>
-              </div>
-              <span style={{fontSize:18}}>🏆</span>
-            </div>
-            <div>
-              <div className="result-row">
-                <div className="who winner">I. Świątek<span className="sub">POL · #1 seed</span></div>
-                <div className="score winner-score">6—2  6—3</div>
-              </div>
-              <div className="result-row">
-                <div className="who">A. Sabalenka<span className="sub">BLR · #2 seed</span></div>
-                <div className="score" style={{color:'var(--ink-3)'}}>2—6  3—6</div>
-              </div>
-            </div>
-            <div className="mono-small">Świątek's 4th Rome title · perfect 11-0 on Roman clay</div>
+            {weekResults.length > 0 && (
+              <button
+                type="button"
+                className="btn-secondary see-more-results"
+                onClick={() => setShowWeekResults(true)}
+              >
+                {weekResults.length > TOUR_RESULTS_PREVIEW
+                  ? `See more · ${weekResults.length} matches this week`
+                  : `See all ${weekResults.length} matches this week`}
+              </button>
+            )}
           </div>
 
           <div className="card">
