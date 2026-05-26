@@ -564,6 +564,15 @@ input, textarea, select { font-family: inherit; }
 .tip-card p { margin: 0; font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
 .tip-card .drill { margin-top: 6px; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-3); display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px dashed var(--border); }
 .tip-card .drill b { color: var(--accent); font-weight: 600; }
+.tip-card.priority { border-color: rgba(200,232,50,0.35); box-shadow: 0 0 0 1px rgba(200,232,50,0.08); }
+.tip-card .num { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.priority-pill { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); background: var(--accent-glow); border: 1px solid rgba(200,232,50,0.25); padding: 3px 8px; border-radius: 999px; font-style: normal; }
+.notion-link { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); text-decoration: none; }
+.notion-link:hover { text-decoration: underline; }
+.notion-sync-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: var(--r-md); border: 1px dashed var(--border); background: var(--surface-2); }
+.notion-sync-copy { display: flex; flex-direction: column; gap: 4px; }
+.notion-new-badge { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--clay); }
+.notion-open { text-decoration: none; display: inline-flex; align-items: center; }
 
 .tip-hero { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 26px; display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 20px; box-shadow: var(--shadow-sm); }
 .tip-hero h2 { font-family: var(--sans); font-weight: 700; font-size: 30px; line-height: 1.1; letter-spacing: -0.01em; margin: 0 0 10px; color: var(--ink); }

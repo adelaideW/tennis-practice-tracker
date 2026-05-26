@@ -262,17 +262,27 @@ ${recent}`;
 // ============== TIPS ==============
 function Tips() {
   const [cat, setCat] = useS1('groundstrokes');
-  const order = ['groundstrokes', 'volley', 'overhead', 'mental'];
+  const order = ['groundstrokes', 'serve', 'volley', 'overhead', 'mental'];
   const data = TIPS[cat];
+  const tipCount = order.reduce((n, k) => n + (TIPS[k]?.items?.length || 0), 0);
+  const notionPage = window.NOTION_INSIGHTS_PAGE;
 
   return (
     <>
       <div className="page-head">
         <div>
-          <div className="kicker">Practice Library · 26 tips</div>
+          <div className="kicker">Practice Library · {tipCount} tips · from Notion</div>
           <h1>Sharpen <em>the craft.</em></h1>
         </div>
-        <div className="meta">Updated for<br />2026 season</div>
+        <div className="meta">
+          {notionPage ? (
+            <a href={notionPage} target="_blank" rel="noopener noreferrer" className="notion-link">
+              Tennis practice insights ↗
+            </a>
+          ) : (
+            <>Updated for<br />2026 season</>
+          )}
+        </div>
       </div>
 
       <div className="tip-tabs">
@@ -299,8 +309,11 @@ function Tips() {
 
       <div className="tip-grid">
         {data.items.map((tip, i) => (
-          <div key={i} className="tip-card">
-            <div className="num">No. {String(i + 1).padStart(2, '0')}</div>
+          <div key={i} className={`tip-card ${tip.priority ? 'priority' : ''}`}>
+            <div className="num">
+              No. {String(i + 1).padStart(2, '0')}
+              {tip.priority && <span className="priority-pill">Notion focus</span>}
+            </div>
             <h4>{tip.h}</h4>
             <p>{tip.p}</p>
             <div className="drill"><b>Drill:</b> {tip.drill}</div>
@@ -619,6 +632,28 @@ function Log({ state, addEntry, deleteEntry, editEntry }) {
   const [aiSummary, setAiSummary] = useS1(null);
   const [aiLoading, setAiLoading] = useS1(false);
   const [editingId, setEditingId] = useS1(null);
+  const notion = window.useNotionInsights ? window.useNotionInsights() : null;
+  const [notionImported, setNotionImported] = useS1(false);
+
+  const importNotionNotes = React.useCallback((force) => {
+    if (!notion?.notesDraft) return;
+    if (!force && notes.trim() && !window.confirm('Replace current notes with the latest Notion reflection?')) return;
+    setNotes(notion.notesDraft);
+    setNotionImported(true);
+    notion.refresh();
+  }, [notion, notes]);
+
+  React.useEffect(() => {
+    if (notion?.isNewerThanLastImport) setNotionImported(false);
+  }, [notion?.isNewerThanLastImport]);
+
+  React.useEffect(() => {
+    if (!notion || editingId || notionImported) return;
+    if (!notion.notesDraft) return;
+    if (notes.trim() && !notion.isNewerThanLastImport) return;
+    setNotes(notion.notesDraft);
+    setNotionImported(true);
+  }, [notion?.notesDraft, notion?.isNewerThanLastImport, editingId, notionImported]);
 
   const toggle = (k) => {
     setTags(t => t.includes(k) ? t.filter(x => x !== k) : [...t, k]);
@@ -733,6 +768,43 @@ ${recent}`;
               <span className="mono-small" style={{minWidth: 60, textAlign: 'right', color: 'var(--ink)'}}>{duration} min</span>
             </div>
           </div>
+
+          {notion && (
+            <div className="notion-sync-bar mt-12">
+              <div className="notion-sync-copy">
+                <span className="kicker" style={{ margin: 0 }}>Notion · Daily reflection</span>
+                {notion.payload?.latestDaily && (
+                  <span className="mono-small">
+                    {notion.payload.latestDaily.date}
+                    {notion.payload.latestDaily.context ? ` · ${notion.payload.latestDaily.context}` : ''}
+                  </span>
+                )}
+                {notion.isNewerThanLastImport && (
+                  <span className="notion-new-badge">Updated on Notion</span>
+                )}
+              </div>
+              <div className="row gap-8">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => importNotionNotes(true)}
+                  disabled={notion.loading || !notion.notesDraft}
+                >
+                  {notion.loading ? 'Syncing…' : 'Import from Notion'}
+                </button>
+                {window.NOTION_INSIGHTS_PAGE && (
+                  <a
+                    className="btn-ghost notion-open"
+                    href={window.NOTION_INSIGHTS_PAGE}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Open page ↗
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
 
           <textarea
             className="notes mt-12"

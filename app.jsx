@@ -2,54 +2,68 @@
 const { useState, useEffect, useMemo, useRef } = React;
 
 // ============== DATA ==============
+/** Synced from Notion: Tennis practice insights */
+const NOTION_INSIGHTS_PAGE =
+  'https://www.notion.so/Tennis-practice-insights-32470a7de7e0803e9f3ad8904cf25efe';
+
 const TIPS = {
   groundstrokes: {
     title: 'Ground Strokes',
-    blurb: 'The bread and butter. Build a rally engine that holds up under pressure with depth, shape, and recovery.',
+    blurb: 'Depth, corners, and variety — especially when lobs and high balls push you off rhythm.',
     items: [
-      { h: 'Hit the back fence on warm-up', p: 'Spend the first 10 minutes aiming everything 3 feet inside the baseline. Depth is the most undertrained shot at the amateur level — it buys you time and pushes your opponent back.', drill: '10-Ball Depth — 10 in a row past service line' },
-      { h: 'Load, don\'t arm it', p: 'Power comes from the legs and core, not the arm. Bend the back knee, turn the hips, then let the racquet lag behind before unloading. If your shoulder is sore tomorrow, you swung with the wrong muscles.', drill: 'Shadow swings — 20 reps with eyes closed' },
+      { h: 'Corner aiming with margin', p: 'Aim inside the corner, not the line. Your weekly focus is better accuracy on corner winners — build the pattern crosscourt ×2, then attack the open side.', drill: 'Cone in each corner — 8 CC then 1 DTL inside the cone', priority: true },
+      { h: 'Forehand slice — learn the shape', p: 'You flagged forehand slice as a new weapon. Open the face, swing low-to-high under the ball, and finish toward your target — stability before speed.', drill: '20 slice forehands to the deuce service box', priority: true },
+      { h: 'High balls: racket up early', p: 'On lobs and high forehands, prepare higher so you do not dump the ball long. On backhand highs, take it on the rise before the contact point disappears.', drill: 'Partner feeds high — 10 FH high prep, 10 BH on rise' },
+      { h: 'Change pace on heavy topspin', p: 'When opponents loop deep, you do not have to match pace. Mix height, slice, and slower balls to break their rhythm instead of blasting into the fence.', drill: 'Rally — every 4th ball change pace or height' },
+      { h: 'Lower center of gravity', p: 'Bend knees before contact, especially when pushed wide. A lower base helped your crosscourt passing shots — keep it on every ball you attack.', drill: 'Split-step + knee touch before each rally ball' },
       { h: 'Recover behind the baseline', p: 'After every shot, split-step a half-meter behind the line. Camping on the baseline is how unforced errors happen — you have less time to read the ball.', drill: 'Cross-court rally + tap the back curtain each shot' },
-      { h: 'Heavy crosscourt, flat down-the-line', p: 'Crosscourt has more court — load it with topspin. Down-the-line is shorter — flatten it out and aim 4 feet inside the sideline. Mixing shapes is what separates 3.5s from 4.0s.', drill: '8-ball pattern: 3 CC topspin → 1 DTL flat' },
-      { h: 'Hit through, not at, the ball', p: 'Pick a target 3 feet beyond contact and swing toward it. The ball is on your strings for less than 5 milliseconds — you can\'t steer it, you can only direct your swing path.', drill: 'Cone target drill — extend through to a cone' },
-      { h: 'Backhand = front shoulder', p: 'For one-handers and two-handers alike, the front shoulder finishes pointing at your target. If your shoulders open early, you spray balls wide.', drill: 'Closed-stance backhand reps, 25 each side' },
+    ],
+  },
+  serve: {
+    title: 'Serve',
+    blurb: 'First serve angle is improving — the leak is second-serve consistency under pressure.',
+    items: [
+      { h: '2nd serve: spin in, not hero pace', p: 'Topspin + sidespin only works if it lands in. Your priority is success rate first, then add speed. Kick wide to pull opponents off court.', drill: '20 second serves — count ins before adding mph', priority: true },
+      { h: 'Same toss, different serve', p: 'Keep toss height and placement consistent; change grip and swing path for kick vs flat. Bend knees on look-up, not on the toss itself.', drill: '10 tosses without hit — mark landing spot each time' },
+      { h: 'Return position on slow serves', p: 'Stand inside the baseline for short or slow second serves. You have been returning with better direction when you take the ball early.', drill: 'Return drill — 15 slow serves, call target before split-step' },
+      { h: 'Serve + first volley is a pattern', p: 'After a good first serve, come in immediately — do not camp in no-man\'s land. First volley is placement deep, not a winner.', drill: 'Serve wide → approach → deep volley to backhand', priority: true },
     ],
   },
   volley: {
     title: 'Volley',
-    blurb: 'Net play wins points the modern baseliner never sees coming. Punch, don\'t swing.',
+    blurb: 'Net game is improving — backhand volley and feet are the current ceiling.',
     items: [
-      { h: 'Punch, don\'t swing', p: 'A volley is a short, firm jab — no backswing. If your racquet goes behind your ear, you\'re late and the ball is going long. Imagine catching the ball with the strings.', drill: 'No-backswing volley — partner feeds, you punch' },
-      { h: 'Get the racquet up before the split-step', p: 'At the net, the racquet head should be at eye level before your opponent contacts the ball. Reaction time is brutal up there; you can\'t prepare AND react.', drill: 'Ready-position holds — coach calls "now," you volley' },
-      { h: 'Slight slice on every volley', p: 'A continental grip with a slight open face creates underspin that floats the ball low and keeps it from sitting up. Pure flat volleys often launch.', drill: 'Bounce-it-twice drill — make the volley die' },
-      { h: 'Move forward through the shot', p: 'A planted volley is a defensive volley. Step into the ball with your opposite foot — the body weight does the work, not the arm.', drill: 'Approach-volley-volley pattern, 10 sets' },
+      { h: 'Backhand volley: level face, active feet', p: 'Stop tilting the racket head on backhand volleys. Continental grip, firm wrist, and small adjustment steps — do not reach with the upper body only.', drill: 'Ball-machine BH volleys — 30 with no cross-over step', priority: true },
+      { h: 'Fast ball = slice, slower swing', p: 'When pace comes in hot, add backspin and shorten the swing. Trying to block through fast balls is why volleys sail long.', drill: 'Feeder speeds up — 10 volleys with audible slice finish' },
+      { h: 'First volley deep, not flashy', p: 'On approach points, aim the service box deep and expect a reply. Your job is to stay at the net after a deep first volley, not paint a winner.', drill: 'Approach → volley to deep middle → hold position', priority: true },
+      { h: 'Move forward through the shot', p: 'A planted volley is a defensive volley. Step into the ball with your opposite foot — body weight does the work, not the arm.', drill: 'Approach-volley-volley pattern, 10 sets' },
       { h: 'Low ball = bend knees, not the back', p: 'When the ball is at your shoetops, get your eyes at ball-level. Bending at the waist sends low volleys into the net every time.', drill: 'Knee-bend volleys — touch knee with non-dom hand' },
-      { h: 'Drop volley needs a soft grip', p: 'Loosen your grip to about 3/10 right at contact to absorb pace. Stiff hands = popped-up sitter for your opponent.', drill: 'Drop volleys into the service box, 8 in a row' },
+      { h: 'Doubles: follow the ball, not the player', p: 'At net in doubles, track the ball path and cover the alley when partner is pulled wide. Anticipate that the ball is coming to you.', drill: 'Doubles points — call "mine/yours" every ball' },
     ],
   },
   overhead: {
     title: 'Overhead',
-    blurb: 'The shot that finishes points — or loses them dramatically. Footwork first, swing second.',
+    blurb: 'Sweet-spot contact is improving — footwork behind the ball is still the main fix.',
     items: [
-      { h: 'Point at the ball with your off-hand', p: 'As soon as you read the lob, get the non-dominant arm up and point at the ball. This loads the shoulder turn and tracks the ball — pros do it on every smash.', drill: 'Lob feeds — finger always on the ball' },
-      { h: 'Sidestep, never backpedal', p: 'Backpedaling is how you sprain an ankle. Turn sideways and shuffle back so you stay balanced and can push UP into the shot.', drill: 'Cone shuffle — coach lobs, you sidestep then smash' },
-      { h: 'Contact ball in front, not over head', p: 'Most missed overheads come from letting the ball drift behind. Strike it slightly in front of your hitting shoulder — like you\'re serving.', drill: 'Tossed overheads — catch the ball if it\'s behind' },
-      { h: 'Bounce it if it\'s a deep lob', p: 'On any lob that\'s pushing you past the baseline, let it bounce. The ball slows down and you reset the point — way better than a desperate jump-smash.', drill: 'Decision drill — call "hit" or "bounce" on each lob' },
-      { h: 'Pronate at contact', p: 'Snap the wrist and rotate the forearm just like a serve. This adds pace and angle. Without pronation you\'re just patting the ball.', drill: 'Serve-motion smashes — 20 reps focusing on snap' },
-      { h: 'Aim for the open court, not the line', p: 'Don\'t be a hero. 80% pace into the open court wins more points than 100% pace painting a sideline.', drill: 'Smash to cones placed 4ft inside the lines' },
+      { h: 'Run behind, then come forward', p: 'Do not plant under the lob. Sidestep around and behind the ball, let it drop slightly, lift the racket, then move forward into contact.', drill: 'Lob feeds — call "around" before every smash', priority: true },
+      { h: 'Sidestep, never backpedal', p: 'Backpedaling is how you sprain an ankle. Turn sideways and shuffle so you stay balanced and can push up into the shot.', drill: 'Cone shuffle — coach lobs, sidestep then smash' },
+      { h: 'Contact in front, not above you', p: 'Most missed overheads come from letting the ball drift behind. Strike slightly in front of the hitting shoulder — same feel as a serve.', drill: 'Tossed overheads — catch the ball if it is behind' },
+      { h: 'Hit the sweet spot for direction', p: 'You are finding better direction when contact is clean. Prioritize stable contact over max pace until footwork is automatic.', drill: '10 smashes — rate contact 1–3 before adding speed' },
+      { h: 'Bounce it if it\'s a deep lob', p: 'On any lob pushing you past the baseline, let it bounce. Reset the point instead of a desperate jump-smash.', drill: 'Decision drill — call "hit" or "bounce" on each lob' },
+      { h: 'Aim for the open court', p: '80% pace into the open court wins more points than 100% pace at the line.', drill: 'Smash to cones placed 4ft inside the lines' },
     ],
   },
   mental: {
     title: 'Mental Strategy',
-    blurb: 'The match between your ears. What pros call "the inner game" — and amateurs ignore at their peril.',
+    blurb: 'Court position, commitment, and one clear goal per session.',
     items: [
-      { h: 'Have one cue word per point', p: 'Pick a word before each point — "loose," "early," "deep" — and say it under your breath. It narrows focus and starves the noisy inner critic.', drill: 'Practice match — one cue word per point, all set' },
-      { h: 'The 16-second routine between points', p: 'Walk away, breathe, plan, then approach. Pros use the towel and string-pluck as anchors. Rushing between points is how 40-15 becomes deuce.', drill: 'Time yourself: 4s release, 8s plan, 4s ritual' },
-      { h: 'Play patterns, not points', p: 'Have 2-3 favorite patterns ("serve wide-deuce, forehand into open court"). When tight, fall back on patterns — your brain doesn\'t have to decide mid-point.', drill: 'Play a set: every point must start with your pattern' },
-      { h: 'Lose the point in 3 seconds', p: 'After an error, you get 3 seconds of frustration. Then it\'s gone. The point you\'re about to play is the only one that matters — the last one is unfixable.', drill: 'Snap fingers after every error to reset' },
-      { h: 'Win the next point after a winner', p: 'Letdown after a great shot is the most common amateur leak. Stay locked in — the next point is when opponents try to steal momentum back.', drill: 'Track post-winner points in your next match' },
-      { h: 'Breathe out on contact', p: 'Audible exhale on every strike — even Federer does it. It releases tension in the shoulder and stabilizes your contact under pressure.', drill: 'Loud exhale rally — 50 balls, every one vocal' },
-      { h: 'Stop trying to win — play to commit', p: 'The athletes who choke are the ones thinking about the scoreboard. Commit to one shot at a time. Outcome will follow process.', drill: 'Mental scrimmage — 30 minutes, no score tracked' },
+      { h: 'Never camp in no-man\'s zone', p: 'After you attack, move forward to the net or recover to baseline — do not retreat into the service-box dead zone. Hesitation there costs game points.', drill: 'Shadow: approach → service line hold → or full recovery', priority: true },
+      { h: 'Approach: anticipate, prepare, move', p: 'Read the speed first, prepare the swing, then move to the ball. On slow/high approachers, aim service-box deep and commit to the first volley.', drill: 'Coach feeds slow ball — 10 approaches with written cue', priority: true },
+      { h: 'One goal per session', p: 'Pick a single focus before you play (e.g. "BH volley feet") and tell your partner or coach. Align expectations so practice matches the goal.', drill: 'Write goal on wristband — review after 45 min' },
+      { h: 'Have one cue word per point', p: 'Pick a word before each point — "loose," "early," "deep" — and say it under your breath. It narrows focus and quiets the inner critic.', drill: 'Practice match — one cue word per point, all set' },
+      { h: 'Lose the point in 3 seconds', p: 'After an error, you get 3 seconds of frustration. Then it is gone. The next point is the only one that matters.', drill: 'Snap fingers after every error to reset' },
+      { h: 'Breathe out on contact', p: 'Audible exhale on every strike releases shoulder tension and stabilizes contact under pressure.', drill: 'Loud exhale rally — 50 balls, every one vocal' },
+      { h: 'Commit on easy balls', p: 'You miss too many game points by playing safe on sitters. Make the ball in first, then add angle — confidence follows contact.', drill: 'Short-ball drill — must finish 8/10 inside the court' },
     ],
   },
 };
@@ -265,3 +279,4 @@ function App() {
 }
 
 window.App = App;
+window.NOTION_INSIGHTS_PAGE = NOTION_INSIGHTS_PAGE;
