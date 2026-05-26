@@ -248,66 +248,185 @@ function Today({ state, setRoute, syncFromNotion }) {
 }
 
 // ============== TIPS ==============
-function Tips() {
+function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, notionError }) {
+  const [refreshSeed, setRefreshSeed] = useS1(0);
+  const [showLibrary, setShowLibrary] = useS1(false);
   const [cat, setCat] = useS1('groundstrokes');
   const order = ['groundstrokes', 'serve', 'volley', 'overhead', 'mental'];
-  const data = TIPS[cat];
-  const tipCount = order.reduce((n, k) => n + (TIPS[k]?.items?.length || 0), 0);
   const notionPage = window.NOTION_INSIGHTS_PAGE;
+
+  const sharpen = useM1(
+    () => (notionPayload && window.buildSharpenFromNotion
+      ? window.buildSharpenFromNotion(notionPayload, TIPS, refreshSeed)
+      : { areas: [], generatedAt: null, source: null, sessionCount: 0 }),
+    [notionPayload, refreshSeed],
+  );
+
+  const refreshedLabel = sharpen.generatedAt
+    ? new Date(sharpen.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : null;
+
+  const handleRefresh = async () => {
+    setRefreshSeed((n) => n + 1);
+    if (syncFromNotion) await syncFromNotion();
+  };
+
+  const libraryData = TIPS[cat];
 
   return (
     <>
       <div className="page-head">
         <div>
-          <div className="kicker">Practice Library · {tipCount} tips · from Notion</div>
+          <div className="kicker">
+            Top 5 from Notion · {sharpen.sessionCount || 0} sessions analyzed
+          </div>
           <h1>Sharpen <em>the craft.</em></h1>
         </div>
         <div className="meta">
-          {notionPage ? (
+          {refreshedLabel && <>Tips refreshed · {refreshedLabel}<br /></>}
+          {notionPage && (
             <a href={notionPage} target="_blank" rel="noopener noreferrer" className="notion-link">
               Tennis practice insights ↗
             </a>
-          ) : (
-            <>Updated for<br />2026 season</>
           )}
         </div>
       </div>
 
-      <div className="tip-tabs">
-        {order.map(k => (
-          <button
-            key={k}
-            className={`tip-tab ${cat === k ? 'active' : ''}`}
-            onClick={() => setCat(k)}
-          >
-            {TIPS[k].title}
-            <span className="ct">{String(TIPS[k].items.length).padStart(2, '0')}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="tip-hero">
-        <div>
-          <div className="mono-small mb-12">Category · {data.title}</div>
-          <h2><em>{data.title.split(' ')[0]}</em> {data.title.split(' ').slice(1).join(' ')}</h2>
-          <p className="muted">{data.blurb}</p>
+      <div className="notion-sync-bar mb-28">
+        <div className="notion-sync-copy">
+          <div className="mono-small">Your improvement plan</div>
+          <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+            Ranked from weekly priorities and every daily reflection in Notion — with drills and video links.
+          </p>
+          {notionError && <span className="notion-new-badge">{notionError}</span>}
         </div>
-        <div className="pic">{data.title} · Visual coming</div>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={handleRefresh}
+          disabled={notionLoading}
+          style={{ whiteSpace: 'nowrap' }}
+        >
+          {notionLoading && <span className="spinner"></span>}
+          Refresh from Notion
+        </button>
       </div>
 
-      <div className="tip-grid">
-        {data.items.map((tip, i) => (
-          <div key={i} className={`tip-card ${tip.priority ? 'priority' : ''}`}>
-            <div className="num">
-              No. {String(i + 1).padStart(2, '0')}
-              {tip.priority && <span className="priority-pill">Notion focus</span>}
+      {notionLoading && !sharpen.areas.length ? (
+        <div className="card mb-28">
+          <p className="muted" style={{ margin: 0 }}>Loading your focus areas from Notion…</p>
+        </div>
+      ) : (
+        <div className="sharpen-areas mb-28">
+          {sharpen.areas.map((area) => (
+            <section key={area.key} className="focus-area-card">
+              <div className="focus-area-head">
+                <span className="focus-area-rank">#{area.rank}</span>
+                <div>
+                  <h2>{area.title}</h2>
+                  <p className="muted focus-area-summary">{area.summary}</p>
+                </div>
+              </div>
+
+              {area.notionQuotes.length > 0 && (
+                <ul className="notion-quote-list">
+                  {area.notionQuotes.map((q, i) => (
+                    <li key={i}>{q}</li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="tip-grid focus-area-tips">
+                {area.tips.map((tip, i) => (
+                  <div key={i} className={`tip-card ${tip.priority ? 'priority' : ''}`}>
+                    <div className="num">
+                      Tip {String(i + 1).padStart(2, '0')}
+                      {tip.priority && <span className="priority-pill">Matches Notion</span>}
+                    </div>
+                    <h4>{tip.h}</h4>
+                    <p>{tip.p}</p>
+                    <div className="drill"><b>Drill:</b> {tip.drill}</div>
+                  </div>
+                ))}
+              </div>
+
+              {area.resources?.length > 0 && (
+                <div className="tip-resources">
+                  <div className="tip-resources-label">Suggested resources</div>
+                  <div className="tip-resource-links">
+                    {area.resources.map((r, i) => (
+                      <a
+                        key={i}
+                        href={r.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`tip-resource-link ${r.type === 'youtube' ? 'yt' : ''}`}
+                      >
+                        {r.type === 'youtube' ? '▶ ' : ''}{r.label} ↗
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          ))}
+          {!sharpen.areas.length && (
+            <div className="card">
+              <p className="muted" style={{ margin: 0 }}>
+                Add weekly priorities or daily reflections in Notion, then tap Refresh — your top five focus areas will appear here.
+              </p>
             </div>
-            <h4>{tip.h}</h4>
-            <p>{tip.p}</p>
-            <div className="drill"><b>Drill:</b> {tip.drill}</div>
-          </div>
-        ))}
+          )}
+        </div>
+      )}
+
+      <div className="library-toggle-row mb-12">
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => setShowLibrary((v) => !v)}
+        >
+          {showLibrary ? 'Hide full tip library' : 'Browse full tip library'}
+        </button>
       </div>
+
+      {showLibrary && (
+        <>
+          <div className="tip-tabs">
+            {order.map((k) => (
+              <button
+                key={k}
+                type="button"
+                className={`tip-tab ${cat === k ? 'active' : ''}`}
+                onClick={() => setCat(k)}
+              >
+                {TIPS[k].title}
+                <span className="ct">{String(TIPS[k].items.length).padStart(2, '0')}</span>
+              </button>
+            ))}
+          </div>
+          <div className="tip-hero mb-20">
+            <div>
+              <div className="mono-small mb-12">Category · {libraryData.title}</div>
+              <h2>
+                <em>{libraryData.title.split(' ')[0]}</em>{' '}
+                {libraryData.title.split(' ').slice(1).join(' ')}
+              </h2>
+              <p className="muted">{libraryData.blurb}</p>
+            </div>
+          </div>
+          <div className="tip-grid">
+            {libraryData.items.map((tip, i) => (
+              <div key={i} className={`tip-card ${tip.priority ? 'priority' : ''}`}>
+                <div className="num">No. {String(i + 1).padStart(2, '0')}</div>
+                <h4>{tip.h}</h4>
+                <p>{tip.p}</p>
+                <div className="drill"><b>Drill:</b> {tip.drill}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </>
   );
 }

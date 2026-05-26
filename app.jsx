@@ -173,6 +173,7 @@ function App() {
     notionLoading: true,
     notionError: null,
   });
+  const [notionPayload, setNotionPayload] = useState(null);
   const [themeLocked, setThemeLocked] = useState(false);
   const [lockedTheme, setLockedTheme] = useState('dark');
   const [theme, setTheme] = useState(() => getThemeFromLocalTime());
@@ -184,6 +185,7 @@ function App() {
     try {
       const data = await window.fetchNotionInsights();
       const applied = window.applyNotionPayload(data);
+      setNotionPayload(data);
       setState((s) => ({
         ...s,
         ...applied,
@@ -321,7 +323,15 @@ function App() {
         {route === 'today' && (
           <window.Today state={state} setRoute={setRoute} syncFromNotion={syncFromNotion} />
         )}
-        {route === 'tips' && <window.Tips />}
+        {route === 'tips' && (
+          <window.Tips
+            notionPayload={notionPayload}
+            syncFromNotion={syncFromNotion}
+            notionLoading={state.notionLoading}
+            notionUpdatedAt={state.notionUpdatedAt}
+            notionError={state.notionError}
+          />
+        )}
         {route === 'calendar' && <window.Calendar />}
         {route === 'toolkit' && <window.Toolkit />}
       </main>
@@ -349,4 +359,5 @@ function App() {
 }
 
 window.App = App;
+window.TIPS = TIPS;
 window.NOTION_INSIGHTS_PAGE = NOTION_INSIGHTS_PAGE;

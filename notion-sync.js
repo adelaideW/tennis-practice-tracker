@@ -212,9 +212,223 @@ function useNotionInsights() {
   };
 }
 
+/** Skill areas ranked from all Notion notes (priorities + session reflections). */
+const IMPROVEMENT_AREA_RULES = [
+  { key: 'volley', title: 'Volley', category: 'volley', re: /volley|volleys|net play|at the net/i },
+  { key: 'serve', title: 'Serve', category: 'serve', re: /serve|serving|double fault|2nd serve|second serve|toss|kick serve/i },
+  { key: 'overhead', title: 'Overhead', category: 'overhead', re: /overhead|smash|smashes/i },
+  {
+    key: 'groundstrokes',
+    title: 'Ground Strokes',
+    category: 'groundstrokes',
+    re: /ground|baseline|rally|forehand|backhand|stroke|slice|corner|lob|high ball|pace|topspin|down the line|crosscourt/i,
+  },
+  {
+    key: 'mental',
+    title: 'Court IQ & Patterns',
+    category: 'mental',
+    re: /approach|no.?man|anticipat|confidence|focus|recovery|game point|hesitat|commit|mental|pattern|dictate/i,
+  },
+  { key: 'return', title: 'Return of Serve', category: 'serve', re: /return on serve|return serve|returning/i },
+];
+
+const TIP_RESOURCES = {
+  volley: [
+    { label: 'Backhand volley technique', url: 'https://www.youtube.com/results?search_query=tennis+backhand+volley+footwork+drill', type: 'youtube' },
+    { label: 'First volley deep (not a winner)', url: 'https://www.youtube.com/results?search_query=tennis+approach+shot+first+volley+placement', type: 'youtube' },
+    { label: 'USTA — Volley basics', url: 'https://www.usta.com/en/home/improve/tips-and-instruction/national/volley-basics.html', type: 'article' },
+  ],
+  serve: [
+    { label: 'Second serve kick & spin', url: 'https://www.youtube.com/results?search_query=tennis+second+serve+topspin+kick+drill', type: 'youtube' },
+    { label: 'Consistent toss routine', url: 'https://www.youtube.com/results?search_query=tennis+serve+toss+consistency+drill', type: 'youtube' },
+    { label: 'Return position on slow serves', url: 'https://www.youtube.com/results?search_query=tennis+return+second+serve+inside+baseline', type: 'youtube' },
+  ],
+  overhead: [
+    { label: 'Overhead footwork (run behind)', url: 'https://www.youtube.com/results?search_query=tennis+overhead+footwork+run+behind+ball', type: 'youtube' },
+    { label: 'Smash contact in front', url: 'https://www.youtube.com/results?search_query=tennis+overhead+smash+contact+point+drill', type: 'youtube' },
+    { label: 'Essential Tennis — Overheads', url: 'https://www.youtube.com/results?search_query=Essential+Tennis+overhead+smash', type: 'youtube' },
+  ],
+  groundstrokes: [
+    { label: 'High ball — prepare early', url: 'https://www.youtube.com/results?search_query=tennis+high+ball+forehand+backhand+on+rise', type: 'youtube' },
+    { label: 'Change pace vs heavy topspin', url: 'https://www.youtube.com/results?search_query=tennis+change+pace+rally+defense', type: 'youtube' },
+    { label: 'Forehand slice fundamentals', url: 'https://www.youtube.com/results?search_query=tennis+forehand+slice+technique+beginner', type: 'youtube' },
+  ],
+  mental: [
+    { label: 'Recover from no-man\'s zone', url: 'https://www.youtube.com/results?search_query=tennis+approach+shot+recovery+net+or+baseline', type: 'youtube' },
+    { label: 'Approach shot patterns', url: 'https://www.youtube.com/results?search_query=tennis+approach+shot+drill+service+box', type: 'youtube' },
+    { label: 'Intuitive Tennis — Match patterns', url: 'https://www.youtube.com/results?search_query=Intuitive+Tennis+match+patterns+amateur', type: 'youtube' },
+  ],
+  return: [
+    { label: 'Return drills — short second serves', url: 'https://www.youtube.com/results?search_query=tennis+return+of+serve+drill+short+ball', type: 'youtube' },
+    { label: 'Split-step return timing', url: 'https://www.youtube.com/results?search_query=tennis+return+split+step+timing', type: 'youtube' },
+  ],
+};
+
+function collectNotionImprovementLines(payload) {
+  if (!payload) return [];
+  const lines = [];
+
+  (payload.weeklyPriorities || []).forEach((text, i) => {
+    lines.push({ text, kind: 'priority', weight: 6, recency: 1 - i * 0.05 });
+  });
+
+  if (payload.weeklyOverview?.focus) {
+    payload.weeklyOverview.focus.split(/[;,]/).forEach((part) => {
+      const text = part.trim();
+      if (text) lines.push({ text, kind: 'overview', weight: 5, recency: 1 });
+    });
+  }
+
+  const sessions = [...(payload.sessions || [])].sort(
+    (a, b) => new Date(b.date || 0) - new Date(a.date || 0),
+  );
+  sessions.forEach((s, i) => {
+    const recency = Math.max(0.35, 1 - i * 0.06);
+    (s.bad || []).forEach((text) => lines.push({ text, kind: 'needs', weight: 4, recency }));
+    (s.learning || []).forEach((text) => lines.push({ text, kind: 'learning', weight: 3, recency }));
+    (s.good || []).forEach((text) => lines.push({ text, kind: 'win', weight: 1.5, recency }));
+  });
+
+  if (payload.latestDaily && !sessions.some((s) => s.date === payload.latestDaily.date)) {
+    const d = payload.latestDaily;
+    const recency = 1.1;
+    (d.bad || []).forEach((text) => lines.push({ text, kind: 'needs', weight: 4.5, recency }));
+    (d.learning || []).forEach((text) => lines.push({ text, kind: 'learning', weight: 3, recency }));
+    (d.good || []).forEach((text) => lines.push({ text, kind: 'win', weight: 1.5, recency }));
+  }
+
+  return lines;
+}
+
+function matchImprovementAreas(text) {
+  return IMPROVEMENT_AREA_RULES.filter((rule) => rule.re.test(text));
+}
+
+function rankTopImprovementAreas(payload, limit = 5) {
+  const scores = {};
+  const quotes = {};
+  const lines = collectNotionImprovementLines(payload);
+
+  lines.forEach(({ text, weight, recency }) => {
+    const matched = matchImprovementAreas(text);
+    if (!matched.length) {
+      const fallback = IMPROVEMENT_AREA_RULES.find((r) => r.key === 'groundstrokes');
+      matched.push(fallback);
+    }
+    matched.forEach((rule) => {
+      scores[rule.key] = (scores[rule.key] || 0) + weight * recency;
+      if (!quotes[rule.key]) quotes[rule.key] = [];
+      if (quotes[rule.key].length < 4 && !quotes[rule.key].includes(text)) {
+        quotes[rule.key].push(text);
+      }
+    });
+  });
+
+  return IMPROVEMENT_AREA_RULES.map((rule) => ({
+    ...rule,
+    score: scores[rule.key] || 0,
+    notionQuotes: quotes[rule.key] || [],
+  }))
+    .filter((a) => a.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
+function pickTipsForArea(area, notionQuotes, tipsLib, refreshSeed = 0) {
+  const items = tipsLib?.[area.category]?.items || [];
+  if (!items.length) return [];
+  const blob = notionQuotes.join(' ').toLowerCase();
+
+  const scored = items.map((tip, idx) => {
+    let score = tip.priority ? 3 : 0;
+    const hay = `${tip.h} ${tip.p} ${tip.drill}`.toLowerCase();
+    notionQuotes.forEach((q) => {
+      q.toLowerCase()
+        .split(/\W+/)
+        .filter((w) => w.length > 4)
+        .forEach((w) => {
+          if (hay.includes(w) || blob.includes(w)) score += 2;
+        });
+    });
+    return { tip, idx, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score || (a.idx + refreshSeed) % items.length - (b.idx + refreshSeed) % items.length);
+  const picked = [];
+  const seen = new Set();
+  scored.forEach(({ tip }) => {
+    if (picked.length >= 3 || seen.has(tip.h)) return;
+    seen.add(tip.h);
+    picked.push(tip);
+  });
+  return picked;
+}
+
+function summarizeAreaFromNotion(area, notionQuotes) {
+  if (!notionQuotes.length) {
+    return tipsLibBlurb(area.category);
+  }
+  const lead = notionQuotes[0].split('—')[0].split(' - ')[0].trim();
+  const more = notionQuotes.length > 1 ? ` You also noted: ${notionQuotes.slice(1, 3).join('; ')}.` : '';
+  return `From your Notion notes: ${lead}.${more}`;
+}
+
+function tipsLibBlurb(category) {
+  const blurbs = {
+    volley: 'Net game and volley patterns keep showing up in your reflections.',
+    serve: 'Serve consistency — especially second serves — is a recurring theme.',
+    overhead: 'Overhead footwork and contact are active improvement targets.',
+    groundstrokes: 'Baseline depth, pace changes, and corner play need reps.',
+    mental: 'Court position, commitment, and approach patterns need deliberate practice.',
+  };
+  return blurbs[category] || 'Keep building reps in this area.';
+}
+
+function buildSharpenFromNotion(payload, tipsLib, refreshSeed = 0) {
+  const lib = tipsLib || (typeof TIPS !== 'undefined' ? TIPS : null) || window.TIPS;
+  if (!payload || !lib) {
+    return { areas: [], generatedAt: null, source: null };
+  }
+
+  const ranked = rankTopImprovementAreas(payload, 5);
+  const areas = ranked.map((area, index) => {
+    const notionQuotes = area.notionQuotes.slice(0, 3);
+    const tips = pickTipsForArea(area, notionQuotes, lib, refreshSeed + index);
+    const resources = [
+      ...(TIP_RESOURCES[area.key] || TIP_RESOURCES[area.category] || []),
+    ].slice(0, 4);
+
+    return {
+      rank: index + 1,
+      key: area.key,
+      title: area.title,
+      category: area.category,
+      score: Math.round(area.score),
+      notionQuotes,
+      summary: summarizeAreaFromNotion(area, notionQuotes),
+      tips: tips.map((t) => ({
+        h: t.h,
+        p: t.p,
+        drill: t.drill,
+        priority: Boolean(t.priority),
+      })),
+      resources,
+    };
+  });
+
+  return {
+    areas,
+    generatedAt: payload.updatedAt || new Date().toISOString(),
+    source: payload.source || 'notion',
+    sessionCount: payload.sessions?.length || 0,
+  };
+}
+
 window.useNotionInsights = useNotionInsights;
 window.formatNotionNotes = formatNotionNotes;
 window.fetchNotionInsights = fetchNotionInsights;
 window.buildSessionsFromNotion = buildSessionsFromNotion;
 window.buildFocusFromNotion = buildFocusFromNotion;
 window.applyNotionPayload = applyNotionPayload;
+window.buildSharpenFromNotion = buildSharpenFromNotion;
+window.rankTopImprovementAreas = rankTopImprovementAreas;
