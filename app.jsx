@@ -138,11 +138,13 @@ function saveState(s) {
 }
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "accent": "#E6D04A",
+  "accent": "#15803D",
   "density": "comfy"
 }/*EDITMODE-END*/;
 
 const ACCENT_PALETTE = {
+  '#15803D': { color: '#16A34A', deep: '#15803D', name: 'Green' },
+  '#16A34A': { color: '#22C55E', deep: '#16A34A', name: 'Green bright' },
   '#E6D04A': { color: 'oklch(0.88 0.16 110)', deep: 'oklch(0.78 0.18 105)', name: 'Ball' },
   '#B95E3B': { color: 'oklch(0.58 0.13 35)',  deep: 'oklch(0.50 0.13 35)',  name: 'Clay' },
   '#4F7656': { color: 'oklch(0.45 0.08 150)', deep: 'oklch(0.38 0.08 150)', name: 'Court' },
@@ -238,7 +240,7 @@ function App() {
   // Apply accent tweak
   useEffect(() => {
     const root = document.documentElement;
-    const pal = ACCENT_PALETTE[tweaks.accent] || ACCENT_PALETTE['#E6D04A'];
+    const pal = ACCENT_PALETTE[tweaks.accent] || ACCENT_PALETTE['#15803D'];
     root.style.setProperty('--ball', pal.color);
     root.style.setProperty('--ball-deep', pal.deep);
   }, [tweaks.accent]);
@@ -274,7 +276,7 @@ function App() {
         <div className="brand">
           <div className="brand-logo" aria-hidden="true">
             <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="20" cy="20" r="19" fill="#d4ed26" stroke="#b5cb0e" strokeWidth="1.5"/>
+              <circle cx="20" cy="20" r="19" fill="#16A34A" stroke="#15803D" strokeWidth="1.5"/>
               <path d="M3 15 Q20 8 37 15" stroke="white" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
               <path d="M3 25 Q20 32 37 25" stroke="white" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
               <path d="M15 1.5 Q8 20 15 38.5" stroke="white" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
@@ -342,7 +344,7 @@ function App() {
             <window.TweakColor
               label="Accent color"
               value={tweaks.accent}
-              options={['#E6D04A', '#B95E3B', '#4F7656']}
+              options={['#15803D', '#16A34A', '#E6D04A', '#B95E3B', '#4F7656']}
               onChange={(v) => setTweak('accent', v)}
             />
             <window.TweakRadio

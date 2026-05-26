@@ -91,7 +91,7 @@ function Today({ state, setRoute, syncFromNotion }) {
     state.entries.forEach((e) => (e.tags || []).forEach((k) => { counts[k] = (counts[k] || 0) + 1; }));
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4);
     const max = sorted[0]?.[1] || 1;
-    const COLORS = ['var(--accent)', 'var(--teal)', '#e87d32', '#c87de8'];
+    const COLORS = ['var(--accent)', 'var(--teal)', 'var(--orange)', 'var(--brand-primary-300)'];
     return sorted.map(([k, count], i) => ({
       label: (PRACTICE_TAGS.find((p) => p.k === k) || {}).l || k,
       pct: Math.round((count / max) * 100),
@@ -341,7 +341,7 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
                   <div key={i} className={`tip-card ${tip.priority ? 'priority' : ''}`}>
                     <div className="num">
                       Tip {String(i + 1).padStart(2, '0')}
-                      {tip.priority && <span className="priority-pill">Matches Notion</span>}
+                      {tip.priority && <span className="match-chip">Match</span>}
                     </div>
                     <h4>{tip.h}</h4>
                     <p>{tip.p}</p>
@@ -677,6 +677,14 @@ function RomeModal({ onClose }) {
                 <svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-2.75 12.42 12.42 0 00-5.64-1.28A11.67 11.67 0 002 14.07a11.67 11.67 0 0011.86 7.27 4.76 4.76 0 003.77-2.68 12.54 12.54 0 004.37-5.86 4.76 4.76 0 00-2.41-6.11zM10 15V9l5 3-5 3z"/></svg>
                 Men's Final Highlights
               </a>
+              <a
+                href={TOURNEY_URLS['Italian Open · Rome']}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tourney-link"
+              >
+                Official Website ↗
+              </a>
             </div>
           </div>
 
@@ -707,7 +715,12 @@ function RomeModal({ onClose }) {
                 <svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-2.75 12.42 12.42 0 00-5.64-1.28A11.67 11.67 0 002 14.07a11.67 11.67 0 0011.86 7.27 4.76 4.76 0 003.77-2.68 12.54 12.54 0 004.37-5.86 4.76 4.76 0 00-2.41-6.11zM10 15V9l5 3-5 3z"/></svg>
                 Women's Final Highlights
               </a>
-              <a href={TOURNEY_URLS['Italian Open · Rome']} target="_blank" rel="noopener noreferrer" className="tourney-link" style={{fontSize:12, padding:'8px 14px', borderRadius:'var(--r-sm)'}}>
+              <a
+                href={TOURNEY_URLS['Italian Open · Rome']}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tourney-link"
+              >
                 Official Website ↗
               </a>
             </div>
@@ -802,17 +815,36 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
                       {t.name}
                       {isRome && <span style={{fontSize:11,color:'var(--purple)',fontFamily:'var(--mono)',letterSpacing:'0.05em'}}>→ results</span>}
                     </div>
-                    <div className="meta">
-                      {t.d} · {t.meta}
-                      {url && (
-                        <a className="tourney-link" href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                          Official ↗
-                        </a>
-                      )}
-                      {ytUrl && t.state === 'done' && (
-                        <a className="tourney-link tourney-link-video" href={ytUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                          ▶ Highlights
-                        </a>
+                    <div className="tourney-meta">
+                      <div className="tourney-subtitle">{t.d} · {t.meta}</div>
+                      {(url || (ytUrl && t.state === 'done')) && (
+                        <div className="tourney-links">
+                          {url && (
+                            <a
+                              className="tourney-link"
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              Official ↗
+                            </a>
+                          )}
+                          {url && ytUrl && t.state === 'done' && (
+                            <span className="tourney-link-sep" aria-hidden="true">·</span>
+                          )}
+                          {ytUrl && t.state === 'done' && (
+                            <a
+                              className="tourney-link tourney-link-video"
+                              href={ytUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              ▶ Highlights
+                            </a>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -937,10 +969,10 @@ function Toolkit() {
             ))}
           </div>
           <div className="controls">
-            <button className="btn-primary" style={{background: 'var(--ball)', color: 'var(--ink)', border: 0}} onClick={() => setRunning(r => !r)}>
+            <button type="button" className="btn-primary" onClick={() => setRunning(r => !r)}>
               {running ? 'Pause' : seconds === 0 ? 'Done' : 'Start'}
             </button>
-            <button className="btn-ghost" onClick={() => { setSeconds(preset); setRunning(false); }}>Reset</button>
+            <button type="button" className="btn-secondary" onClick={() => { setSeconds(preset); setRunning(false); }}>Reset</button>
           </div>
         </div>
 
