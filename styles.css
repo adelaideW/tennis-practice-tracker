@@ -44,6 +44,30 @@
 
   --rail-bg: #0a1020;
   --rail-w:  92px;
+
+  /* Badge / chip tokens — Landing page style guide (Figma: Colors) */
+  --clay: #C2410C;
+  --badge-danger-bg:       #B91C1C;
+  --badge-danger-text:     #FFFFFF;
+  --badge-danger-border:   #991B1B;
+  --badge-warning-bg:      #EA580C;
+  --badge-warning-text:    #FFFFFF;
+  --badge-success-bg:      #15803D;
+  --badge-success-text:    #FFFFFF;
+  --badge-success-soft-bg:   #BBF7D0;
+  --badge-success-soft-text: #14532D;
+  --badge-success-soft-border:#86EFAC;
+  --badge-neutral-bg:      #374151;
+  --badge-neutral-text:    #F9FAFB;
+  --badge-neutral-border:  #4B5563;
+  --badge-accent-bg:       #472700;
+  --badge-accent-text:     #FFEDD8;
+  --badge-accent-border:   #583101;
+  --badge-blue-bg:         #363F72;
+  --badge-blue-text:       #FFFFFF;
+  --badge-info-bg:         #1D4ED8;
+  --badge-info-text:       #FFFFFF;
+  --badge-info-border:     #1E40AF;
 }
 
 /* ============ Light mode overrides ============ */
@@ -90,7 +114,6 @@
 }
 [data-theme="light"] .timer { background: var(--surface-2); }
 [data-theme="light"] .nav-item.active { background: var(--surface-3); }
-[data-theme="light"] .tourney .pill.live { background: rgba(160,30,20,0.12); }
 [data-theme="light"] .yt-btn { background: #7a1515; box-shadow: 0 2px 8px rgba(100,0,0,0.2); }
 [data-theme="light"] .yt-btn:hover { background: #5e1010; }
 
@@ -379,9 +402,9 @@ input, textarea, select { font-family: inherit; }
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--ink-3);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  color: var(--badge-neutral-text);
+  background: var(--badge-neutral-bg);
+  border: 1px solid var(--badge-neutral-border);
   padding: 4px 10px;
   border-radius: 999px;
 }
@@ -541,8 +564,12 @@ input, textarea, select { font-family: inherit; }
   color: var(--ink-3);
 }
 .day-cell .d { font-family: var(--sans); font-size: 20px; font-weight: 600; color: var(--ink); display: block; margin: 4px 0; }
-.day-cell.done { background: var(--accent); border-color: var(--accent-deep); color: #111; }
-.day-cell.done .d { color: #111; }
+.day-cell.done {
+  background: var(--badge-success-bg);
+  border-color: var(--badge-success-soft-border);
+  color: var(--badge-success-text);
+}
+.day-cell.done .d { color: var(--badge-success-text); }
 .day-cell.today { outline: 2px solid var(--accent); outline-offset: -2px; }
 .day-cell.rest { opacity: 0.45; }
 
@@ -564,12 +591,34 @@ input, textarea, select { font-family: inherit; }
 .tip-card .drill b { color: var(--accent); font-weight: 600; }
 .tip-card.priority { border-color: rgba(200,232,50,0.35); box-shadow: 0 0 0 1px rgba(200,232,50,0.08); }
 .tip-card .num { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.priority-pill { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); background: var(--accent-glow); border: 1px solid rgba(200,232,50,0.25); padding: 3px 8px; border-radius: 999px; font-style: normal; }
+.priority-pill {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--badge-accent-text);
+  background: var(--badge-accent-bg);
+  border: 1px solid var(--badge-accent-border);
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-style: normal;
+}
 .notion-link { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); text-decoration: none; }
 .notion-link:hover { text-decoration: underline; }
 .notion-sync-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: var(--r-md); border: 1px dashed var(--border); background: var(--surface-2); }
 .notion-sync-copy { display: flex; flex-direction: column; gap: 4px; }
-.notion-new-badge { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--clay); }
+.notion-new-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #9A3412;
+  background: #FFEDD5;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
 .notion-open { text-decoration: none; display: inline-flex; align-items: center; }
 
 .tip-hero { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 26px; display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 20px; box-shadow: var(--shadow-sm); }
@@ -593,8 +642,13 @@ input, textarea, select { font-family: inherit; }
 .tip-resource-links { display: flex; flex-wrap: wrap; gap: 8px; }
 .tip-resource-link { font-size: 12px; font-weight: 500; color: var(--ink-2); text-decoration: none; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); transition: background 130ms, color 130ms, border-color 130ms; }
 .tip-resource-link:hover { background: var(--surface-3); color: var(--ink); border-color: var(--border); }
-.tip-resource-link.yt { color: #e8b4b4; border-color: rgba(160,40,30,0.35); background: rgba(100,0,0,0.15); }
-.tip-resource-link.yt:hover { background: rgba(100,0,0,0.28); color: #fff; }
+.tip-resource-link.yt {
+  color: var(--badge-danger-text);
+  border-color: var(--badge-danger-border);
+  background: var(--badge-danger-bg);
+  font-weight: 600;
+}
+.tip-resource-link.yt:hover { background: #991B1B; border-color: #7F1D1D; color: var(--badge-danger-text); }
 .library-toggle-row { display: flex; justify-content: center; }
 @media (max-width: 900px) { .tip-grid { grid-template-columns: 1fr; } }
 
@@ -649,13 +703,60 @@ input, textarea, select { font-family: inherit; }
 .tourney .date .d { font-family: var(--sans); font-size: 20px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; color: var(--ink); }
 .tourney .tourney-info .name { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--ink); }
 .tourney .tourney-info .meta { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.tourney .pill { font-family: var(--mono); font-size: 9px; letter-spacing: 0.07em; text-transform: uppercase; border: 1px solid var(--border); padding: 3px 9px; border-radius: 999px; color: var(--ink-3); white-space: nowrap; flex-shrink: 0; }
-.tourney .pill.live { background: rgba(140,30,20,0.35); color: #c0392b; border-color: rgba(160,40,30,0.4); }
-.tourney .pill.up { background: var(--accent-glow); color: var(--accent); border-color: rgba(200,232,50,0.3); }
-.tourney .pill.done { color: var(--ink-4); }
+.tourney .pill {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: var(--ink-3);
+  background: var(--surface-2);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-weight: 700;
+}
+.tourney .pill.live {
+  background: var(--badge-danger-bg);
+  color: var(--badge-danger-text);
+  border-color: var(--badge-danger-border);
+}
+.tourney .pill.up {
+  background: var(--badge-warning-bg);
+  color: var(--badge-warning-text);
+  border-color: transparent;
+}
+.tourney .pill.done {
+  background: var(--badge-success-soft-bg);
+  color: var(--badge-success-soft-text);
+  border-color: var(--badge-success-soft-border);
+}
 
-.tourney-link { display: inline-flex; align-items: center; gap: 3px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--accent); text-decoration: none; background: var(--accent-glow); border: 1px solid rgba(200,232,50,0.2); padding: 2px 7px; border-radius: 999px; transition: background 130ms; white-space: nowrap; }
-.tourney-link:hover { background: rgba(200,232,50,0.25); }
+.tourney-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--badge-info-text);
+  text-decoration: none;
+  background: var(--badge-info-bg);
+  border: 1px solid var(--badge-info-border);
+  padding: 2px 7px;
+  border-radius: 999px;
+  transition: filter 130ms;
+  white-space: nowrap;
+}
+.tourney-link:hover { filter: brightness(1.08); }
+.tourney-link.tourney-link-video {
+  background: var(--badge-danger-bg);
+  color: var(--badge-danger-text);
+  border-color: var(--badge-danger-border);
+}
 
 .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow-sm); cursor: pointer; transition: box-shadow 150ms, transform 150ms; }
 .result-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
@@ -678,10 +779,42 @@ input, textarea, select { font-family: inherit; }
 .tour-result-when { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
 .tour-result-round { font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); }
 .tour-result-event { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
-.tour-tag { font-family: var(--mono); font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink-3); }
-.tour-tag.atp { background: rgba(140,30,20,0.2); border-color: rgba(160,40,30,0.35); color: #c0392b; }
-.tour-tag.wta { background: var(--accent-glow); border-color: rgba(200,232,50,0.25); color: var(--accent); }
-.daily-refresh-pill { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; background: var(--accent-glow); color: var(--accent); border: 1px solid rgba(200,232,50,0.25); white-space: nowrap; }
+.tour-tag {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--badge-neutral-border);
+  background: var(--badge-neutral-bg);
+  color: var(--badge-neutral-text);
+}
+.tour-tag.atp {
+  font-weight: 700;
+  color: var(--badge-danger-text);
+  background: var(--badge-danger-bg);
+  border-color: var(--badge-danger-border);
+}
+.tour-tag.wta {
+  font-weight: 700;
+  color: var(--badge-blue-text);
+  background: var(--badge-blue-bg);
+  border-color: #293056;
+}
+.daily-refresh-pill {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--badge-success-bg);
+  color: var(--badge-success-text);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
 .see-more-results { width: 100%; margin-top: 14px; justify-content: center; }
 .week-results-modal { max-width: 640px; }
 .week-results-day { margin-bottom: 20px; }
@@ -719,10 +852,39 @@ input, textarea, select { font-family: inherit; }
 .final-vs { text-align: center; }
 .final-score-sets { font-family: var(--mono); font-size: 18px; font-weight: 700; letter-spacing: 0.06em; color: var(--ink); }
 .final-score-label { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-3); margin-top: 4px; }
-.trophy-pill { display: inline-flex; align-items: center; gap: 5px; background: var(--accent); color: #111; font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; font-weight: 700; margin-top: 8px; }
+.trophy-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--badge-accent-bg);
+  color: var(--badge-accent-text);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-weight: 700;
+  margin-top: 8px;
+  border: 1px solid var(--badge-accent-border);
+}
 
-.yt-btn { display: inline-flex; align-items: center; gap: 7px; background: #8b1a1a; color: #fff; text-decoration: none; padding: 9px 16px; border-radius: var(--r-sm); font-size: 13px; font-weight: 600; transition: background 130ms; box-shadow: 0 2px 8px rgba(100,0,0,0.4); }
-.yt-btn:hover { background: #6e1414; }
+.yt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--badge-danger-bg);
+  color: var(--badge-danger-text);
+  text-decoration: none;
+  padding: 9px 16px;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  font-weight: 700;
+  transition: filter 130ms;
+  border: 1px solid var(--badge-danger-border);
+  box-shadow: 0 2px 12px rgba(185,28,28,0.38);
+}
+.yt-btn:hover { filter: brightness(1.08); }
 .yt-btn svg { width: 17px; height: 17px; fill: currentColor; flex-shrink: 0; }
 .yt-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
 
@@ -767,7 +929,18 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
 .entry .when { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); display: flex; gap: 10px; align-items: center; }
 .entry .when .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
 .entry .what { display: flex; gap: 5px; flex-wrap: wrap; margin: 7px 0; }
-.entry .what .tag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; background: var(--accent-glow); border: 1px solid rgba(200,232,50,0.2); color: var(--accent); padding: 2px 7px; border-radius: 999px; }
+.entry .what .tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: var(--badge-neutral-bg);
+  border: 1px solid var(--badge-neutral-border);
+  color: var(--badge-neutral-text);
+  padding: 2px 7px;
+  border-radius: 999px;
+}
 .entry .note { font-size: 14px; color: var(--ink-2); white-space: pre-wrap; }
 
 .ai-card { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--r-lg); padding: 20px; box-shadow: var(--shadow-sm); }
