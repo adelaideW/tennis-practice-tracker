@@ -112,15 +112,13 @@ const SEED_NEWS = [
 ];
 
 // ============== STATE ==============
-function loadState() {
-  try {
-    const raw = localStorage.getItem('tennis-tracker-v1');
-    if (raw) return JSON.parse(raw);
-  } catch (e) {}
-  return null;
-}
 function saveState(s) {
-  try { localStorage.setItem('tennis-tracker-v1', JSON.stringify(s)); } catch (e) {}
+  try {
+    localStorage.setItem(
+      'tennis-tracker-v1',
+      JSON.stringify({ focus: s.focus, notionUpdatedAt: s.notionUpdatedAt }),
+    );
+  } catch (e) {}
 }
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
@@ -137,17 +135,50 @@ const ACCENT_PALETTE = {
 // ============== APP ==============
 function App() {
   const [route, setRoute] = useState('today');
-  const [state, setState] = useState(() => loadState() || {
+  const [state, setState] = useState({
     entries: [],
-    streak: 0,
     lastSession: null,
     focus: null,
+    notionUpdatedAt: null,
+    notionSource: null,
+    notionLoading: true,
+    notionError: null,
   });
   const [theme, setTheme] = useState(() => localStorage.getItem('ace-theme') || 'dark');
   const t = window.useTweaks ? window.useTweaks(TWEAK_DEFAULTS) : [TWEAK_DEFAULTS, () => {}];
   const [tweaks, setTweak] = t;
 
-  useEffect(() => { saveState(state); }, [state]);
+  const syncFromNotion = React.useCallback(async () => {
+    setState((s) => ({ ...s, notionLoading: true, notionError: null }));
+    try {
+      const data = await window.fetchNotionInsights();
+      const applied = window.applyNotionPayload(data);
+      setState((s) => ({
+        ...s,
+        ...applied,
+        notionUpdatedAt: data.updatedAt,
+        notionSource: data.source,
+        notionLoading: false,
+        notionError: null,
+      }));
+      return data;
+    } catch (e) {
+      setState((s) => ({
+        ...s,
+        notionLoading: false,
+        notionError: e.message || 'Could not sync from Notion',
+      }));
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    syncFromNotion();
+  }, [syncFromNotion]);
+
+  useEffect(() => {
+    if (!state.notionLoading) saveState(state);
+  }, [state.focus, state.notionUpdatedAt, state.notionLoading]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -180,29 +211,14 @@ function App() {
         <line x1="3" y1="10" x2="21" y2="10"/>
       </>
     ),
-    log: (
-      <>
-        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-      </>
-    ),
     toolkit: <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>,
   };
   const pages = {
     today:    { l: 'Today' },
     tips:     { l: 'Practice Tips' },
     calendar: { l: 'Calendar & News' },
-    log:      { l: 'Practice Log' },
     toolkit:  { l: 'Toolkit' },
   };
-
-  const addEntry = (entry) => {
-    const e = { ...entry, id: Date.now(), date: new Date().toISOString() };
-    setState(s => ({ ...s, entries: [e, ...s.entries], lastSession: e.date }));
-  };
-  const deleteEntry = (id) => setState(s => ({ ...s, entries: s.entries.filter(e => e.id !== id) }));
-  const editEntry = (id, updates) => setState(s => ({ ...s, entries: s.entries.map(e => e.id === id ? { ...e, ...updates } : e) }));
-  const setFocus = (focus) => setState(s => ({ ...s, focus }));
 
   return (
     <div className="app" data-screen-label={`00 ${pages[route].l}`}>
@@ -243,16 +259,19 @@ function App() {
               <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
             )}
           </button>
-          <div className="foot-row">Stored locally</div>
-          <div className="foot-row">{state.entries.length} sessions logged</div>
+          <div className="foot-row">
+            {state.notionLoading ? 'Syncing Notion…' : state.notionError || 'Synced from Notion'}
+          </div>
+          <div className="foot-row">{state.entries.length} sessions · {state.notionSource || 'notion'}</div>
         </div>
       </aside>
 
       <main className="content" data-screen-label={pages[route].l}>
-        {route === 'today' && <window.Today state={state} setRoute={setRoute} setFocus={setFocus} />}
+        {route === 'today' && (
+          <window.Today state={state} setRoute={setRoute} syncFromNotion={syncFromNotion} />
+        )}
         {route === 'tips' && <window.Tips />}
         {route === 'calendar' && <window.Calendar />}
-        {route === 'log' && <window.Log state={state} addEntry={addEntry} deleteEntry={deleteEntry} editEntry={editEntry} />}
         {route === 'toolkit' && <window.Toolkit />}
       </main>
 

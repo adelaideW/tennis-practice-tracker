@@ -4,8 +4,8 @@ Practice tips and session notes sync from [Tennis practice insights](https://www
 
 ## Notion sync
 
-- **Practice Log** auto-imports the latest daily reflection when notes are empty or when Notion has newer content.
-- **Import from Notion** pulls the latest reflection on demand.
+- **Today dashboard** loads sessions, stats, charts, and focus brief from Notion — no manual logging.
+- Add **Daily reflection** entries in Notion; use **Refresh from Notion** on the dashboard to pull updates.
 - **Practice Tips** are curated from your weekly priorities in Notion (items marked **Notion focus**).
 
 ### Live API (optional)
@@ -23,4 +23,4 @@ Without a token, the app uses `notion-data.json` (update this snapshot after edi
 npx serve .
 ```
 
-Open the Practice Log tab to verify Notion notes import.
+Open the Today tab to verify sessions and focus brief load from Notion.

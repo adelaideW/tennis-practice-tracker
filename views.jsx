@@ -66,7 +66,7 @@ function ActivityChart({ entries }) {
   );
 }
 
-function Today({ state, setRoute, setFocus }) {
+function Today({ state, setRoute, syncFromNotion }) {
   const today = new Date();
   const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -77,66 +77,31 @@ function Today({ state, setRoute, setFocus }) {
   const streak = useM1(() => {
     const days = new Set(state.entries.map(e => e.date.slice(0, 10)));
     if (!days.size) return 0;
-    let s = 0, probe = new Date();
-    while (days.has(probe.toISOString().slice(0, 10))) { s++; probe.setDate(probe.getDate() - 1); }
+    let s = 0;
+    const probe = new Date();
+    while (days.has(probe.toISOString().slice(0, 10))) {
+      s++;
+      probe.setDate(probe.getDate() - 1);
+    }
     return s;
   }, [state.entries]);
 
   const topSkills = useM1(() => {
     const counts = {};
-    state.entries.forEach(e => (e.tags || []).forEach(k => { counts[k] = (counts[k] || 0) + 1; }));
+    state.entries.forEach((e) => (e.tags || []).forEach((k) => { counts[k] = (counts[k] || 0) + 1; }));
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4);
     const max = sorted[0]?.[1] || 1;
     const COLORS = ['var(--accent)', 'var(--teal)', '#e87d32', '#c87de8'];
     return sorted.map(([k, count], i) => ({
-      label: (PRACTICE_TAGS.find(p => p.k === k) || {}).l || k,
+      label: (PRACTICE_TAGS.find((p) => p.k === k) || {}).l || k,
       pct: Math.round((count / max) * 100),
       color: COLORS[i],
     }));
   }, [state.entries]);
 
   const recentSessions = state.entries.slice(0, 3);
-
-  const [loading, setLoading] = useS1(false);
   const focus = state.focus;
-
-  const generateFocus = async () => {
-    if (!state.entries.length) {
-      setFocus({
-        cues: ['Loose grip, audible exhale on contact', 'Recover one step behind the baseline', 'One cue word per point'],
-        body: 'No sessions logged yet — start with a clean warm-up. Focus on hitting your first 20 balls 3 feet inside the baseline before opening up the pace.',
-        generated: new Date().toISOString(),
-      });
-      return;
-    }
-    setLoading(true);
-    try {
-      const recent = state.entries.slice(0, 6).map(e => {
-        const tagLabels = (e.tags || []).map(k => (PRACTICE_TAGS.find(p => p.k === k) || {}).l).filter(Boolean).join(', ');
-        return `Date: ${e.date.slice(0, 10)} · Intensity: ${e.intensity || 'n/a'} · Worked on: ${tagLabels} · Notes: ${e.notes || '(none)'}`;
-      }).join('\n');
-      const prompt = `You are a tennis coach analyzing a player's recent practice journal. Based on the entries below, write a SHORT pre-session focus brief (max 90 words).
-
-Output format — return ONLY valid JSON, no markdown fence:
-{"body": "1-2 sentences of context on what to focus on today based on recent patterns", "cues": ["short imperative cue 1", "short imperative cue 2", "short imperative cue 3"]}
-
-Cues must be punchy imperatives, max 10 words each. Tone: a sharp, encouraging coach. No filler.
-
-Recent entries:
-${recent}`;
-      const txt = await window.claude.complete(prompt);
-      let parsed;
-      try { parsed = JSON.parse(txt.replace(/```json|```/g, '').trim()); }
-      catch (e) { parsed = { body: txt, cues: [] }; }
-      setFocus({ ...parsed, generated: new Date().toISOString() });
-    } catch (e) {
-      setFocus({
-        body: 'Could not generate brief right now. Pick one cue word for the session and commit to it on every point.',
-        cues: ['Stay loose', 'Watch contact', 'Recover behind baseline'],
-        generated: new Date().toISOString(),
-      });
-    } finally { setLoading(false); }
-  };
+  const notionPage = window.NOTION_INSIGHTS_PAGE;
 
   return (
     <>
@@ -146,8 +111,14 @@ ${recent}`;
           <h1>Good day for <em>tennis.</em></h1>
         </div>
         <div className="meta">
-          {streak > 0 ? `${streak}-day streak` : 'No active streak'}<br />
-          {totalSessions} sessions logged
+          {state.notionLoading ? (
+            <>Syncing from Notion…</>
+          ) : (
+            <>
+              {streak > 0 ? `${streak}-day streak` : 'Play today to extend streak'}<br />
+              {totalSessions} sessions from Notion
+            </>
+          )}
         </div>
       </div>
 
@@ -157,12 +128,12 @@ ${recent}`;
         <div className="overview-card">
           <div className="overview-card-title">
             Practice Overview
-            <span className="overview-week-badge">All-time</span>
+            <span className="overview-week-badge">From Notion</span>
           </div>
           <div className="overview-body">
             <div className="overview-sessions">
               <div className="big-num">{totalSessions}</div>
-              <div className="big-label">Sessions logged</div>
+              <div className="big-label">Sessions tracked</div>
               <div className="big-delta">{streak > 0 ? `↑ ${streak}-day streak` : 'Start a streak today'}</div>
             </div>
             <div className="overview-donut">
@@ -175,7 +146,7 @@ ${recent}`;
         <div className="skills-card">
           <div className="skills-card-title">Top Skills Practiced</div>
           {topSkills.length === 0 ? (
-            <div style={{color:'var(--ink-3)',fontStyle:'italic',fontSize:13}}>Log sessions to see your top skills.</div>
+            <div style={{color:'var(--ink-3)',fontStyle:'italic',fontSize:13}}>Add daily reflections in Notion to populate skills.</div>
           ) : (
             topSkills.map((s, i) => (
               <div key={i} className="skill-row">
@@ -202,7 +173,9 @@ ${recent}`;
         <div className="recent-card">
           <div className="recent-card-title">Recent Sessions</div>
           {recentSessions.length === 0 ? (
-            <div style={{color:'var(--ink-3)',fontStyle:'italic',fontSize:13}}>No sessions yet. <span style={{cursor:'pointer',color:'var(--accent)'}} onClick={() => setRoute('log')}>Log your first →</span></div>
+            <div style={{color:'var(--ink-3)',fontStyle:'italic',fontSize:13}}>
+              {state.notionLoading ? 'Loading sessions from Notion…' : 'No daily reflections found in Notion yet.'}
+            </div>
           ) : (
             recentSessions.map((e, i) => (
               <div key={e.id} className="recent-row">
@@ -215,17 +188,22 @@ ${recent}`;
                 <div className="recent-info">
                   <div className="recent-date">{new Date(e.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
                   <div className="recent-tags">
-                    {(e.tags || []).slice(0, 3).map(k => (PRACTICE_TAGS.find(p => p.k === k) || {}).l).filter(Boolean).join(' · ') || 'Open session'}
+                    {e.context || (e.tags || []).slice(0, 3).map(k => (PRACTICE_TAGS.find(p => p.k === k) || {}).l).filter(Boolean).join(' · ') || 'Practice session'}
                   </div>
                 </div>
                 <div className="recent-dur">{e.duration || 60}m</div>
               </div>
             ))
           )}
-          {recentSessions.length > 0 && (
-            <button onClick={() => setRoute('log')} style={{marginTop:12,background:'none',border:'none',color:'var(--accent)',fontSize:12,fontFamily:'var(--mono)',letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',padding:0}}>
-              View all →
-            </button>
+          {notionPage && (
+            <a
+              href={notionPage}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{marginTop:12,display:'inline-block',color:'var(--accent)',fontSize:12,fontFamily:'var(--mono)',letterSpacing:'0.1em',textTransform:'uppercase',textDecoration:'none'}}
+            >
+              Open Notion journal ↗
+            </a>
           )}
         </div>
       </div>
@@ -233,10 +211,16 @@ ${recent}`;
       {/* AI Focus Brief */}
       <div className="focus-card mb-28">
         <div className="ball-deco" aria-hidden="true"></div>
-        <div className="kicker">Today's Focus · AI brief</div>
-        <h2>{focus ? '"' + (focus.cues?.[0] || 'Stay loose and present') + '"' : 'Generate your focus brief'}</h2>
+        <div className="kicker">Today&apos;s Focus · From Notion</div>
+        <h2>
+          {state.notionLoading
+            ? 'Syncing your brief…'
+            : `"${focus?.headline || focus?.cues?.[0] || 'Stay loose and present'}"`}
+        </h2>
         <div className="focus-body">
-          {focus ? (
+          {state.notionError ? (
+            <div>{state.notionError}</div>
+          ) : focus ? (
             <>
               <div>{focus.body}</div>
               {focus.cues?.length > 0 && (
@@ -244,15 +228,19 @@ ${recent}`;
               )}
             </>
           ) : (
-            <div>Generate a personalized focus brief based on your recent practice notes. Three cues to lock in before you step on court.</div>
+            <div>Your focus brief loads from weekly priorities and the latest daily reflection in Notion.</div>
           )}
         </div>
         <div className="focus-cta">
-          <button className="btn-primary" onClick={generateFocus} disabled={loading}>
-            {loading && <span className="spinner"></span>}
-            {focus ? 'Regenerate' : 'Generate brief'}
+          <button className="btn-primary" onClick={syncFromNotion} disabled={state.notionLoading}>
+            {state.notionLoading && <span className="spinner"></span>}
+            {state.notionLoading ? 'Syncing…' : 'Refresh from Notion'}
           </button>
-          <button className="btn-ghost" onClick={() => setRoute('log')}>Log a session →</button>
+          {notionPage && (
+            <a className="btn-ghost notion-open" href={notionPage} target="_blank" rel="noopener noreferrer">
+              Open Notion page ↗
+            </a>
+          )}
         </div>
       </div>
     </>
@@ -623,271 +611,6 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
   );
 }
 
-// ============== PRACTICE LOG ==============
-function Log({ state, addEntry, deleteEntry, editEntry }) {
-  const [tags, setTags] = useS1([]);
-  const [intensity, setIntensity] = useS1(2);
-  const [duration, setDuration] = useS1(60);
-  const [notes, setNotes] = useS1('');
-  const [aiSummary, setAiSummary] = useS1(null);
-  const [aiLoading, setAiLoading] = useS1(false);
-  const [editingId, setEditingId] = useS1(null);
-  const notion = window.useNotionInsights ? window.useNotionInsights() : null;
-  const [notionImported, setNotionImported] = useS1(false);
-
-  const importNotionNotes = React.useCallback((force) => {
-    if (!notion?.notesDraft) return;
-    if (!force && notes.trim() && !window.confirm('Replace current notes with the latest Notion reflection?')) return;
-    setNotes(notion.notesDraft);
-    setNotionImported(true);
-    notion.refresh();
-  }, [notion, notes]);
-
-  React.useEffect(() => {
-    if (notion?.isNewerThanLastImport) setNotionImported(false);
-  }, [notion?.isNewerThanLastImport]);
-
-  React.useEffect(() => {
-    if (!notion || editingId || notionImported) return;
-    if (!notion.notesDraft) return;
-    if (notes.trim() && !notion.isNewerThanLastImport) return;
-    setNotes(notion.notesDraft);
-    setNotionImported(true);
-  }, [notion?.notesDraft, notion?.isNewerThanLastImport, editingId, notionImported]);
-
-  const toggle = (k) => {
-    setTags(t => t.includes(k) ? t.filter(x => x !== k) : [...t, k]);
-  };
-
-  const startEdit = (e) => {
-    setEditingId(e.id);
-    setTags(e.tags || []);
-    setIntensity(e.intensity ?? 2);
-    setDuration(e.duration || 60);
-    setNotes(e.notes || '');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setTags([]); setNotes(''); setIntensity(2); setDuration(60);
-  };
-
-  const submit = () => {
-    if (!tags.length && !notes.trim()) return;
-    if (editingId) {
-      editEntry(editingId, { tags, intensity, duration, notes });
-      setEditingId(null);
-    } else {
-      addEntry({ tags, intensity, duration, notes });
-    }
-    setTags([]); setNotes(''); setIntensity(2); setDuration(60);
-  };
-
-  const generateSummary = async () => {
-    if (!state.entries.length) return;
-    setAiLoading(true);
-    try {
-      const recent = state.entries.slice(0, 10).map((e, i) => {
-        const tagLabels = (e.tags || []).map(k => (PRACTICE_TAGS.find(p => p.k === k) || {}).l).filter(Boolean).join(', ');
-        return `[${i + 1}] ${e.date.slice(0, 10)} · ${INTENSITY[e.intensity] || 'Moderate'} intensity · Worked on: ${tagLabels} · Notes: "${e.notes || '(no notes)'}"`;
-      }).join('\n');
-      const prompt = `You are a tennis coach reviewing a player's recent practice journal. Write a 110-150 word AI summary in this exact structure:
-
-PATTERN: One paragraph identifying what they've been practicing most and any patterns you notice in their notes.
-
-WATCH-OUT: One sentence calling out a weakness or area being neglected.
-
-NEXT SESSION FOCUS: 2-3 specific things to lock in before their next practice — punchy, imperative.
-
-Tone: experienced coach, direct, encouraging. Use plain text only, no markdown.
-
-Recent entries (newest first):
-${recent}`;
-      const txt = await window.claude.complete(prompt);
-      setAiSummary(txt);
-    } catch (e) {
-      setAiSummary('Could not generate summary right now. Try again in a moment.');
-    } finally { setAiLoading(false); }
-  };
-
-  return (
-    <>
-      <div className="page-head">
-        <div>
-          <div className="kicker">Practice Log · {state.entries.length} entries</div>
-          <h1>What did you <em>work on?</em></h1>
-        </div>
-        <div className="meta">Auto-saved<br />to this device</div>
-      </div>
-
-      <div className="log-grid mb-28">
-        <div className="card" style={editingId ? {outline: '2px solid var(--orange)', outlineOffset: '-1px'} : {}}>
-          <div className="section-title" style={{margin: '0 0 14px'}}>
-            {editingId ? 'Editing Session' : 'Today\'s Checklist'}
-            {editingId && (
-              <span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--orange)',letterSpacing:'0.1em',textTransform:'uppercase'}}>
-                · {new Date(state.entries.find(e=>e.id===editingId)?.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}
-              </span>
-            )}
-          </div>
-          <div className="checklist">
-            {PRACTICE_TAGS.map(t => (
-              <div
-                key={t.k}
-                className={`check ${tags.includes(t.k) ? 'on' : ''}`}
-                onClick={() => toggle(t.k)}
-              >
-                <div className="box"></div>
-                <div className="lab">{t.l}</div>
-                <div className="ct">{t.est}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-20">
-            <div className="intensity-row">
-              <span className="lab">Intensity</span>
-              {INTENSITY.map((iv, i) => (
-                <div
-                  key={i}
-                  className={`pip ${intensity === i ? 'on' : ''}`}
-                  onClick={() => setIntensity(i)}
-                >{iv}</div>
-              ))}
-            </div>
-            <div className="row gap-8 mb-12" style={{alignItems: 'center'}}>
-              <span className="mono-small">Duration</span>
-              <input
-                type="range"
-                min="15" max="180" step="5"
-                value={duration}
-                onChange={e => setDuration(+e.target.value)}
-                style={{flex: 1}}
-              />
-              <span className="mono-small" style={{minWidth: 60, textAlign: 'right', color: 'var(--ink)'}}>{duration} min</span>
-            </div>
-          </div>
-
-          {notion && (
-            <div className="notion-sync-bar mt-12">
-              <div className="notion-sync-copy">
-                <span className="kicker" style={{ margin: 0 }}>Notion · Daily reflection</span>
-                {notion.payload?.latestDaily && (
-                  <span className="mono-small">
-                    {notion.payload.latestDaily.date}
-                    {notion.payload.latestDaily.context ? ` · ${notion.payload.latestDaily.context}` : ''}
-                  </span>
-                )}
-                {notion.isNewerThanLastImport && (
-                  <span className="notion-new-badge">Updated on Notion</span>
-                )}
-              </div>
-              <div className="row gap-8">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => importNotionNotes(true)}
-                  disabled={notion.loading || !notion.notesDraft}
-                >
-                  {notion.loading ? 'Syncing…' : 'Import from Notion'}
-                </button>
-                {window.NOTION_INSIGHTS_PAGE && (
-                  <a
-                    className="btn-ghost notion-open"
-                    href={window.NOTION_INSIGHTS_PAGE}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Open page ↗
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
-
-          <textarea
-            className="notes mt-12"
-            placeholder="How did it feel? What worked, what didn't? Anything to remember for next time..."
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-          />
-
-          <div className="row gap-8 mt-12">
-            <button className="btn-primary" onClick={submit}>
-              {editingId ? 'Update session' : 'Save session'}
-            </button>
-            {editingId
-              ? <button className="btn-secondary" onClick={cancelEdit}>Cancel</button>
-              : <button className="btn-secondary" onClick={() => { setTags([]); setNotes(''); }}>Clear</button>
-            }
-          </div>
-        </div>
-
-        <div>
-          <div className="ai-card mb-20">
-            <div className="kicker">AI Coach · Pre-Session Brief</div>
-            <h3>What to focus on next time</h3>
-            {aiSummary ? (
-              <div className="summary">{aiSummary}</div>
-            ) : (
-              <div className="empty">
-                {state.entries.length === 0
-                  ? 'Log a few sessions first — the AI coach reads your notes to surface patterns and recommend next-session focus.'
-                  : 'Click below to analyze your recent notes and generate a focused brief for your next practice.'}
-              </div>
-            )}
-            <button
-              className="btn-primary mt-12"
-              onClick={generateSummary}
-              disabled={aiLoading || !state.entries.length}
-              style={{background: 'var(--clay)', borderColor: 'var(--clay)'}}
-            >
-              {aiLoading && <span className="spinner" style={{borderColor: 'white', borderTopColor: 'transparent'}}></span>}
-              {aiSummary ? 'Regenerate brief' : 'Generate AI brief'}
-            </button>
-          </div>
-
-          <div className="section-title">Recent Sessions</div>
-          {state.entries.length === 0 ? (
-            <div className="card" style={{textAlign: 'center', padding: '32px 20px', color: 'var(--ink-3)', fontStyle: 'italic', fontFamily: 'var(--serif)', fontSize: 16}}>
-              No sessions yet. Save your first one to start a streak.
-            </div>
-          ) : (
-            state.entries.slice(0, 5).map(e => (
-              <div key={e.id} className="entry">
-                <div className="when">
-                  <span className="dot"></span>
-                  {new Date(e.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                  · {INTENSITY[e.intensity] || 'Moderate'}
-                  · {e.duration || 60} min
-                  <span style={{marginLeft:'auto',display:'flex',gap:8}}>
-                    <button
-                      onClick={() => startEdit(e)}
-                      style={{background:'none',border:0,color:'var(--orange)',cursor:'pointer',fontSize:11,fontFamily:'var(--mono)',letterSpacing:'0.08em',textTransform:'uppercase',padding:0}}
-                    >Edit</button>
-                    <button
-                      onClick={() => deleteEntry(e.id)}
-                      style={{background:'none',border:0,color:'var(--ink-3)',cursor:'pointer',fontSize:11,fontFamily:'var(--mono)',letterSpacing:'0.08em',textTransform:'uppercase',padding:0}}
-                    >Delete</button>
-                  </span>
-                </div>
-                <div className="what">
-                  {(e.tags || []).map(k => {
-                    const t = PRACTICE_TAGS.find(p => p.k === k);
-                    return t ? <span key={k} className="tag">{t.l}</span> : null;
-                  })}
-                </div>
-                {e.notes && <div className="note">{e.notes}</div>}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </>
-  );
-}
-
 // ============== TOOLKIT ==============
 function Toolkit() {
   const [seconds, setSeconds] = useS1(120);
@@ -1011,5 +734,4 @@ function Toolkit() {
 window.Today = Today;
 window.Tips = Tips;
 window.Calendar = Calendar;
-window.Log = Log;
 window.Toolkit = Toolkit;
