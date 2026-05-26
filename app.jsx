@@ -148,6 +148,19 @@ const ACCENT_PALETTE = {
   '#4F7656': { color: 'oklch(0.45 0.08 150)', deep: 'oklch(0.38 0.08 150)', name: 'Court' },
 };
 
+/** Light 6:00–19:59 local; dark otherwise. */
+function getThemeFromLocalTime(date = new Date()) {
+  const hour = date.getHours();
+  return hour >= 6 && hour < 20 ? 'light' : 'dark';
+}
+
+function themeToggleLabel(theme, themeLocked) {
+  if (themeLocked) {
+    return theme === 'dark' ? 'Locked dark — click for auto' : 'Locked light — click for auto';
+  }
+  return theme === 'dark' ? 'Auto dark (night) — click to lock' : 'Auto light (day) — click to lock';
+}
+
 // ============== APP ==============
 function App() {
   const [route, setRoute] = useState('today');
@@ -160,7 +173,9 @@ function App() {
     notionLoading: true,
     notionError: null,
   });
-  const [theme, setTheme] = useState(() => localStorage.getItem('ace-theme') || 'dark');
+  const [themeLocked, setThemeLocked] = useState(false);
+  const [lockedTheme, setLockedTheme] = useState('dark');
+  const [theme, setTheme] = useState(() => getThemeFromLocalTime());
   const t = window.useTweaks ? window.useTweaks(TWEAK_DEFAULTS) : [TWEAK_DEFAULTS, () => {}];
   const [tweaks, setTweak] = t;
 
@@ -197,11 +212,26 @@ function App() {
   }, [state.focus, state.notionUpdatedAt, state.notionLoading]);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('ace-theme', theme);
-  }, [theme]);
+    const apply = () => {
+      const next = themeLocked ? lockedTheme : getThemeFromLocalTime();
+      setTheme(next);
+      document.documentElement.setAttribute('data-theme', next);
+    };
+    apply();
+    if (themeLocked) return undefined;
+    const id = setInterval(apply, 60_000);
+    return () => clearInterval(id);
+  }, [themeLocked, lockedTheme]);
 
-  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
+  const toggleTheme = () => {
+    if (themeLocked) {
+      setThemeLocked(false);
+      return;
+    }
+    const auto = getThemeFromLocalTime();
+    setLockedTheme(auto === 'dark' ? 'light' : 'dark');
+    setThemeLocked(true);
+  };
 
   // Apply accent tweak
   useEffect(() => {
@@ -268,7 +298,12 @@ function App() {
         </nav>
 
         <div className="foot">
-          <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          <button
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={themeToggleLabel(theme, themeLocked)}
+            title={themeToggleLabel(theme, themeLocked)}
+          >
             {theme === 'dark' ? (
               <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
             ) : (
