@@ -384,6 +384,85 @@ function tipsLibBlurb(category) {
   return blurbs[category] || 'Keep building reps in this area.';
 }
 
+function normalizeNoteKey(note) {
+  return note.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 64);
+}
+
+function condenseCheatNote(note, maxLen = 120) {
+  const trimmed = note.trim().replace(/\s+/g, ' ');
+  if (trimmed.length <= maxLen) return trimmed;
+  return `${trimmed.slice(0, maxLen - 1).trim()}…`;
+}
+
+function dedupeNotes(notes) {
+  const out = [];
+  const seen = new Set();
+  for (const note of notes || []) {
+    const key = normalizeNoteKey(note);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(note);
+  }
+  return out;
+}
+
+function summarizeNoteList(notes, maxItems = 3) {
+  const unique = dedupeNotes(notes);
+  if (!unique.length) return [];
+  if (unique.length === 1) return [condenseCheatNote(unique[0])];
+
+  const latest = unique[unique.length - 1];
+  const earlier = unique.slice(0, -1);
+  const merged = [condenseCheatNote(latest)];
+
+  const themes = new Set();
+  for (const note of earlier.reverse()) {
+    const tokens = normalizeNoteKey(note).split(' ').filter((t) => t.length > 3);
+    const theme = tokens.slice(0, 3).join(' ');
+    if (themes.has(theme)) continue;
+    themes.add(theme);
+    merged.push(condenseCheatNote(note, 96));
+    if (merged.length >= maxItems) break;
+  }
+
+  return merged.slice(0, maxItems);
+}
+
+function buildCheatNotesFromNotion(payload) {
+  if (!payload?.cheatNotes?.length) {
+    return { players: [], generatedAt: payload?.updatedAt || null, source: payload?.source || null };
+  }
+
+  const players = payload.cheatNotes
+    .map((row) => {
+      const goodRaw = dedupeNotes(row.good || []);
+      const badRaw = dedupeNotes(row.bad || []).filter(
+        (note) => !goodRaw.some((g) => normalizeNoteKey(g) === normalizeNoteKey(note)),
+      );
+      const goodAt = summarizeNoteList(goodRaw, 3);
+      const badAt = summarizeNoteList(badRaw, 3);
+      const summaryParts = [];
+      if (goodAt.length) summaryParts.push(`Strengths: ${goodAt.join('; ')}`);
+      if (badAt.length) summaryParts.push(`Exploit: ${badAt.join('; ')}`);
+      return {
+        name: row.name,
+        goodAt,
+        badAt,
+        summary: summaryParts.join(' · '),
+        sessionCount: goodRaw.length + badRaw.length,
+      };
+    })
+    .filter((p) => p.goodAt.length || p.badAt.length)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return {
+    players,
+    generatedAt: payload.updatedAt || new Date().toISOString(),
+    source: payload.source || 'notion',
+    playerCount: players.length,
+  };
+}
+
 function buildSharpenFromNotion(payload, tipsLib, refreshSeed = 0) {
   const lib = tipsLib || (typeof TIPS !== 'undefined' ? TIPS : null) || window.TIPS;
   if (!payload || !lib) {
@@ -431,4 +510,5 @@ window.buildSessionsFromNotion = buildSessionsFromNotion;
 window.buildFocusFromNotion = buildFocusFromNotion;
 window.applyNotionPayload = applyNotionPayload;
 window.buildSharpenFromNotion = buildSharpenFromNotion;
+window.buildCheatNotesFromNotion = buildCheatNotesFromNotion;
 window.rankTopImprovementAreas = rankTopImprovementAreas;

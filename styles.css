@@ -692,92 +692,52 @@ input, textarea, select { font-family: inherit; }
 @media (max-width: 900px) { .tip-grid { grid-template-columns: 1fr; } }
 
 /* ============ Game Cheat Notes ============ */
-.game-cheat-add h3 {
-  margin: 0 0 14px;
-  font-size: 18px;
-  color: var(--ink);
-}
 .game-cheat-list {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 .game-cheat-card {
-  padding: 20px;
+  padding: 20px 22px 22px;
 }
 .game-cheat-head {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 .game-cheat-name {
-  font-size: 16px;
+  margin: 0;
+  font-size: 18px;
   font-weight: 600;
+  color: var(--ink);
+}
+.game-cheat-summary {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.55;
 }
 .game-cheat-grid {
   display: grid;
-  gap: 12px;
+  gap: 16px;
   grid-template-columns: 1fr 1fr;
 }
-.game-cheat-field {
+.game-cheat-col {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.game-cheat-notes-input {
-  min-height: 110px;
+.game-cheat-bullets {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.game-cheat-bullets li + li {
+  margin-top: 6px;
 }
 
 @media (max-width: 900px) {
   .game-cheat-grid {
     grid-template-columns: 1fr;
-  }
-  .game-cheat-head {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
-/* Read-only cheat summary (Notion-summarized) */
-.game-cheat-friend-header {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-.game-cheat-friend-name {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--ink);
-}
-.game-cheat-summary-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-.game-cheat-summary-col .mono-small {
-  margin-bottom: 8px;
-}
-.game-cheat-bullets {
-  margin: 0;
-  padding-left: 16px;
-}
-.game-cheat-bullets li {
-  margin: 6px 0;
-  color: var(--ink-2);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-@media (max-width: 900px) {
-  .game-cheat-summary-grid {
-    grid-template-columns: 1fr;
-  }
-  .game-cheat-friend-header {
-    flex-direction: column;
-    align-items: stretch;
   }
 }
 

@@ -348,7 +348,6 @@ function App() {
             syncFromNotion={syncFromNotion}
             notionLoading={state.notionLoading}
             notionError={state.notionError}
-            notionUpdatedAt={state.notionUpdatedAt}
           />
         )}
         {route === 'calendar' && <window.Calendar />}

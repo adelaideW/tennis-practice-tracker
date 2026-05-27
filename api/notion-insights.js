@@ -124,6 +124,84 @@ async function parseAllDailySessions(pageId) {
   return sessions;
 }
 
+function blockPlainText(block) {
+  const type = block.type;
+  const data = block[type];
+  if (!data?.rich_text) return '';
+  return data.rich_text.map((t) => t.plain_text).join('').trim();
+}
+
+/** Merge "Name: note" bullets from Good / Loophole under weekly player analysis. */
+async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
+  let section = null;
+
+  const ingestLine = (line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    if (/^good\s*:?\s*$/i.test(trimmed)) {
+      section = 'good';
+      return;
+    }
+    if (/^loophole\s*:?\s*$/i.test(trimmed)) {
+      section = 'bad';
+      return;
+    }
+    const m = trimmed.match(/^([A-Za-z][A-Za-z]+):\s*(.+)$/);
+    if (!m || !section) return;
+    const name = m[1];
+    const note = m[2].trim().replace(/,\s*$/, '');
+    if (!note) return;
+    if (!byPlayer.has(name)) byPlayer.set(name, { name, good: [], bad: [] });
+    const row = byPlayer.get(name);
+    const list = section === 'good' ? row.good : row.bad;
+    if (!list.includes(note)) list.push(note);
+  };
+
+  const walkBlocks = async (blocks) => {
+    for (const block of blocks) {
+      if (block.type !== 'bulleted_list_item') continue;
+      ingestLine(blockPlainText(block).replace(/^[-•]\s*/, ''));
+      if (block.has_children) {
+        const nested = await notionFetch(`/blocks/${block.id}/children?page_size=50`);
+        await walkBlocks(nested.results || []);
+      }
+    }
+  };
+
+  const top = await notionFetch(`/blocks/${parentId}/children?page_size=100`);
+  await walkBlocks(top.results || []);
+}
+
+/** Parse weekly "Analysis on other Player's style" toggles across the insights page. */
+async function parseGameCheatNotes(pageId) {
+  const blocks = await notionFetch(`/blocks/${pageId}/children?page_size=100`);
+  const byPlayer = new Map();
+
+  const scanToggleChildren = async (toggleId) => {
+    const children = await notionFetch(`/blocks/${toggleId}/children?page_size=100`);
+    for (const child of children.results || []) {
+      if (child.type === 'toggle') {
+        const title = blockPlainText(child);
+        if (/analysis on other player/i.test(title)) {
+          await ingestPlayerAnalysisBlock(child.id, byPlayer);
+          continue;
+        }
+        await scanToggleChildren(child.id);
+      }
+    }
+  };
+
+  for (const block of blocks.results || []) {
+    if (block.type !== 'toggle') continue;
+    const title = blockPlainText(block);
+    if (/weekly insight/i.test(title)) {
+      await scanToggleChildren(block.id);
+    }
+  }
+
+  return [...byPlayer.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
 
@@ -141,6 +219,12 @@ export default async function handler(req, res) {
     const page = await notionFetch(`/pages/${pageId}`);
     const snap = await loadSnapshot();
     const sessions = await parseAllDailySessions(pageId);
+    let cheatNotes = [];
+    try {
+      cheatNotes = await parseGameCheatNotes(pageId);
+    } catch (cheatErr) {
+      cheatNotes = snap.cheatNotes || [];
+    }
 
     const payload = {
       pageUrl: page.url || snap.pageUrl,
@@ -151,6 +235,7 @@ export default async function handler(req, res) {
       source: 'notion',
       sessions: sessions.length ? sessions : snap.sessions,
       latestDaily: sessions[0] || snap.latestDaily,
+      cheatNotes: cheatNotes.length ? cheatNotes : snap.cheatNotes || [],
     };
 
     return res.status(200).json(payload);

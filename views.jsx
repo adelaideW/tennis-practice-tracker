@@ -430,116 +430,19 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
 }
 
 // ============== GAME CHEAT NOTE ==============
-function extractFriendsFromContext(context) {
-  if (!context) return [];
-  const txt = String(context)
-    .replace(/\(.*?\)/g, ' ')
-    .replace(/\bw\/\s*/gi, 'with ')
-    .replace(/\s*&\s*/g, ',')
-    .replace(/\s+and\s+/gi, ',')
-    .replace(/\s+·\s+/g, ',');
-
-  const names = [];
-  const withRe = /\bwith\s+([^;.!]+)/gi;
-  let m;
-  while ((m = withRe.exec(txt))) {
-    const seg = m[1]
-      .replace(/\s+to\s+practice\s*$/i, '')
-      .replace(/\s+rally\s+$/i, '')
-      .replace(/\s+practice\s+$/i, '')
-      .trim();
-
-    seg.split(',').forEach((tok) => {
-      const t = tok.trim().replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'’-]/g, '');
-      if (!t) return;
-      if (t.length < 3) return;
-      if (!/^[A-Z]/.test(t)) return;
-      if (/^(Coach|coach|Partner|partner|Team|team)$/.test(t)) return;
-      names.push(t);
-    });
-  }
-
-  // If nothing matched, try a simpler heuristic: first capitalized token
-  if (!names.length) {
-    const m2 = txt.match(/\b([A-Z][A-Za-zÀ-ÖØ-öø-ÿ'’-]{2,})\b/);
-    if (m2) names.push(m2[1]);
-  }
-
-  return [...new Set(names)];
-}
-
-function normalizeBullet(s) {
-  return String(s || '')
-    .toLowerCase()
-    .replace(/[\u2019']/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function truncateBullet(s, max = 92) {
-  const t = String(s || '').trim();
-  if (t.length <= max) return t;
-  return `${t.slice(0, max - 1)}…`;
-}
-
-function rankAndPickBullets(items, topN = 4) {
-  // items: [{ text, idx }]
-  const map = {};
-  items.forEach(({ text, idx }) => {
-    const v = String(text || '').trim();
-    if (!v) return;
-    const key = normalizeBullet(v);
-    if (!key) return;
-    if (!map[key]) map[key] = { text: v, count: 0, minIdx: idx };
-    map[key].count += 1;
-    map[key].minIdx = Math.min(map[key].minIdx, idx);
-  });
-
-  return Object.values(map)
-    .sort((a, b) => (b.count - a.count) || (a.minIdx - b.minIdx))
-    .slice(0, topN)
-    .map((x) => truncateBullet(x.text));
-}
-
-function buildCheatNotesFromNotion(notionPayload) {
-  const sessions = notionPayload?.sessions || [];
-  if (!sessions.length) return [];
-
-  const sorted = [...sessions].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  const agg = {}; // name -> { samples, goodItems: [{text,idx}], badItems: [{text,idx}] }
-
-  sorted.forEach((s, idx) => {
-    const context = s.context || s.label || '';
-    const friends = extractFriendsFromContext(context);
-    if (!friends.length) return;
-
-    const good = Array.isArray(s.good) ? s.good : [];
-    const bad = Array.isArray(s.bad) ? s.bad : [];
-
-    friends.forEach((name) => {
-      if (!agg[name]) agg[name] = { samples: 0, goodItems: [], badItems: [] };
-      agg[name].samples += 1;
-      good.forEach((t) => agg[name].goodItems.push({ text: t, idx }));
-      bad.forEach((t) => agg[name].badItems.push({ text: t, idx }));
-    });
-  });
-
-  const out = Object.entries(agg).map(([name, v]) => ({
-    name,
-    samples: v.samples,
-    goodAt: rankAndPickBullets(v.goodItems, 4),
-    badAt: rankAndPickBullets(v.badItems, 4),
-  }));
-
-  // Sort by evidence first (more samples), then by note count
-  out.sort((a, b) => (b.samples - a.samples) || (b.goodAt.length + b.badAt.length - (a.goodAt.length + a.badAt.length)));
-  return out;
-}
-
 function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionError }) {
   const notionPage = window.NOTION_INSIGHTS_PAGE;
 
-  const notes = useM1(() => buildCheatNotesFromNotion(notionPayload), [notionPayload]);
+  const cheat = useM1(
+    () => (notionPayload && window.buildCheatNotesFromNotion
+      ? window.buildCheatNotesFromNotion(notionPayload)
+      : { players: [], generatedAt: null, source: null, playerCount: 0 }),
+    [notionPayload],
+  );
+
+  const refreshedLabel = cheat.generatedAt
+    ? new Date(cheat.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : null;
 
   const handleRefresh = async () => {
     if (syncFromNotion) await syncFromNotion();
@@ -549,81 +452,89 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
     <>
       <div className="page-head">
         <div>
-          <div className="kicker">Match prep notebook</div>
+          <div className="kicker">
+            {cheat.playerCount || 0} players · synced from Notion
+          </div>
           <h1>Game <em>cheat note.</em></h1>
         </div>
-        <div className="meta">Auto-summarized per friend from your Notion notes</div>
-      </div>
-
-      <div className="notion-sync-bar mb-28">
-        <div className="notion-sync-copy">
-          <div className="mono-small">Game cheat note</div>
-          <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-            Extracted from your daily reflections (“Good” + “Bad”) and grouped by the people in each session context.
-          </p>
-          {notionError && <span className="notion-new-badge">{notionError}</span>}
-        </div>
-        <div className="row" style={{ gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>
-          <button type="button" className="btn-primary" onClick={handleRefresh} disabled={notionLoading}>
-            {notionLoading && <span className="spinner"></span>}
-            {notionLoading ? 'Syncing…' : 'Refresh from Notion'}
-          </button>
+        <div className="meta">
+          {refreshedLabel && <>Updated · {refreshedLabel}<br /></>}
           {notionPage && (
-            <a
-              className="btn-ghost notion-open"
-              href={notionPage}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Open Notion page ↗
+            <a href={notionPage} target="_blank" rel="noopener noreferrer" className="notion-link">
+              Tennis practice insights ↗
             </a>
           )}
         </div>
       </div>
 
-      <div className="game-cheat-list">
-        {notionLoading ? (
-          <div className="card">
-            <p className="muted" style={{ margin: 0 }}>
-              Syncing your game cheat note…
-            </p>
-          </div>
-        ) : notes.length === 0 ? (
-          <div className="card">
-            <p className="muted" style={{ margin: 0 }}>
-              No friend-specific context found yet. Add names in your session context like “practice w/ Kimo” or “double w/ Anna, Nydia…”.
-            </p>
-          </div>
-        ) : (
-          notes.map((f) => (
-            <section key={f.name} className="card game-cheat-card">
-              <div className="game-cheat-friend-header">
-                <div className="game-cheat-friend-name">{f.name}</div>
-                <div className="mono-small">{f.samples} sessions</div>
-              </div>
-
-              <div className="game-cheat-summary-grid">
-                <div className="game-cheat-summary-col">
-                  <div className="mono-small">Good at</div>
-                  <ul className="game-cheat-bullets">
-                    {f.goodAt.length ? f.goodAt.map((t, i) => <li key={i}>{t}</li>) : (
-                      <li className="muted" style={{ listStyle: 'none' }}>No good notes yet.</li>
-                    )}
-                  </ul>
-                </div>
-                <div className="game-cheat-summary-col">
-                  <div className="mono-small">Bad at</div>
-                  <ul className="game-cheat-bullets">
-                    {f.badAt.length ? f.badAt.map((t, i) => <li key={i}>{t}</li>) : (
-                      <li className="muted" style={{ listStyle: 'none' }}>No bad notes yet.</li>
-                    )}
-                  </ul>
-                </div>
-              </div>
-            </section>
-          ))
-        )}
+      <div className="notion-sync-bar mb-28">
+        <div className="notion-sync-copy">
+          <div className="mono-small">Summarized match prep</div>
+          <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+            Pulled from weekly “Analysis on other Player’s style” in your Notion insights — Good and Loophole notes, condensed per friend.
+          </p>
+          {notionError && <span className="notion-new-badge">{notionError}</span>}
+        </div>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={handleRefresh}
+          disabled={notionLoading}
+          style={{ whiteSpace: 'nowrap' }}
+        >
+          {notionLoading && <span className="spinner"></span>}
+          Refresh from Notion
+        </button>
       </div>
+
+      {notionLoading && !cheat.players.length ? (
+        <div className="card mb-28">
+          <p className="muted" style={{ margin: 0 }}>Loading player cheat notes from Notion…</p>
+        </div>
+      ) : (
+        <div className="game-cheat-list">
+          {cheat.players.length === 0 ? (
+            <div className="card">
+              <p className="muted" style={{ margin: 0 }}>
+                No player analysis found yet. Add “Analysis on other Player’s style” under Weekly insights in Notion, then refresh.
+              </p>
+            </div>
+          ) : (
+            cheat.players.map((player) => (
+              <section key={player.name} className="card game-cheat-card">
+                <div className="game-cheat-head">
+                  <h2 className="game-cheat-name">{player.name}</h2>
+                </div>
+                {player.summary && (
+                  <p className="game-cheat-summary muted">{player.summary}</p>
+                )}
+                <div className="game-cheat-grid">
+                  <div className="game-cheat-col">
+                    <span className="mono-small">Good at</span>
+                    <ul className="game-cheat-bullets">
+                      {player.goodAt.map((line) => (
+                        <li key={`${player.name}-g-${line}`}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="game-cheat-col">
+                    <span className="mono-small">Exploit (loophole)</span>
+                    <ul className="game-cheat-bullets">
+                      {player.badAt.length ? (
+                        player.badAt.map((line) => (
+                          <li key={`${player.name}-b-${line}`}>{line}</li>
+                        ))
+                      ) : (
+                        <li className="muted">No clear leaks logged yet.</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </section>
+            ))
+          )}
+        </div>
+      )}
     </>
   );
 }
