@@ -12,7 +12,7 @@ function DonutChart({ value, max, centerLabel }) {
     <svg width="112" height="112" viewBox="0 0 112 112">
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--surface-2)" strokeWidth="10"/>
       <circle cx={cx} cy={cy} r={r} fill="none"
-        stroke="var(--accent)" strokeWidth="10"
+        stroke="var(--chart-1)" strokeWidth="10"
         strokeDasharray={`${dash} ${circ}`}
         strokeLinecap="round"
         transform={`rotate(-90 ${cx} ${cy})`}
@@ -50,15 +50,15 @@ function ActivityChart({ entries }) {
     <svg width="100%" viewBox={`0 0 ${W} ${H + 20}`} style={{overflow:'visible', display:'block'}}>
       <defs>
         <linearGradient id="actGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.25"/>
-          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0"/>
+          <stop offset="0%" stopColor="var(--chart-1)" stopOpacity="0.25"/>
+          <stop offset="100%" stopColor="var(--chart-1)" stopOpacity="0"/>
         </linearGradient>
       </defs>
       <polygon points={area} fill="url(#actGrad)"/>
-      <polyline points={polyline} fill="none" stroke="var(--accent)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+      <polyline points={polyline} fill="none" stroke="var(--chart-1)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
       {pts.map((p, i) => (
         <g key={i}>
-          {p.mins > 0 && <circle cx={p.x} cy={p.y} r={3.5} fill="var(--accent)" stroke="var(--surface)" strokeWidth="1.5"/>}
+          {p.mins > 0 && <circle cx={p.x} cy={p.y} r={3.5} fill="var(--chart-1)" stroke="var(--surface)" strokeWidth="1.5"/>}
           <text x={p.x} y={H + 16} textAnchor="middle" fill="var(--ink-3)" fontSize="8" fontFamily="var(--mono)" letterSpacing="0.6">{p.label.toUpperCase()}</text>
         </g>
       ))}
@@ -91,11 +91,9 @@ function Today({ state, setRoute, syncFromNotion }) {
     state.entries.forEach((e) => (e.tags || []).forEach((k) => { counts[k] = (counts[k] || 0) + 1; }));
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4);
     const max = sorted[0]?.[1] || 1;
-    const COLORS = ['var(--accent)', 'var(--teal)', 'var(--orange)', 'var(--brand-primary-300)'];
-    return sorted.map(([k, count], i) => ({
+    return sorted.map(([k, count]) => ({
       label: (PRACTICE_TAGS.find((p) => p.k === k) || {}).l || k,
       pct: Math.round((count / max) * 100),
-      color: COLORS[i],
     }));
   }, [state.entries]);
 
@@ -118,6 +116,42 @@ function Today({ state, setRoute, syncFromNotion }) {
               {streak > 0 ? `${streak}-day streak` : 'Play today to extend streak'}<br />
               {totalSessions} sessions from Notion
             </>
+          )}
+        </div>
+      </div>
+
+      {/* AI Focus Brief */}
+      <div className="focus-card mb-28">
+        <div className="ball-deco" aria-hidden="true"></div>
+        <div className="kicker">Today&apos;s Focus · From Notion</div>
+        <h2>
+          {state.notionLoading
+            ? 'Syncing your brief…'
+            : `"${focus?.headline || focus?.cues?.[0] || 'Stay loose and present'}"`}
+        </h2>
+        <div className="focus-body">
+          {state.notionError ? (
+            <div>{state.notionError}</div>
+          ) : focus ? (
+            <>
+              <div>{focus.body}</div>
+              {focus.cues?.length > 0 && (
+                <ul>{focus.cues.slice(0, 4).map((c, i) => <li key={i}>{c}</li>)}</ul>
+              )}
+            </>
+          ) : (
+            <div>Your focus brief loads from weekly priorities and the latest daily reflection in Notion.</div>
+          )}
+        </div>
+        <div className="focus-cta">
+          <button className="btn-primary" onClick={syncFromNotion} disabled={state.notionLoading}>
+            {state.notionLoading && <span className="spinner"></span>}
+            {state.notionLoading ? 'Syncing…' : 'Refresh from Notion'}
+          </button>
+          {notionPage && (
+            <a className="btn-ghost notion-open" href={notionPage} target="_blank" rel="noopener noreferrer">
+              Open Notion page ↗
+            </a>
           )}
         </div>
       </div>
@@ -149,13 +183,13 @@ function Today({ state, setRoute, syncFromNotion }) {
             <div style={{color:'var(--ink-3)',fontStyle:'italic',fontSize:13}}>Add daily reflections in Notion to populate skills.</div>
           ) : (
             topSkills.map((s, i) => (
-              <div key={i} className="skill-row">
+              <div key={i} className={`skill-row skill-series skill-series-${i}`}>
                 <div className="skill-left">
-                  <div className="skill-dot" style={{background: s.color}}></div>
+                  <div className="skill-dot"></div>
                   <div className="skill-name">{s.label}</div>
                 </div>
                 <div className="skill-bar-wrap">
-                  <div className="skill-bar" style={{width: s.pct + '%', background: s.color}}></div>
+                  <div className="skill-bar" style={{ width: s.pct + '%' }}></div>
                 </div>
                 <div className="skill-pct">{s.pct}%</div>
               </div>
@@ -203,42 +237,6 @@ function Today({ state, setRoute, syncFromNotion }) {
               style={{marginTop:12,display:'inline-block',color:'var(--accent)',fontSize:12,fontFamily:'var(--mono)',letterSpacing:'0.1em',textTransform:'uppercase',textDecoration:'none'}}
             >
               Open Notion journal ↗
-            </a>
-          )}
-        </div>
-      </div>
-
-      {/* AI Focus Brief */}
-      <div className="focus-card mb-28">
-        <div className="ball-deco" aria-hidden="true"></div>
-        <div className="kicker">Today&apos;s Focus · From Notion</div>
-        <h2>
-          {state.notionLoading
-            ? 'Syncing your brief…'
-            : `"${focus?.headline || focus?.cues?.[0] || 'Stay loose and present'}"`}
-        </h2>
-        <div className="focus-body">
-          {state.notionError ? (
-            <div>{state.notionError}</div>
-          ) : focus ? (
-            <>
-              <div>{focus.body}</div>
-              {focus.cues?.length > 0 && (
-                <ul>{focus.cues.slice(0, 4).map((c, i) => <li key={i}>{c}</li>)}</ul>
-              )}
-            </>
-          ) : (
-            <div>Your focus brief loads from weekly priorities and the latest daily reflection in Notion.</div>
-          )}
-        </div>
-        <div className="focus-cta">
-          <button className="btn-primary" onClick={syncFromNotion} disabled={state.notionLoading}>
-            {state.notionLoading && <span className="spinner"></span>}
-            {state.notionLoading ? 'Syncing…' : 'Refresh from Notion'}
-          </button>
-          {notionPage && (
-            <a className="btn-ghost notion-open" href={notionPage} target="_blank" rel="noopener noreferrer">
-              Open Notion page ↗
             </a>
           )}
         </div>
@@ -915,6 +913,348 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
   );
 }
 
+// Glossary excerpts from USTA “Tennis Terms & Words to Know” (national tips & instruction).
+const USTA_TERMS_CARD_URL = 'https://www.usta.com/en/home/improve/tips-and-instruction/national/tennis-terms-definitions.html';
+const USTA_TERMS = [
+  ['ACE', 'A ball that is served so well the opponent cannot touch it with their racquet.'],
+  ['AD', 'Short for Advantage — the point scored after deuce. If the serving side scores, it is Ad-in; if the receiving side scores, Ad-out.'],
+  ['ALL', 'An even score (e.g. 30-all, 3-all).'],
+  ['ALLEY', 'The area between the singles and doubles sideline — the singles court widens for doubles by adding the alley.'],
+  ['APPROACH', 'The shot hit just before a player moves forward to the net.'],
+  ['BACKCOURT', 'The area around the baseline.'],
+  ['BACKHAND', 'Stroke to return balls on the non-dominant side — one- or two-handed.'],
+  ['BASELINE', 'The court’s back line, parallel to the net.'],
+  ['DEUCE', 'A score of 40-all — tied with each side having won at least three points in the game.'],
+  ['DEUCE COURT', 'The right side of the court; on deuce, the serve starts from here.'],
+  ['DOUBLE FAULT', 'Fault on both service attempts — server loses the point.'],
+  ['DOUBLES', 'Four players, two per team.'],
+  ['DROP SHOT', 'Soft shot with plenty of backspin that lands barely past the net.'],
+  ['FAULT', 'A serve that does not land in the correct service box.'],
+  ['FOOT FAULT', 'Fault for stepping on or over the baseline during the serve motion.'],
+  ['FOREHAND', 'Stroke on the dominant side of the body, usually one-handed.'],
+  ['GAME', 'Unit of a set: first to four points and ahead by two, or two straight points after deuce.'],
+  ['GROUND STROKE', 'A stroke after the ball has bounced — forehand or backhand.'],
+  ['HALF-VOLLEY', 'Hitting the ball right after it touches the ground — typically a low, short hop.'],
+  ['LET', 'Point replayed because of interference, or a serve that clips the net but is otherwise good (serve again).'],
+  ['LOB', 'High shot, often over an opponent at the net.'],
+  ['MATCH', 'The full contest, often best two of three sets.'],
+  ['NO-AD', 'First to four points wins the game; at 3-all, the next point decides it.'],
+  ["NO MAN'S LAND", 'Slang for the area between the service line and baseline.'],
+  ['OUT', 'Ball landing outside the court lines.'],
+  ['OVERHEAD', 'Stroke made above the head, similar in shape to a serve.'],
+  ['POACH', 'In doubles, intercepting at the net a ball your partner would normally take.'],
+  ['POINT', 'The smallest unit of scoring.'],
+  ['RALLY', 'A series of successful shots in a point; also casual warm-up hitting.'],
+  ['RECEIVER', 'The player returning serve (returner).'],
+  ['SERVE', 'Putting the ball into play to start each point.'],
+  ['SERVER', 'The player who serves.'],
+  ['SERVICE BREAK', 'A game won by the returner against serve.'],
+  ['SET', 'Won by reaching six games with a two-game lead, or 6-plus with a tiebreak at 6-all (format-dependent).'],
+  ['SLICE', 'Shot with heavy backspin, high-to-low racquet path.'],
+  ['SMASH', 'Aggressive overhead.'],
+  ['SPIN', 'Rotation on the ball (e.g. topspin or slice).'],
+  ['STROKE', 'Contact with the racquet.'],
+  ['TIEBREAK', 'Played at 6-all in traditional formats to settle the set.'],
+  ['TOPSPIN', 'Forward spin from a low-to-high swing.'],
+  ['VOLLEY', 'Hit before the bounce at the net during a point.'],
+];
+
+const TOOLKIT_LAYOUT_STORAGE = 'ace-toolkit-layout';
+const TERMS_LAYOUT_STORAGE = 'ace-toolkit-terms-layout';
+const TOOLKIT_CARD_IDS = ['timer', 'conditions', 'gear', 'terms'];
+const DEFAULT_CARD_H = 280;
+const EXPANDED_TERMS_H = 480;
+const TERMS_GRID_H = 6;
+const TERMS_GRID_H_EXPANDED = 10;
+const DEFAULT_GRID_H = 6;
+const TGL = typeof window !== 'undefined' ? window.ToolkitGridLayout : null;
+
+const TOOLKIT_CARD_TITLES = {
+  timer: 'Drill Timer',
+  conditions: 'Court Conditions',
+  gear: 'Gear Reminders',
+  terms: 'Tennis terms & words',
+};
+
+function getToolkitGridConfig(containerWidth) {
+  const isMobile = containerWidth <= 920;
+  return {
+    cols: isMobile ? 6 : 12,
+    rowHeight: 30,
+    margin: [24, 24],
+    containerPadding: [0, 0],
+  };
+}
+
+function makeDefaultItems(cols) {
+  if (cols <= 6) {
+    return [
+      { i: 'timer', x: 0, y: 0, w: 6, h: DEFAULT_GRID_H },
+      { i: 'conditions', x: 0, y: DEFAULT_GRID_H, w: 6, h: DEFAULT_GRID_H },
+      { i: 'gear', x: 0, y: DEFAULT_GRID_H * 2, w: 6, h: DEFAULT_GRID_H },
+      { i: 'terms', x: 0, y: DEFAULT_GRID_H * 3, w: 6, h: TERMS_GRID_H, expanded: false },
+    ];
+  }
+  return [
+    { i: 'timer', x: 0, y: 0, w: 6, h: DEFAULT_GRID_H },
+    { i: 'conditions', x: 6, y: 0, w: 6, h: DEFAULT_GRID_H },
+    { i: 'gear', x: 0, y: DEFAULT_GRID_H, w: 6, h: DEFAULT_GRID_H },
+    { i: 'terms', x: 6, y: DEFAULT_GRID_H, w: 6, h: TERMS_GRID_H, expanded: false },
+  ];
+}
+
+function normalizeToolkitItem(raw, cols) {
+  const item = {
+    i: raw.i,
+    x: typeof raw.x === 'number' ? raw.x : 0,
+    y: typeof raw.y === 'number' ? raw.y : 0,
+    w: TGL ? TGL.clamp(typeof raw.w === 'number' ? raw.w : 6, 1, cols) : 6,
+    h: TGL ? TGL.clamp(typeof raw.h === 'number' ? raw.h : DEFAULT_GRID_H, 1, 24) : DEFAULT_GRID_H,
+  };
+  if (raw.i === 'terms') {
+    item.expanded = !!raw.expanded;
+    if (item.expanded && item.h <= TERMS_GRID_H) item.h = TERMS_GRID_H_EXPANDED;
+  }
+  item.x = TGL ? TGL.clamp(item.x, 0, Math.max(0, cols - item.w)) : item.x;
+  item.y = Math.max(0, item.y);
+  return item;
+}
+
+function makeDefaultToolkitLayout(containerWidth) {
+  const cols = containerWidth <= 920 ? 6 : 12;
+  return { mode: 'grid', items: makeDefaultItems(cols) };
+}
+
+function loadToolkitLayout() {
+  const fallbackWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
+  try {
+    const raw = localStorage.getItem(TOOLKIT_LAYOUT_STORAGE);
+    if (raw) {
+      const j = JSON.parse(raw);
+      if (Array.isArray(j.items) && j.items.length === 4
+        && TOOLKIT_CARD_IDS.every((id) => j.items.some((it) => it.i === id))) {
+        const cols = fallbackWidth <= 920 ? 6 : 12;
+        const items = TOOLKIT_CARD_IDS.map((id) => {
+          const found = j.items.find((it) => it.i === id);
+          return normalizeToolkitItem(found || { i: id, x: 0, y: 0, w: 6, h: DEFAULT_GRID_H }, cols);
+        });
+        return { mode: j.mode === 'dashboard' ? 'dashboard' : 'grid', items };
+      }
+      if ((j.mode === 'dashboard' || j.mode === 'grid') && j.cards
+        && TOOLKIT_CARD_IDS.every((id) => j.cards[id])) {
+        const termsCard = j.cards.terms || {};
+        const cols = fallbackWidth <= 920 ? 6 : 12;
+        const items = makeDefaultItems(cols);
+        const termsItem = items.find((it) => it.i === 'terms');
+        if (termsItem && termsCard.expanded) {
+          termsItem.expanded = true;
+          termsItem.h = TERMS_GRID_H_EXPANDED;
+        }
+        return { mode: j.mode === 'dashboard' ? 'dashboard' : 'grid', items };
+      }
+      if (Array.isArray(j.order) && j.order.length === 4 && j.sizes) {
+        const cols = fallbackWidth <= 920 ? 6 : 12;
+        const items = makeDefaultItems(cols);
+        const termsItem = items.find((it) => it.i === 'terms');
+        const s = j.sizes.terms || {};
+        if (termsItem && typeof s.minHeight === 'number' && s.minHeight > 300) {
+          termsItem.expanded = true;
+          termsItem.h = TERMS_GRID_H_EXPANDED;
+        }
+        return { mode: 'grid', items };
+      }
+    }
+    const oldRaw = localStorage.getItem(TERMS_LAYOUT_STORAGE);
+    if (oldRaw) {
+      const old = JSON.parse(oldRaw);
+      if (typeof old.h === 'number') {
+        const layout = makeDefaultToolkitLayout(fallbackWidth);
+        const termsItem = layout.items.find((it) => it.i === 'terms');
+        if (termsItem && old.h > 300) {
+          termsItem.expanded = true;
+          termsItem.h = TERMS_GRID_H_EXPANDED;
+        }
+        return layout;
+      }
+    }
+  } catch (e) { /* keep default */ }
+  return makeDefaultToolkitLayout(fallbackWidth);
+}
+
+function captureGridAsDashboardItems(wrapEl, layout, config) {
+  if (!TGL || !wrapEl) return layout;
+  const wrapRect = wrapEl.getBoundingClientRect();
+  const items = layout.items.map((item) => {
+    const el = wrapEl.querySelector(`[data-toolkit-id="${item.i}"]`);
+    if (!el) return { ...item };
+    const r = el.getBoundingClientRect();
+    const grid = TGL.pixelsToGridItem(r, wrapRect, config);
+    return { ...item, ...grid };
+  });
+  return { ...layout, mode: 'dashboard', items: TGL.compactVertical(items, config.cols) };
+}
+
+function getItemById(items, id) {
+  return items.find((it) => it.i === id) || { i: id, x: 0, y: 0, w: 6, h: DEFAULT_GRID_H };
+}
+
+function getToolkitPanelHeight(id, item, mode) {
+  if (mode === 'grid') {
+    if (id === 'terms' && item.expanded) return EXPANDED_TERMS_H;
+    return DEFAULT_CARD_H;
+  }
+  return null;
+}
+
+function ToolkitPanel({
+  id,
+  title,
+  mode,
+  item,
+  pixelStyle,
+  isDragging,
+  showExpand,
+  expanded,
+  onDragStart,
+  onResizeStart,
+  onToggleExpand,
+  children,
+}) {
+  const gridHeight = getToolkitPanelHeight(id, item, mode);
+  const panelStyle = mode === 'dashboard' && pixelStyle
+    ? {
+        left: pixelStyle.left,
+        top: pixelStyle.top,
+        width: pixelStyle.width,
+        height: pixelStyle.height,
+      }
+    : { '--panel-min-h': `${gridHeight}px` };
+
+  return (
+    <div
+      data-toolkit-id={id}
+      className={`toolkit-panel card drag-handle${mode === 'dashboard' ? ' is-dashboard' : ''}${isDragging ? ' is-dragging' : ''}`}
+      style={panelStyle}
+      role="region"
+      aria-label={title}
+    >
+      <div
+        className="toolkit-panel-header"
+        onPointerDown={(ev) => onDragStart(id, ev)}
+        title="Drag to move"
+      >
+        <span className="toolkit-panel-title">{title}</span>
+        <div className="toolkit-panel-header-actions">
+          {showExpand && (
+            <button
+              type="button"
+              className="toolkit-panel-expand"
+              onPointerDown={(ev) => ev.stopPropagation()}
+              onClick={(ev) => { ev.stopPropagation(); onToggleExpand(id); }}
+              aria-label={expanded ? 'Collapse panel' : 'Expand panel'}
+            >
+              {expanded ? 'Collapse' : 'Expand'}
+            </button>
+          )}
+          <span className="toolkit-panel-grip" aria-hidden="true">⠿</span>
+        </div>
+      </div>
+      <div className="toolkit-panel-body">{children}</div>
+      <button
+        type="button"
+        className="toolkit-panel-resize"
+        onPointerDown={(ev) => onResizeStart(id, ev)}
+        aria-label="Resize panel"
+      />
+    </div>
+  );
+}
+
+function ToolkitTimerContent({ seconds, running, preset, setP, setRunning, setSeconds }) {
+  const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+  const ss = String(seconds % 60).padStart(2, '0');
+  return (
+    <div className="toolkit-timer-inner">
+      <div className="display">{mm}:{ss}</div>
+      <div className="preset-row">
+        {[
+          { l: '1 min', v: 60 },
+          { l: '2 min', v: 120 },
+          { l: '3 min', v: 180 },
+          { l: '5 min', v: 300 },
+          { l: '10 min', v: 600 },
+        ].map((p) => (
+          <button key={p.v} type="button" className={`preset ${preset === p.v ? 'active' : ''}`} onClick={() => setP(p.v)}>{p.l}</button>
+        ))}
+      </div>
+      <div className="controls">
+        <button type="button" className="btn-primary" onClick={() => setRunning((r) => !r)}>
+          {running ? 'Pause' : seconds === 0 ? 'Done' : 'Start'}
+        </button>
+        <button type="button" className="btn-secondary" onClick={() => { setSeconds(preset); setRunning(false); }}>Reset</button>
+      </div>
+    </div>
+  );
+}
+
+function ToolkitConditionsContent() {
+  return (
+    <>
+      <p className="muted" style={{ margin: '0 0 14px', fontSize: 13 }}>Quick reference for adjusting your game today.</p>
+      <div className="cond-grid">
+        <div className="cond-cell"><div className="v">68°F</div><div className="l">Temp</div></div>
+        <div className="cond-cell"><div className="v">42%</div><div className="l">Humidity</div></div>
+        <div className="cond-cell"><div className="v">8 mph</div><div className="l">Wind</div></div>
+        <div className="cond-cell"><div className="v">Med</div><div className="l">Sun</div></div>
+        <div className="cond-cell"><div className="v">Dry</div><div className="l">Court</div></div>
+        <div className="cond-cell"><div className="v">Good</div><div className="l">Bounce</div></div>
+      </div>
+      <div className="mono-small mt-12" style={{ lineHeight: 1.6 }}>
+        Cool & dry · Heavier balls<br />
+        Use more topspin · Aim deeper
+      </div>
+    </>
+  );
+}
+
+function ToolkitGearContent({ gear }) {
+  return (
+    <>
+      <p className="muted" style={{ margin: '0 0 14px', fontSize: 13 }}>What to keep an eye on so equipment doesn't fail you.</p>
+      <div className="gear-list">
+        {gear.map((g, i) => (
+          <div key={i} className="gear-item">
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{g.name}</div>
+              <div className="muted" style={{ fontSize: 12 }}>{g.detail}</div>
+            </div>
+            <div className="meta">{g.meta}</div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function ToolkitTermsContent() {
+  return (
+    <>
+      <p className="muted toolkit-terms-lede" style={{ margin: '0 0 10px', fontSize: 12, lineHeight: 1.5 }}>
+        Handy terminology for the court — definitions from{' '}
+        <a href={USTA_TERMS_CARD_URL} target="_blank" rel="noopener noreferrer">USTA · Tennis Terms & Words to Know</a>.
+      </p>
+      <dl className="toolkit-terms-list">
+        {USTA_TERMS.map(([term, def], i) => (
+          <div key={i} className="toolkit-terms-row">
+            <dt className="toolkit-terms-term">{term}</dt>
+            <dd className="toolkit-terms-def">{def}</dd>
+          </div>
+        ))}
+      </dl>
+    </>
+  );
+}
+
 // ============== TOOLKIT ==============
 function Toolkit() {
   const [seconds, setSeconds] = useS1(120);
@@ -922,9 +1262,65 @@ function Toolkit() {
   const [preset, setPreset] = useS1(120);
   const intervalRef = useR1(null);
 
+  const [layout, setLayout] = useS1(loadToolkitLayout);
+  const [draggingId, setDraggingId] = useS1(null);
+  const [dropSlot, setDropSlot] = useS1(null);
+  const dropSlotRef = useR1(null);
+  const [containerWidth, setContainerWidth] = useS1(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+  const layoutRef = useR1(layout);
+  const wrapRef = useR1(null);
+  const dashboardRef = useR1(null);
+
+  useE1(() => { layoutRef.current = layout; }, [layout]);
+  useE1(() => { dropSlotRef.current = dropSlot; }, [dropSlot]);
+
+  const getDashboardRect = React.useCallback(() => {
+    const el = dashboardRef.current || wrapRef.current;
+    return el ? el.getBoundingClientRect() : null;
+  }, []);
+
+  const gridConfig = useM1(() => getToolkitGridConfig(containerWidth), [containerWidth]);
+
+  useE1(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => setContainerWidth(el.clientWidth));
+    ro.observe(el);
+    setContainerWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  const persistLayout = React.useCallback((next) => {
+    try {
+      localStorage.setItem(TOOLKIT_LAYOUT_STORAGE, JSON.stringify(next));
+    } catch (e) { /* ignore */ }
+  }, []);
+
+  const updateLayout = React.useCallback((updater) => {
+    setLayout((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      layoutRef.current = next;
+      persistLayout(next);
+      return next;
+    });
+  }, [persistLayout]);
+
+  const ensureDashboardMode = React.useCallback(() => {
+    if (layoutRef.current.mode === 'dashboard') return layoutRef.current;
+    const wrap = wrapRef.current;
+    if (!wrap || !TGL) return layoutRef.current;
+    const next = captureGridAsDashboardItems(wrap, layoutRef.current, gridConfig);
+    layoutRef.current = next;
+    setLayout(next);
+    persistLayout(next);
+    return next;
+  }, [gridConfig, persistLayout]);
+
   useE1(() => {
     if (running && seconds > 0) {
-      intervalRef.current = setInterval(() => setSeconds(s => s - 1), 1000);
+      intervalRef.current = setInterval(() => setSeconds((s) => s - 1), 1000);
     } else if (seconds === 0) {
       setRunning(false);
     }
@@ -932,8 +1328,6 @@ function Toolkit() {
   }, [running, seconds]);
 
   const setP = (s) => { setPreset(s); setSeconds(s); setRunning(false); };
-  const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
-  const ss = String(seconds % 60).padStart(2, '0');
 
   const gear = [
     { name: 'Racquet', detail: 'Restring every 40 hours · or # of weeks = string tension drop', meta: 'String log' },
@@ -943,6 +1337,176 @@ function Toolkit() {
     { name: 'Water + electrolytes', detail: '600ml per hour minimum on hot courts', meta: '2hr cap' },
   ];
 
+  const dashboardLayout = useM1(() => {
+    if (!TGL || layout.mode !== 'dashboard') return layout.items;
+    if (!draggingId || !dropSlot) return layout.items;
+    return TGL.applyDropSlot(layout.items, draggingId, dropSlot);
+  }, [layout.mode, layout.items, draggingId, dropSlot]);
+
+  const canvasHeight = useM1(() => {
+    if (!TGL || layout.mode !== 'dashboard') return null;
+    const preview = draggingId && dropSlot
+      ? TGL.applyDropSlot(layout.items, draggingId, dropSlot)
+      : layout.items;
+    return TGL.calcContainerHeight(preview, gridConfig);
+  }, [layout.mode, layout.items, draggingId, dropSlot, gridConfig]);
+
+  const attachDrag = React.useCallback((cardId, ev) => {
+    if (!TGL) return;
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    ev.preventDefault();
+    const headerEl = ev.currentTarget;
+    if (headerEl.setPointerCapture) headerEl.setPointerCapture(ev.pointerId);
+
+    let current = layoutRef.current;
+    if (current.mode === 'grid') {
+      current = ensureDashboardMode();
+    }
+
+    const containerRect = getDashboardRect();
+    const dragItem = getItemById(current.items, cardId);
+    const initialSlot = { i: cardId, x: dragItem.x, y: dragItem.y, w: dragItem.w, h: dragItem.h };
+
+    setDraggingId(cardId);
+    setDropSlot(initialSlot);
+    dropSlotRef.current = initialSlot;
+
+    const onMove = (e) => {
+      const rect = getDashboardRect();
+      if (!rect) return;
+      const slot = TGL.getDropSlot(layoutRef.current.items, cardId, e.clientX, e.clientY, rect, gridConfig);
+      if (slot) {
+        setDropSlot(slot);
+        dropSlotRef.current = slot;
+      }
+    };
+
+    const onUp = () => {
+      if (headerEl.releasePointerCapture) headerEl.releasePointerCapture(ev.pointerId);
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+
+      const slot = dropSlotRef.current || initialSlot;
+      setLayout((prev) => {
+        const placed = TGL.applyDropSlot(prev.items, cardId, slot);
+        const compacted = TGL.compactVertical(placed, gridConfig.cols);
+        const next = { ...prev, mode: 'dashboard', items: compacted };
+        layoutRef.current = next;
+        persistLayout(next);
+        return next;
+      });
+
+      setDraggingId(null);
+      setDropSlot(null);
+      dropSlotRef.current = null;
+    };
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+  }, [ensureDashboardMode, getDashboardRect, gridConfig, persistLayout]);
+
+  const attachResize = React.useCallback((cardId, ev) => {
+    if (!TGL) return;
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const el = ev.currentTarget;
+    if (el.setPointerCapture) el.setPointerCapture(ev.pointerId);
+
+    if (layoutRef.current.mode === 'grid') {
+      ensureDashboardMode();
+    }
+
+    const startItem = getItemById(layoutRef.current.items, cardId);
+    const startX = ev.clientX;
+    const startY = ev.clientY;
+    const startW = startItem.w;
+    const startH = startItem.h;
+
+    const onMove = (e) => {
+      const delta = TGL.pixelsDeltaToGrid(
+        e.clientX - startX,
+        e.clientY - startY,
+        gridConfig,
+        containerWidth
+      );
+      setLayout((prev) => {
+        const resized = TGL.resizeItemGrid(
+          prev.items,
+          cardId,
+          startW + delta.dw,
+          startH + delta.dh,
+          gridConfig.cols
+        );
+        const next = { ...prev, mode: 'dashboard', items: resized };
+        layoutRef.current = next;
+        return next;
+      });
+    };
+
+    const onUp = () => {
+      if (el.releasePointerCapture) el.releasePointerCapture(ev.pointerId);
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+      setLayout((prev) => {
+        const compacted = TGL.compactVertical(prev.items, gridConfig.cols);
+        const next = { ...prev, items: compacted };
+        layoutRef.current = next;
+        persistLayout(next);
+        return next;
+      });
+    };
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+  }, [containerWidth, ensureDashboardMode, gridConfig, persistLayout]);
+
+  const toggleExpand = React.useCallback((cardId) => {
+    updateLayout((prev) => {
+      const items = prev.items.map((item) => {
+        if (item.i !== cardId) return item;
+        const expanded = !item.expanded;
+        const h = expanded ? TERMS_GRID_H_EXPANDED : TERMS_GRID_H;
+        return { ...item, expanded, h };
+      });
+      const compacted = TGL ? TGL.compactVertical(items, gridConfig.cols) : items;
+      return { ...prev, items: compacted };
+    });
+  }, [gridConfig.cols, updateLayout]);
+
+  const renderCardContent = (id) => {
+    switch (id) {
+      case 'timer':
+        return (
+          <ToolkitTimerContent
+            seconds={seconds}
+            running={running}
+            preset={preset}
+            setP={setP}
+            setRunning={setRunning}
+            setSeconds={setSeconds}
+          />
+        );
+      case 'conditions':
+        return <ToolkitConditionsContent />;
+      case 'gear':
+        return <ToolkitGearContent gear={gear} />;
+      case 'terms':
+        return <ToolkitTermsContent />;
+      default:
+        return null;
+    }
+  };
+
+  const placeholderStyle = useM1(() => {
+    if (!TGL || !dropSlot || layout.mode !== 'dashboard') return null;
+    return TGL.calcPosition(dropSlot, gridConfig, containerWidth);
+  }, [dropSlot, layout.mode, gridConfig, containerWidth]);
+
   return (
     <>
       <div className="page-head">
@@ -950,85 +1514,53 @@ function Toolkit() {
           <div className="kicker">Toolkit · Bonus utilities</div>
           <h1>Everything <em>else</em> you need.</h1>
         </div>
-        <div className="meta">Drill timer<br />Gear · Conditions</div>
+        <div className="meta">Drag to rearrange · Expand terms for full glossary</div>
       </div>
 
-      <div className="toolkit-grid">
-        <div className="timer">
-          <div className="kicker">Drill Timer</div>
-          <div className="display">{mm}:{ss}</div>
-          <div className="preset-row">
-            {[
-              { l: '1 min', v: 60 },
-              { l: '2 min', v: 120 },
-              { l: '3 min', v: 180 },
-              { l: '5 min', v: 300 },
-              { l: '10 min', v: 600 },
-            ].map(p => (
-              <button key={p.v} className={`preset ${preset === p.v ? 'active' : ''}`} onClick={() => setP(p.v)}>{p.l}</button>
-            ))}
-          </div>
-          <div className="controls">
-            <button type="button" className="btn-primary" onClick={() => setRunning(r => !r)}>
-              {running ? 'Pause' : seconds === 0 ? 'Done' : 'Start'}
-            </button>
-            <button type="button" className="btn-secondary" onClick={() => { setSeconds(preset); setRunning(false); }}>Reset</button>
-          </div>
-        </div>
-
-        <div className="card">
-          <h3>Court Conditions</h3>
-          <p className="muted" style={{margin: '0 0 14px', fontSize: 13}}>Quick reference for adjusting your game today.</p>
-          <div className="cond-grid">
-            <div className="cond-cell"><div className="v">68°F</div><div className="l">Temp</div></div>
-            <div className="cond-cell"><div className="v">42%</div><div className="l">Humidity</div></div>
-            <div className="cond-cell"><div className="v">8 mph</div><div className="l">Wind</div></div>
-            <div className="cond-cell"><div className="v">Med</div><div className="l">Sun</div></div>
-            <div className="cond-cell"><div className="v">Dry</div><div className="l">Court</div></div>
-            <div className="cond-cell"><div className="v">Good</div><div className="l">Bounce</div></div>
-          </div>
-          <div className="mono-small mt-12" style={{lineHeight: 1.6}}>
-            Cool & dry · Heavier balls<br />
-            Use more topspin · Aim deeper
-          </div>
-        </div>
-
-        <div className="card">
-          <h3>Gear Reminders</h3>
-          <p className="muted" style={{margin: '0 0 14px', fontSize: 13}}>What to keep an eye on so equipment doesn't fail you.</p>
-          <div className="gear-list">
-            {gear.map((g, i) => (
-              <div key={i} className="gear-item">
-                <div>
-                  <div style={{fontWeight: 600, fontSize: 14}}>{g.name}</div>
-                  <div className="muted" style={{fontSize: 12}}>{g.detail}</div>
-                </div>
-                <div className="meta">{g.meta}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card">
-          <h3>Scoring Quick Reference</h3>
-          <p className="muted" style={{margin: '0 0 14px', fontSize: 13}}>For when you forget mid-rally.</p>
-          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10}}>
-            {[
-              ['0 points', 'Love'],
-              ['1 point', '15'],
-              ['2 points', '30'],
-              ['3 points', '40'],
-              ['3-3', 'Deuce'],
-              ['After deuce', 'Ad-in / Ad-out'],
-              ['6 games', 'Set (win by 2)'],
-              ['6-6', 'Tiebreak to 7'],
-            ].map(([k, v], i) => (
-              <div key={i} style={{display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--chalk)', borderRadius: 6}}>
-                <span className="mono-small">{k}</span>
-                <span style={{fontFamily: 'var(--serif)', fontSize: 16}}>{v}</span>
-              </div>
-            ))}
-          </div>
+      <div
+        ref={wrapRef}
+        className={`toolkit-grid-wrap${layout.mode === 'dashboard' ? ' is-dashboard-mode' : ''}${draggingId ? ' is-dragging-active' : ''}`}
+      >
+        <div
+          ref={dashboardRef}
+          className={layout.mode === 'dashboard' ? 'toolkit-dashboard' : 'toolkit-grid'}
+          style={layout.mode === 'dashboard' && canvasHeight ? { height: canvasHeight } : undefined}
+        >
+          {layout.mode === 'dashboard' && placeholderStyle && draggingId && (
+            <div
+              className="toolkit-panel-placeholder"
+              style={{
+                left: placeholderStyle.left,
+                top: placeholderStyle.top,
+                width: placeholderStyle.width,
+                height: placeholderStyle.height,
+              }}
+              aria-hidden="true"
+            />
+          )}
+          {(layout.mode === 'dashboard' ? dashboardLayout : layout.items).map((item) => {
+            const pixelStyle = layout.mode === 'dashboard' && TGL
+              ? TGL.calcPosition(item, gridConfig, containerWidth)
+              : null;
+            return (
+              <ToolkitPanel
+                key={item.i}
+                id={item.i}
+                title={TOOLKIT_CARD_TITLES[item.i]}
+                mode={layout.mode}
+                item={item}
+                pixelStyle={pixelStyle}
+                isDragging={draggingId === item.i}
+                showExpand={item.i === 'terms'}
+                expanded={!!item.expanded}
+                onDragStart={attachDrag}
+                onResizeStart={attachResize}
+                onToggleExpand={toggleExpand}
+              >
+                {renderCardContent(item.i)}
+              </ToolkitPanel>
+            );
+          })}
         </div>
       </div>
     </>
@@ -1036,6 +1568,5 @@ function Toolkit() {
 }
 
 window.Today = Today;
-window.Tips = Tips;
 window.Calendar = Calendar;
 window.Toolkit = Toolkit;
