@@ -691,6 +691,54 @@ input, textarea, select { font-family: inherit; }
 .library-toggle-row { display: flex; justify-content: center; }
 @media (max-width: 900px) { .tip-grid { grid-template-columns: 1fr; } }
 
+/* ============ Game Cheat Notes ============ */
+.game-cheat-add h3 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  color: var(--ink);
+}
+.game-cheat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.game-cheat-card {
+  padding: 20px;
+}
+.game-cheat-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.game-cheat-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+.game-cheat-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+}
+.game-cheat-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.game-cheat-notes-input {
+  min-height: 110px;
+}
+
+@media (max-width: 900px) {
+  .game-cheat-grid {
+    grid-template-columns: 1fr;
+  }
+  .game-cheat-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 /* ============ Calendar ============ */
 .cal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 1080px) { .cal-grid { grid-template-columns: 1fr; } }

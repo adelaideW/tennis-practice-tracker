@@ -253,6 +253,14 @@ function App() {
       </>
     ),
     tips: <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>,
+    cheat: (
+      <>
+        <rect x="3" y="4" width="18" height="17" rx="2"/>
+        <line x1="7" y1="9" x2="17" y2="9"/>
+        <line x1="7" y1="13" x2="17" y2="13"/>
+        <line x1="7" y1="17" x2="14" y2="17"/>
+      </>
+    ),
     calendar: (
       <>
         <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -266,6 +274,7 @@ function App() {
   const pages = {
     today:    { l: 'Today' },
     tips:     { l: 'Practice Tips' },
+    cheat:    { l: 'Game Cheat Note' },
     calendar: { l: 'Calendar & News' },
     toolkit:  { l: 'Toolkit' },
   };
@@ -333,6 +342,7 @@ function App() {
             notionError={state.notionError}
           />
         )}
+        {route === 'cheat' && <window.GameCheatNotes />}
         {route === 'calendar' && <window.Calendar />}
         {route === 'toolkit' && <window.Toolkit />}
       </main>

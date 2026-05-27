@@ -429,6 +429,158 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
   );
 }
 
+// ============== GAME CHEAT NOTE ==============
+const GAME_CHEAT_STORAGE_KEY = 'ace-game-cheat-notes-v1';
+
+function loadGameCheatNotes() {
+  try {
+    const raw = localStorage.getItem(GAME_CHEAT_STORAGE_KEY);
+    if (!raw) return [];
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list)) return [];
+    return list
+      .filter((item) => item && typeof item.name === 'string')
+      .map((item) => ({
+        id: item.id || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        name: item.name || '',
+        goodAt: item.goodAt || '',
+        badAt: item.badAt || '',
+      }));
+  } catch (e) {
+    return [];
+  }
+}
+
+function GameCheatNotes() {
+  const [notes, setNotes] = useS1(loadGameCheatNotes);
+  const [draft, setDraft] = useS1({ name: '', goodAt: '', badAt: '' });
+
+  useE1(() => {
+    try {
+      localStorage.setItem(GAME_CHEAT_STORAGE_KEY, JSON.stringify(notes));
+    } catch (e) { /* ignore */ }
+  }, [notes]);
+
+  const canAdd = draft.name.trim().length > 0;
+
+  const addNote = () => {
+    if (!canAdd) return;
+    setNotes((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        name: draft.name.trim(),
+        goodAt: draft.goodAt.trim(),
+        badAt: draft.badAt.trim(),
+      },
+    ]);
+    setDraft({ name: '', goodAt: '', badAt: '' });
+  };
+
+  const updateField = (id, key, value) => {
+    setNotes((prev) => prev.map((item) => (item.id === id ? { ...item, [key]: value } : item)));
+  };
+
+  const removeNote = (id) => {
+    setNotes((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  return (
+    <>
+      <div className="page-head">
+        <div>
+          <div className="kicker">Match prep notebook</div>
+          <h1>Game <em>cheat note.</em></h1>
+        </div>
+        <div className="meta">Track each friend’s strengths and leaks</div>
+      </div>
+
+      <div className="card game-cheat-add mb-20">
+        <h3>Add player</h3>
+        <div className="game-cheat-grid">
+          <label className="game-cheat-field">
+            <span className="mono-small">Friend name</span>
+            <input
+              className="title-input"
+              value={draft.name}
+              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+              placeholder="e.g. Alex"
+            />
+          </label>
+          <label className="game-cheat-field">
+            <span className="mono-small">Good at</span>
+            <textarea
+              className="notes game-cheat-notes-input"
+              value={draft.goodAt}
+              onChange={(e) => setDraft((d) => ({ ...d, goodAt: e.target.value }))}
+              placeholder="Strong serve, fast at net, deep cross-court..."
+            />
+          </label>
+          <label className="game-cheat-field">
+            <span className="mono-small">Bad at</span>
+            <textarea
+              className="notes game-cheat-notes-input"
+              value={draft.badAt}
+              onChange={(e) => setDraft((d) => ({ ...d, badAt: e.target.value }))}
+              placeholder="Struggles on high backhand, short second serve..."
+            />
+          </label>
+        </div>
+        <div className="row" style={{ justifyContent: 'flex-end' }}>
+          <button type="button" className="btn-primary" onClick={addNote} disabled={!canAdd}>
+            Add to cheat note
+          </button>
+        </div>
+      </div>
+
+      <div className="game-cheat-list">
+        {notes.length === 0 ? (
+          <div className="card">
+            <p className="muted" style={{ margin: 0 }}>
+              Add your first friend to build your match cheat note.
+            </p>
+          </div>
+        ) : (
+          notes.map((item) => (
+            <section key={item.id} className="card game-cheat-card">
+              <div className="game-cheat-head">
+                <input
+                  className="title-input game-cheat-name"
+                  value={item.name}
+                  onChange={(e) => updateField(item.id, 'name', e.target.value)}
+                />
+                <button type="button" className="btn-secondary" onClick={() => removeNote(item.id)}>
+                  Remove
+                </button>
+              </div>
+              <div className="game-cheat-grid">
+                <label className="game-cheat-field">
+                  <span className="mono-small">Good at</span>
+                  <textarea
+                    className="notes game-cheat-notes-input"
+                    value={item.goodAt}
+                    onChange={(e) => updateField(item.id, 'goodAt', e.target.value)}
+                    placeholder="What this player does well..."
+                  />
+                </label>
+                <label className="game-cheat-field">
+                  <span className="mono-small">Bad at</span>
+                  <textarea
+                    className="notes game-cheat-notes-input"
+                    value={item.badAt}
+                    onChange={(e) => updateField(item.id, 'badAt', e.target.value)}
+                    placeholder="Where to apply pressure..."
+                  />
+                </label>
+              </div>
+            </section>
+          ))
+        )}
+      </div>
+    </>
+  );
+}
+
 // ============== CALENDAR & NEWS ==============
 
 const TOURNEY_URLS = {
@@ -1596,5 +1748,7 @@ function Toolkit() {
 }
 
 window.Today = Today;
+window.Tips = Tips;
+window.GameCheatNotes = GameCheatNotes;
 window.Calendar = Calendar;
 window.Toolkit = Toolkit;
