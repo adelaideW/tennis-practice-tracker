@@ -1023,6 +1023,12 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   position: relative;
   transition: left 200ms ease, top 200ms ease, width 200ms ease, height 200ms ease;
 }
+
+.toolkit-grid-wrap.is-dragging-active .toolkit-panel,
+.toolkit-grid-wrap.is-dragging-active .toolkit-panel-placeholder,
+.toolkit-grid-wrap.is-dragging-active .toolkit-dashboard {
+  transition: none !important;
+}
 .toolkit-panel.is-dashboard {
   position: absolute;
   min-height: 0;
@@ -1036,6 +1042,12 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   opacity: 0.95;
   box-shadow: var(--shadow-lg);
   transition: none;
+}
+
+.toolkit-grid-wrap.is-resizing-active .toolkit-panel,
+.toolkit-grid-wrap.is-resizing-active .toolkit-panel-placeholder,
+.toolkit-grid-wrap.is-resizing-active .toolkit-dashboard {
+  transition: none !important;
 }
 .toolkit-panel-header {
   display: flex;

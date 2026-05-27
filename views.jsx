@@ -1266,6 +1266,7 @@ function Toolkit() {
   const [draggingId, setDraggingId] = useS1(null);
   const [dropSlot, setDropSlot] = useS1(null);
   const dropSlotRef = useR1(null);
+  const [resizingId, setResizingId] = useS1(null);
   const [containerWidth, setContainerWidth] = useS1(
     typeof window !== 'undefined' ? window.innerWidth : 1200
   );
@@ -1371,13 +1372,31 @@ function Toolkit() {
     setDropSlot(initialSlot);
     dropSlotRef.current = initialSlot;
 
+    let rafId = null;
+    let pendingSlot = null;
+
+    const commitSlot = () => {
+      rafId = null;
+      if (!pendingSlot) return;
+      setDropSlot(pendingSlot);
+      dropSlotRef.current = pendingSlot;
+      pendingSlot = null;
+    };
+
+    const scheduleCommit = () => {
+      if (rafId) return;
+      rafId = (typeof window !== 'undefined' && window.requestAnimationFrame)
+        ? window.requestAnimationFrame(commitSlot)
+        : commitSlot();
+    };
+
     const onMove = (e) => {
       const rect = getDashboardRect();
       if (!rect) return;
       const slot = TGL.getDropSlot(layoutRef.current.items, cardId, e.clientX, e.clientY, rect, gridConfig);
       if (slot) {
-        setDropSlot(slot);
-        dropSlotRef.current = slot;
+        pendingSlot = slot;
+        scheduleCommit();
       }
     };
 
@@ -1386,6 +1405,12 @@ function Toolkit() {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       document.removeEventListener('pointercancel', onUp);
+
+      if (rafId && typeof window !== 'undefined' && window.cancelAnimationFrame) {
+        window.cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      commitSlot();
 
       const slot = dropSlotRef.current || initialSlot;
       setLayout((prev) => {
@@ -1425,6 +1450,8 @@ function Toolkit() {
     const startW = startItem.w;
     const startH = startItem.h;
 
+    setResizingId(cardId);
+
     const onMove = (e) => {
       const delta = TGL.pixelsDeltaToGrid(
         e.clientX - startX,
@@ -1458,6 +1485,7 @@ function Toolkit() {
         persistLayout(next);
         return next;
       });
+      setResizingId(null);
     };
 
     document.addEventListener('pointermove', onMove);
@@ -1519,7 +1547,7 @@ function Toolkit() {
 
       <div
         ref={wrapRef}
-        className={`toolkit-grid-wrap${layout.mode === 'dashboard' ? ' is-dashboard-mode' : ''}${draggingId ? ' is-dragging-active' : ''}`}
+        className={`toolkit-grid-wrap${layout.mode === 'dashboard' ? ' is-dashboard-mode' : ''}${draggingId ? ' is-dragging-active' : ''}${resizingId ? ' is-resizing-active' : ''}`}
       >
         <div
           ref={dashboardRef}

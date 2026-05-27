@@ -285,7 +285,6 @@ function App() {
           </div>
           <div className="brand-text">
             <div className="brand-name">ACE</div>
-            <div className="brand-sub">Practice Tracker</div>
           </div>
         </div>
 
