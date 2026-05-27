@@ -430,59 +430,119 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
 }
 
 // ============== GAME CHEAT NOTE ==============
-const GAME_CHEAT_STORAGE_KEY = 'ace-game-cheat-notes-v1';
+function extractFriendsFromContext(context) {
+  if (!context) return [];
+  const txt = String(context)
+    .replace(/\(.*?\)/g, ' ')
+    .replace(/\bw\/\s*/gi, 'with ')
+    .replace(/\s*&\s*/g, ',')
+    .replace(/\s+and\s+/gi, ',')
+    .replace(/\s+·\s+/g, ',');
 
-function loadGameCheatNotes() {
-  try {
-    const raw = localStorage.getItem(GAME_CHEAT_STORAGE_KEY);
-    if (!raw) return [];
-    const list = JSON.parse(raw);
-    if (!Array.isArray(list)) return [];
-    return list
-      .filter((item) => item && typeof item.name === 'string')
-      .map((item) => ({
-        id: item.id || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        name: item.name || '',
-        goodAt: item.goodAt || '',
-        badAt: item.badAt || '',
-      }));
-  } catch (e) {
-    return [];
+  const names = [];
+  const withRe = /\bwith\s+([^;.!]+)/gi;
+  let m;
+  while ((m = withRe.exec(txt))) {
+    const seg = m[1]
+      .replace(/\s+to\s+practice\s*$/i, '')
+      .replace(/\s+rally\s+$/i, '')
+      .replace(/\s+practice\s+$/i, '')
+      .trim();
+
+    seg.split(',').forEach((tok) => {
+      const t = tok.trim().replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'’-]/g, '');
+      if (!t) return;
+      if (t.length < 3) return;
+      if (!/^[A-Z]/.test(t)) return;
+      if (/^(Coach|coach|Partner|partner|Team|team)$/.test(t)) return;
+      names.push(t);
+    });
   }
+
+  // If nothing matched, try a simpler heuristic: first capitalized token
+  if (!names.length) {
+    const m2 = txt.match(/\b([A-Z][A-Za-zÀ-ÖØ-öø-ÿ'’-]{2,})\b/);
+    if (m2) names.push(m2[1]);
+  }
+
+  return [...new Set(names)];
 }
 
-function GameCheatNotes() {
-  const [notes, setNotes] = useS1(loadGameCheatNotes);
-  const [draft, setDraft] = useS1({ name: '', goodAt: '', badAt: '' });
+function normalizeBullet(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[\u2019']/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-  useE1(() => {
-    try {
-      localStorage.setItem(GAME_CHEAT_STORAGE_KEY, JSON.stringify(notes));
-    } catch (e) { /* ignore */ }
-  }, [notes]);
+function truncateBullet(s, max = 92) {
+  const t = String(s || '').trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1)}…`;
+}
 
-  const canAdd = draft.name.trim().length > 0;
+function rankAndPickBullets(items, topN = 4) {
+  // items: [{ text, idx }]
+  const map = {};
+  items.forEach(({ text, idx }) => {
+    const v = String(text || '').trim();
+    if (!v) return;
+    const key = normalizeBullet(v);
+    if (!key) return;
+    if (!map[key]) map[key] = { text: v, count: 0, minIdx: idx };
+    map[key].count += 1;
+    map[key].minIdx = Math.min(map[key].minIdx, idx);
+  });
 
-  const addNote = () => {
-    if (!canAdd) return;
-    setNotes((prev) => [
-      ...prev,
-      {
-        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        name: draft.name.trim(),
-        goodAt: draft.goodAt.trim(),
-        badAt: draft.badAt.trim(),
-      },
-    ]);
-    setDraft({ name: '', goodAt: '', badAt: '' });
-  };
+  return Object.values(map)
+    .sort((a, b) => (b.count - a.count) || (a.minIdx - b.minIdx))
+    .slice(0, topN)
+    .map((x) => truncateBullet(x.text));
+}
 
-  const updateField = (id, key, value) => {
-    setNotes((prev) => prev.map((item) => (item.id === id ? { ...item, [key]: value } : item)));
-  };
+function buildCheatNotesFromNotion(notionPayload) {
+  const sessions = notionPayload?.sessions || [];
+  if (!sessions.length) return [];
 
-  const removeNote = (id) => {
-    setNotes((prev) => prev.filter((item) => item.id !== id));
+  const sorted = [...sessions].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  const agg = {}; // name -> { samples, goodItems: [{text,idx}], badItems: [{text,idx}] }
+
+  sorted.forEach((s, idx) => {
+    const context = s.context || s.label || '';
+    const friends = extractFriendsFromContext(context);
+    if (!friends.length) return;
+
+    const good = Array.isArray(s.good) ? s.good : [];
+    const bad = Array.isArray(s.bad) ? s.bad : [];
+
+    friends.forEach((name) => {
+      if (!agg[name]) agg[name] = { samples: 0, goodItems: [], badItems: [] };
+      agg[name].samples += 1;
+      good.forEach((t) => agg[name].goodItems.push({ text: t, idx }));
+      bad.forEach((t) => agg[name].badItems.push({ text: t, idx }));
+    });
+  });
+
+  const out = Object.entries(agg).map(([name, v]) => ({
+    name,
+    samples: v.samples,
+    goodAt: rankAndPickBullets(v.goodItems, 4),
+    badAt: rankAndPickBullets(v.badItems, 4),
+  }));
+
+  // Sort by evidence first (more samples), then by note count
+  out.sort((a, b) => (b.samples - a.samples) || (b.goodAt.length + b.badAt.length - (a.goodAt.length + a.badAt.length)));
+  return out;
+}
+
+function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionError }) {
+  const notionPage = window.NOTION_INSIGHTS_PAGE;
+
+  const notes = useM1(() => buildCheatNotesFromNotion(notionPayload), [notionPayload]);
+
+  const handleRefresh = async () => {
+    if (syncFromNotion) await syncFromNotion();
   };
 
   return (
@@ -492,86 +552,73 @@ function GameCheatNotes() {
           <div className="kicker">Match prep notebook</div>
           <h1>Game <em>cheat note.</em></h1>
         </div>
-        <div className="meta">Track each friend’s strengths and leaks</div>
+        <div className="meta">Auto-summarized per friend from your Notion notes</div>
       </div>
 
-      <div className="card game-cheat-add mb-20">
-        <h3>Add player</h3>
-        <div className="game-cheat-grid">
-          <label className="game-cheat-field">
-            <span className="mono-small">Friend name</span>
-            <input
-              className="title-input"
-              value={draft.name}
-              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-              placeholder="e.g. Alex"
-            />
-          </label>
-          <label className="game-cheat-field">
-            <span className="mono-small">Good at</span>
-            <textarea
-              className="notes game-cheat-notes-input"
-              value={draft.goodAt}
-              onChange={(e) => setDraft((d) => ({ ...d, goodAt: e.target.value }))}
-              placeholder="Strong serve, fast at net, deep cross-court..."
-            />
-          </label>
-          <label className="game-cheat-field">
-            <span className="mono-small">Bad at</span>
-            <textarea
-              className="notes game-cheat-notes-input"
-              value={draft.badAt}
-              onChange={(e) => setDraft((d) => ({ ...d, badAt: e.target.value }))}
-              placeholder="Struggles on high backhand, short second serve..."
-            />
-          </label>
+      <div className="notion-sync-bar mb-28">
+        <div className="notion-sync-copy">
+          <div className="mono-small">Game cheat note</div>
+          <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+            Extracted from your daily reflections (“Good” + “Bad”) and grouped by the people in each session context.
+          </p>
+          {notionError && <span className="notion-new-badge">{notionError}</span>}
         </div>
-        <div className="row" style={{ justifyContent: 'flex-end' }}>
-          <button type="button" className="btn-primary" onClick={addNote} disabled={!canAdd}>
-            Add to cheat note
+        <div className="row" style={{ gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>
+          <button type="button" className="btn-primary" onClick={handleRefresh} disabled={notionLoading}>
+            {notionLoading && <span className="spinner"></span>}
+            {notionLoading ? 'Syncing…' : 'Refresh from Notion'}
           </button>
+          {notionPage && (
+            <a
+              className="btn-ghost notion-open"
+              href={notionPage}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open Notion page ↗
+            </a>
+          )}
         </div>
       </div>
 
       <div className="game-cheat-list">
-        {notes.length === 0 ? (
+        {notionLoading ? (
           <div className="card">
             <p className="muted" style={{ margin: 0 }}>
-              Add your first friend to build your match cheat note.
+              Syncing your game cheat note…
+            </p>
+          </div>
+        ) : notes.length === 0 ? (
+          <div className="card">
+            <p className="muted" style={{ margin: 0 }}>
+              No friend-specific context found yet. Add names in your session context like “practice w/ Kimo” or “double w/ Anna, Nydia…”.
             </p>
           </div>
         ) : (
-          notes.map((item) => (
-            <section key={item.id} className="card game-cheat-card">
-              <div className="game-cheat-head">
-                <input
-                  className="title-input game-cheat-name"
-                  value={item.name}
-                  onChange={(e) => updateField(item.id, 'name', e.target.value)}
-                />
-                <button type="button" className="btn-secondary" onClick={() => removeNote(item.id)}>
-                  Remove
-                </button>
+          notes.map((f) => (
+            <section key={f.name} className="card game-cheat-card">
+              <div className="game-cheat-friend-header">
+                <div className="game-cheat-friend-name">{f.name}</div>
+                <div className="mono-small">{f.samples} sessions</div>
               </div>
-              <div className="game-cheat-grid">
-                <label className="game-cheat-field">
-                  <span className="mono-small">Good at</span>
-                  <textarea
-                    className="notes game-cheat-notes-input"
-                    value={item.goodAt}
-                    onChange={(e) => updateField(item.id, 'goodAt', e.target.value)}
-                    placeholder="What this player does well..."
-                  />
-                </label>
-                <label className="game-cheat-field">
-                  <span className="mono-small">Bad at</span>
-                  <textarea
-                    className="notes game-cheat-notes-input"
-                    value={item.badAt}
-                    onChange={(e) => updateField(item.id, 'badAt', e.target.value)}
-                    placeholder="Where to apply pressure..."
-                  />
-                </label>
+
+              <div className="game-cheat-summary-grid">
+                <div className="game-cheat-summary-col">
+                  <div className="mono-small">Good at</div>
+                  <ul className="game-cheat-bullets">
+                    {f.goodAt.length ? f.goodAt.map((t, i) => <li key={i}>{t}</li>) : (
+                      <li className="muted" style={{ listStyle: 'none' }}>No good notes yet.</li>
+                    )}
+                  </ul>
+                </div>
+                <div className="game-cheat-summary-col">
+                  <div className="mono-small">Bad at</div>
+                  <ul className="game-cheat-bullets">
+                    {f.badAt.length ? f.badAt.map((t, i) => <li key={i}>{t}</li>) : (
+                      <li className="muted" style={{ listStyle: 'none' }}>No bad notes yet.</li>
+                    )}
+                  </ul>
+                </div>
               </div>
             </section>
           ))

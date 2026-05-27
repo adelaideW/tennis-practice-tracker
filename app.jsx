@@ -342,7 +342,15 @@ function App() {
             notionError={state.notionError}
           />
         )}
-        {route === 'cheat' && <window.GameCheatNotes />}
+        {route === 'cheat' && (
+          <window.GameCheatNotes
+            notionPayload={notionPayload}
+            syncFromNotion={syncFromNotion}
+            notionLoading={state.notionLoading}
+            notionError={state.notionError}
+            notionUpdatedAt={state.notionUpdatedAt}
+          />
+        )}
         {route === 'calendar' && <window.Calendar />}
         {route === 'toolkit' && <window.Toolkit />}
       </main>

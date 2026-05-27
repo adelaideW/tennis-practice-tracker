@@ -739,6 +739,48 @@ input, textarea, select { font-family: inherit; }
   }
 }
 
+/* Read-only cheat summary (Notion-summarized) */
+.game-cheat-friend-header {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.game-cheat-friend-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.game-cheat-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.game-cheat-summary-col .mono-small {
+  margin-bottom: 8px;
+}
+.game-cheat-bullets {
+  margin: 0;
+  padding-left: 16px;
+}
+.game-cheat-bullets li {
+  margin: 6px 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+  .game-cheat-summary-grid {
+    grid-template-columns: 1fr;
+  }
+  .game-cheat-friend-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 /* ============ Calendar ============ */
 .cal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 1080px) { .cal-grid { grid-template-columns: 1fr; } }
