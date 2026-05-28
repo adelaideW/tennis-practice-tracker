@@ -1,5 +1,5 @@
 /* global React, PRACTICE_TAGS, INTENSITY, TIPS, CALENDAR_2026, SEED_NEWS, TOUR_RESULTS_WEEK */
-const { useState: useS1, useMemo: useM1, useEffect: useE1, useRef: useR1 } = React;
+const { useState: useS1, useMemo: useM1, useEffect: useE1, useRef: useR1, useCallback: useC1 } = React;
 
 // ============== TODAY / DASHBOARD ==============
 
@@ -430,22 +430,70 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
 }
 
 // ============== GAME CHEAT NOTE ==============
+const CHEAT_BULLET_PREVIEW = 4;
+
+function GameCheatNoteColumn({ playerName, columnKey, label, items, emptyLabel }) {
+  const [expanded, setExpanded] = useS1(false);
+  const hasMore = items.length > CHEAT_BULLET_PREVIEW;
+  const visible = expanded || !hasMore ? items : items.slice(0, CHEAT_BULLET_PREVIEW);
+  const listClass = expanded && hasMore ? 'game-cheat-bullets game-cheat-bullets--scroll' : 'game-cheat-bullets';
+
+  return (
+    <div className="game-cheat-col">
+      <span className="mono-small">{label}</span>
+      {items.length ? (
+        <>
+          <ul className={listClass}>
+            {visible.map((line, index) => (
+              <li key={`${playerName}-${columnKey}-${index}`}>{line}</li>
+            ))}
+          </ul>
+          {hasMore && (
+            <button
+              type="button"
+              className="game-cheat-expand-btn"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+            >
+              {expanded ? 'Show less' : `Show all (${items.length})`}
+            </button>
+          )}
+        </>
+      ) : (
+        <ul className="game-cheat-bullets">
+          <li className="muted">{emptyLabel}</li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionError }) {
   const notionPage = window.NOTION_INSIGHTS_PAGE;
+  const [refreshSeed, setRefreshSeed] = useS1(0);
+  const [lastSyncedAt, setLastSyncedAt] = useS1(null);
 
   const cheat = useM1(
     () => (notionPayload && window.buildCheatNotesFromNotion
       ? window.buildCheatNotesFromNotion(notionPayload)
-      : { players: [], generatedAt: null, source: null, playerCount: 0 }),
-    [notionPayload],
+      : { players: [], generatedAt: null, source: null, playerCount: 0, totalNoteCount: 0 }),
+    [notionPayload, refreshSeed],
   );
 
-  const refreshedLabel = cheat.generatedAt
-    ? new Date(cheat.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  const refreshedLabel = (lastSyncedAt || cheat.generatedAt)
+    ? new Date(lastSyncedAt || cheat.generatedAt).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
     : null;
 
   const handleRefresh = async () => {
-    if (syncFromNotion) await syncFromNotion();
+    setRefreshSeed((n) => n + 1);
+    if (!syncFromNotion) return;
+    const data = await syncFromNotion();
+    if (data) setLastSyncedAt(new Date().toISOString());
   };
 
   return (
@@ -453,12 +501,12 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
       <div className="page-head">
         <div>
           <div className="kicker">
-            {cheat.playerCount || 0} players · synced from Notion
+            {cheat.totalNoteCount || 0} notes · {cheat.playerCount || 0} players · synced from Notion
           </div>
           <h1>Game <em>cheat note.</em></h1>
         </div>
         <div className="meta">
-          {refreshedLabel && <>Updated · {refreshedLabel}<br /></>}
+          {refreshedLabel && <>Synced · {refreshedLabel}<br /></>}
           {notionPage && (
             <a href={notionPage} target="_blank" rel="noopener noreferrer" className="notion-link">
               Tennis practice insights ↗
@@ -469,9 +517,9 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
 
       <div className="notion-sync-bar mb-28">
         <div className="notion-sync-copy">
-          <div className="mono-small">Summarized match prep</div>
+          <div className="mono-small">Match prep from Notion</div>
           <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-            Pulled from weekly “Analysis on other Player’s style” in your Notion insights — Good and Loophole notes, condensed per friend.
+            Pulled from weekly “Analysis on other Player’s style” in your Notion insights — every Good and Loophole note per player.
           </p>
           {notionError && <span className="notion-new-badge">{notionError}</span>}
         </div>
@@ -483,7 +531,7 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
           style={{ whiteSpace: 'nowrap' }}
         >
           {notionLoading && <span className="spinner"></span>}
-          Refresh from Notion
+          {notionLoading ? 'Syncing…' : 'Refresh from Notion'}
         </button>
       </div>
 
@@ -504,31 +552,28 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
               <section key={player.name} className="card game-cheat-card">
                 <div className="game-cheat-head">
                   <h2 className="game-cheat-name">{player.name}</h2>
+                  <span className="game-cheat-note-count mono-small">
+                    {player.sessionCount} note{player.sessionCount === 1 ? '' : 's'}
+                  </span>
                 </div>
                 {player.summary && (
                   <p className="game-cheat-summary muted">{player.summary}</p>
                 )}
                 <div className="game-cheat-grid">
-                  <div className="game-cheat-col">
-                    <span className="mono-small">Good at</span>
-                    <ul className="game-cheat-bullets">
-                      {player.goodAt.map((line) => (
-                        <li key={`${player.name}-g-${line}`}>{line}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="game-cheat-col">
-                    <span className="mono-small">Exploit (loophole)</span>
-                    <ul className="game-cheat-bullets">
-                      {player.badAt.length ? (
-                        player.badAt.map((line) => (
-                          <li key={`${player.name}-b-${line}`}>{line}</li>
-                        ))
-                      ) : (
-                        <li className="muted">No clear leaks logged yet.</li>
-                      )}
-                    </ul>
-                  </div>
+                  <GameCheatNoteColumn
+                    playerName={player.name}
+                    columnKey="good"
+                    label="Good at"
+                    items={player.goodAt}
+                    emptyLabel="No strengths logged yet."
+                  />
+                  <GameCheatNoteColumn
+                    playerName={player.name}
+                    columnKey="bad"
+                    label="Exploit (loophole)"
+                    items={player.badAt}
+                    emptyLabel="No clear leaks logged yet."
+                  />
                 </div>
               </section>
             ))
@@ -593,6 +638,8 @@ const ROME_2026 = {
 };
 
 const TOUR_DAILY_KEY = 'tennis-tour-daily-v1';
+const TOUR_RESULTS_CACHE_KEY = 'tennis-tour-results-v2';
+const TOUR_RESULTS_REFRESH_MS = 6 * 60 * 60 * 1000;
 const TOUR_RESULTS_PREVIEW = 4;
 const TOUR_RESULTS_WINDOW_DAYS = 7;
 
@@ -616,6 +663,120 @@ function getResultsInPastDays(results, days = TOUR_RESULTS_WINDOW_DAYS) {
   return results
     .filter((r) => r.date >= cutIso)
     .sort((a, b) => b.date.localeCompare(a.date) || String(b.id).localeCompare(String(a.id)));
+}
+
+function sanitizeTourResults(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter((r) => r && r.date && r.tournament && r.winner && r.loser && r.score)
+    .map((r, i) => ({
+      id: r.id || `tr-${i}-${String(r.date).slice(0, 10)}`,
+      date: String(r.date).slice(0, 10),
+      tournament: r.tournament,
+      round: r.round || 'R32',
+      tour: r.tour === 'WTA' ? 'WTA' : 'ATP',
+      winner: r.winner,
+      winnerSub: r.winnerSub || '',
+      loser: r.loser,
+      loserSub: r.loserSub || '',
+      score: r.score,
+      ...(r.modal ? { modal: r.modal } : {}),
+    }));
+}
+
+function getFallbackTourResults() {
+  const today = new Date();
+  return sanitizeTourResults(
+    TOUR_RESULTS_WEEK.map((r, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() - (i % TOUR_RESULTS_WINDOW_DAYS));
+      return { ...r, date: d.toISOString().slice(0, 10) };
+    }),
+  );
+}
+
+function loadTourResultsCache() {
+  try {
+    const raw = localStorage.getItem(TOUR_RESULTS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed.results)) return null;
+    return {
+      results: sanitizeTourResults(parsed.results),
+      refreshedAt: parsed.refreshedAt || null,
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+function isTourResultsStale(cache) {
+  if (!cache?.refreshedAt) return true;
+  return Date.now() - new Date(cache.refreshedAt).getTime() >= TOUR_RESULTS_REFRESH_MS;
+}
+
+function saveTourResultsCache(results, refreshedAt) {
+  const payload = {
+    results: sanitizeTourResults(results),
+    refreshedAt: refreshedAt || new Date().toISOString(),
+  };
+  try {
+    localStorage.setItem(TOUR_RESULTS_CACHE_KEY, JSON.stringify(payload));
+  } catch (_) {
+    /* ignore quota */
+  }
+  return payload;
+}
+
+async function generateTourResultsFromAI() {
+  if (!window.claude?.complete) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  const prompt = `You are a tennis tour results editor. Today is ${today}.
+
+Return ONLY a JSON array (no markdown fence) of 10 recent ATP or WTA match results from the past ${TOUR_RESULTS_WINDOW_DAYS} days at Roland-Garros 2026 or Italian Open · Rome 2026.
+
+Each object must have:
+- id (unique string)
+- date (YYYY-MM-DD within the past ${TOUR_RESULTS_WINDOW_DAYS} days)
+- tournament (full name)
+- round (e.g. R128, R64, QF, SF, Final)
+- tour ("ATP" or "WTA")
+- winner, winnerSub (country · seed), loser, loserSub, score (use em-dash with double spaces, e.g. "6—4  6—2")
+
+Use plausible 2026 players (Sinner, Alcaraz, Zverev, Świątek, Sabalenka, Gauff, etc.).`;
+
+  try {
+    const txt = await window.claude.complete(prompt);
+    const parsed = JSON.parse(txt.replace(/```json|```/g, '').trim());
+    const clean = sanitizeTourResults(parsed);
+    return clean.length ? clean : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function refreshTourResultsCache({ force = false } = {}) {
+  const cached = loadTourResultsCache();
+  if (!force && cached && !isTourResultsStale(cached)) {
+    return cached;
+  }
+
+  let results = await generateTourResultsFromAI();
+  if (!results?.length) {
+    results = getFallbackTourResults();
+  }
+
+  return saveTourResultsCache(results);
+}
+
+function formatResultsRefreshedLabel(iso) {
+  if (!iso) return 'just now';
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 function applyDailyTourRefresh(setNews, setDailyLabel) {
@@ -843,22 +1004,69 @@ function RomeModal({ onClose }) {
 function Calendar() {
   const [news, setNews] = useS1(SEED_NEWS);
   const [loading, setLoading] = useS1(false);
+  const [resultsLoading, setResultsLoading] = useS1(false);
   const [modal, setModal] = useS1(null);
   const [showWeekResults, setShowWeekResults] = useS1(false);
   const [dailyLabel, setDailyLabel] = useS1(() => formatDailyLabel());
+  const [tourResults, setTourResults] = useS1(() => getFallbackTourResults());
+  const [resultsRefreshedAt, setResultsRefreshedAt] = useS1(null);
 
   const weekResults = useM1(
-    () => getResultsInPastDays(TOUR_RESULTS_WEEK, TOUR_RESULTS_WINDOW_DAYS),
-    [],
+    () => getResultsInPastDays(tourResults, TOUR_RESULTS_WINDOW_DAYS),
+    [tourResults],
   );
   const recentResults = useM1(
     () => weekResults.slice(0, TOUR_RESULTS_PREVIEW),
     [weekResults],
   );
 
+  const resultsRefreshedLabel = formatResultsRefreshedLabel(resultsRefreshedAt);
+
+  const applyTourResultsCache = useC1((cache) => {
+    if (cache?.results?.length) {
+      setTourResults(cache.results);
+      setResultsRefreshedAt(cache.refreshedAt);
+    }
+  }, []);
+
+  const runResultsRefresh = useC1(async (force = false) => {
+    setResultsLoading(true);
+    try {
+      const cache = await refreshTourResultsCache({ force });
+      applyTourResultsCache(cache);
+    } finally {
+      setResultsLoading(false);
+    }
+  }, [applyTourResultsCache]);
+
   useE1(() => {
     applyDailyTourRefresh(setNews, setDailyLabel);
-  }, []);
+    const cached = loadTourResultsCache();
+    if (cached && !isTourResultsStale(cached)) {
+      applyTourResultsCache(cached);
+    } else {
+      runResultsRefresh(false);
+    }
+  }, [applyTourResultsCache, runResultsRefresh]);
+
+  useE1(() => {
+    const intervalId = setInterval(() => {
+      const cached = loadTourResultsCache();
+      if (isTourResultsStale(cached)) runResultsRefresh(false);
+    }, TOUR_RESULTS_REFRESH_MS);
+
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      const cached = loadTourResultsCache();
+      if (isTourResultsStale(cached)) runResultsRefresh(false);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [runResultsRefresh]);
 
   const refreshNews = async () => {
     setLoading(true);
@@ -967,12 +1175,32 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
 
         <div style={{display: 'flex', flexDirection: 'column', gap: 16}}>
           <div className="card recent-results-card">
-            <div className="row between mb-12">
+            <div className="row between mb-12 recent-results-head">
               <div>
-                <h3 style={{margin: 0}}>Recent Results</h3>
-                <span className="mono-small">Updated {dailyLabel} · last {TOUR_RESULTS_WINDOW_DAYS} days</span>
+                <div className="recent-results-title-row">
+                  <h3 style={{ margin: 0 }}>Recent Results</h3>
+                  <button
+                    type="button"
+                    className="tour-results-refresh-btn"
+                    onClick={() => runResultsRefresh(true)}
+                    disabled={resultsLoading}
+                    aria-label="Refresh recent results"
+                    title="Refresh recent results"
+                  >
+                    {resultsLoading ? (
+                      <span className="spinner" aria-hidden="true" />
+                    ) : (
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M21 12a9 9 0 11-2.64-6.36" />
+                        <polyline points="21 3 21 9 15 9" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                <span className="mono-small">
+                  Updated {resultsRefreshedLabel} · auto every 6h · last {TOUR_RESULTS_WINDOW_DAYS} days
+                </span>
               </div>
-              <span className="daily-refresh-pill" title="Refreshes automatically each day">Daily</span>
             </div>
             <div className="recent-results-list">
               {recentResults.map((m) => (

@@ -149,12 +149,23 @@ function saveNotionSyncMeta(meta) {
   } catch (e) {}
 }
 
+function isValidNotionPayload(data) {
+  if (!data || data.error) return false;
+  return Boolean(
+    data.updatedAt ||
+    data.sessions?.length ||
+    data.latestDaily ||
+    data.cheatNotes?.length ||
+    data.weeklyPriorities?.length,
+  );
+}
+
 async function fetchNotionInsights() {
   try {
-    const res = await fetch('/api/notion-insights', { cache: 'no-store' });
+    const res = await fetch(`/api/notion-insights?t=${Date.now()}`, { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
-      if (data?.sessions?.length || data?.latestDaily) {
+      if (isValidNotionPayload(data)) {
         return { ...data, source: data.source || 'api' };
       }
     }
@@ -406,31 +417,30 @@ function dedupeNotes(notes) {
   return out;
 }
 
-function summarizeNoteList(notes, maxItems = 3) {
-  const unique = dedupeNotes(notes);
-  if (!unique.length) return [];
-  if (unique.length === 1) return [condenseCheatNote(unique[0])];
+function formatCheatNoteLine(note, maxLen = 320) {
+  const trimmed = String(note || '').trim().replace(/\s+/g, ' ');
+  if (!trimmed) return '';
+  return condenseCheatNote(trimmed, maxLen);
+}
 
-  const latest = unique[unique.length - 1];
-  const earlier = unique.slice(0, -1);
-  const merged = [condenseCheatNote(latest)];
-
-  const themes = new Set();
-  for (const note of earlier.reverse()) {
-    const tokens = normalizeNoteKey(note).split(' ').filter((t) => t.length > 3);
-    const theme = tokens.slice(0, 3).join(' ');
-    if (themes.has(theme)) continue;
-    themes.add(theme);
-    merged.push(condenseCheatNote(note, 96));
-    if (merged.length >= maxItems) break;
-  }
-
-  return merged.slice(0, maxItems);
+function buildCheatSummary(goodAt, badAt) {
+  const parts = [];
+  if (goodAt.length) parts.push(`Strengths: ${condenseCheatNote(goodAt[0], 72)}`);
+  if (badAt.length) parts.push(`Exploit: ${condenseCheatNote(badAt[0], 72)}`);
+  if (goodAt.length > 1) parts.push(`+${goodAt.length - 1} more strength${goodAt.length > 2 ? 's' : ''}`);
+  if (badAt.length > 1) parts.push(`+${badAt.length - 1} loophole${badAt.length > 2 ? 's' : ''}`);
+  return parts.join(' · ');
 }
 
 function buildCheatNotesFromNotion(payload) {
   if (!payload?.cheatNotes?.length) {
-    return { players: [], generatedAt: payload?.updatedAt || null, source: payload?.source || null };
+    return {
+      players: [],
+      generatedAt: payload?.updatedAt || null,
+      source: payload?.source || null,
+      playerCount: 0,
+      totalNoteCount: 0,
+    };
   }
 
   const players = payload.cheatNotes
@@ -439,27 +449,28 @@ function buildCheatNotesFromNotion(payload) {
       const badRaw = dedupeNotes(row.bad || []).filter(
         (note) => !goodRaw.some((g) => normalizeNoteKey(g) === normalizeNoteKey(note)),
       );
-      const goodAt = summarizeNoteList(goodRaw, 3);
-      const badAt = summarizeNoteList(badRaw, 3);
-      const summaryParts = [];
-      if (goodAt.length) summaryParts.push(`Strengths: ${goodAt.join('; ')}`);
-      if (badAt.length) summaryParts.push(`Exploit: ${badAt.join('; ')}`);
+      const goodAt = goodRaw.map((n) => formatCheatNoteLine(n)).filter(Boolean);
+      const badAt = badRaw.map((n) => formatCheatNoteLine(n)).filter(Boolean);
       return {
         name: row.name,
         goodAt,
         badAt,
-        summary: summaryParts.join(' · '),
-        sessionCount: goodRaw.length + badRaw.length,
+        summary: buildCheatSummary(goodAt, badAt),
+        sessionCount: goodAt.length + badAt.length,
       };
     })
     .filter((p) => p.goodAt.length || p.badAt.length)
     .sort((a, b) => a.name.localeCompare(b.name));
+
+  const totalNoteCount = players.reduce((sum, p) => sum + p.goodAt.length + p.badAt.length, 0);
 
   return {
     players,
     generatedAt: payload.updatedAt || new Date().toISOString(),
     source: payload.source || 'notion',
     playerCount: players.length,
+    totalNoteCount,
+    cheatNotesSource: payload.cheatNotesSource || payload.source || null,
   };
 }
 
