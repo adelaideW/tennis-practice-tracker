@@ -3,5 +3,10 @@
   "outputDirectory": ".",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" }
-  ]
+  ],
+  "functions": {
+    "api/notion-insights.js": {
+      "includeFiles": "api/notion-data.json"
+    }
+  }
 }

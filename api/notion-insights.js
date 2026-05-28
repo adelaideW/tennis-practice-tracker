@@ -40,13 +40,10 @@ async function notionFetchAllChildren(blockId) {
 
 async function loadSnapshot() {
   const { readFile } = await import('node:fs/promises');
-  const { join, dirname } = await import('node:path');
-  const { fileURLToPath } = await import('node:url');
-  const here = dirname(fileURLToPath(import.meta.url));
+  const { join } = await import('node:path');
   const candidates = [
-    join(here, 'notion-data.json'),
-    join(process.cwd(), 'notion-data.json'),
     join(process.cwd(), 'api', 'notion-data.json'),
+    join(process.cwd(), 'notion-data.json'),
   ];
   for (const path of candidates) {
     try {
