@@ -480,6 +480,14 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
     [notionPayload, refreshSeed],
   );
 
+  const syncModeLabel = useM1(() => {
+    const src = notionPayload?.cheatNotesSource || notionPayload?.source;
+    if (src === 'notion') return 'Live from Notion';
+    if (src === 'notion+snapshot') return 'Live from Notion + offline merge';
+    if (src === 'snapshot' || src === 'markdown-export') return 'Offline snapshot';
+    return src ? String(src) : 'Notion';
+  }, [notionPayload]);
+
   const refreshedLabel = (lastSyncedAt || cheat.generatedAt)
     ? new Date(lastSyncedAt || cheat.generatedAt).toLocaleDateString('en-US', {
         month: 'short',
@@ -501,7 +509,7 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
       <div className="page-head">
         <div>
           <div className="kicker">
-            {cheat.totalNoteCount || 0} notes · {cheat.playerCount || 0} players · synced from Notion
+            {cheat.totalNoteCount || 0} notes · {cheat.playerCount || 0} players · {syncModeLabel}
           </div>
           <h1>Game <em>cheat note.</em></h1>
         </div>
@@ -519,7 +527,7 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
         <div className="notion-sync-copy">
           <div className="mono-small">Match prep from Notion</div>
           <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-            Pulled from weekly “Analysis on other Player’s style” in your Notion insights — every Good and Loophole note per player.
+            Pulled from “Analysis on other Player’s style” in your Notion insights (weekly + game notes) — Good and Loophole bullets per player. Source: {syncModeLabel}.
           </p>
           {notionError && <span className="notion-new-badge">{notionError}</span>}
         </div>

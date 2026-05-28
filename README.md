@@ -18,6 +18,11 @@ On Vercel, set:
 Without a token, the app uses `notion-data.json` (update this snapshot after editing Notion).
 
 ```bash
+# One-time: add token to Vercel (production + preview)
+NOTION_TOKEN=secret_… node scripts/setup-vercel-notion-env.mjs
+npx vercel deploy --prod --yes
+
+# Refresh offline snapshot after Notion edits
 NOTION_TOKEN=secret_… node scripts/sync-notion-snapshot.mjs
 ```
 

@@ -162,12 +162,33 @@ const CHEAT_LINE_BLOCK_TYPES = new Set([
 
 const GOOD_SECTION_RE = /^(good(\s+at)?|strengths)\s*:?\s*$/i;
 const BAD_SECTION_RE = /^(loophole|bad|weakness(es)?|needs?\s*work|exploit)\s*:?\s*$/i;
-const ANALYSIS_TITLE_RE = /analysis on other player/i;
+const ANALYSIS_TITLE_RE = /analysis on other/i;
+const MY_PERFORMANCE_RE = /analysis on my(\s+performance)?/i;
+
+const PLAYER_ALIASES = {
+  Jessie: 'Jessy',
+  Jessika: 'Jessy',
+};
+
+function normalizePlayerName(name) {
+  const t = name.trim();
+  return PLAYER_ALIASES[t] || t;
+}
+
+function classifyObservedNote(note) {
+  const lower = note.trim().toLowerCase();
+  if (/^(good|strong|great|excellent|very good)\b/.test(lower)) return 'good';
+  if (/^(loophole|weak|bad|needs improvement)\b/.test(lower)) return 'bad';
+  const badSignals =
+    /\b(weak|not |lack |doesn'?t|errors?|unstable|slow|miss|struggle|late|prone|hesitate|tend to miss|into the net|mostly out|hard time|not enough|not very|not as|not consistent)\b/;
+  return badSignals.test(lower) ? 'bad' : 'good';
+}
 
 function pushNote(byPlayer, name, note, section) {
-  const trimmedName = name.trim();
+  const trimmedName = normalizePlayerName(name);
   const trimmedNote = note.trim().replace(/,\s*$/, '');
   if (!trimmedName || !trimmedNote) return;
+  if (/^(good|loophole|bad|overview|focus|drill)$/i.test(trimmedName)) return;
   if (!byPlayer.has(trimmedName)) {
     byPlayer.set(trimmedName, { name: trimmedName, good: [], bad: [] });
   }
@@ -202,46 +223,124 @@ function parsePlayerLine(line, section, byPlayer) {
 
 function isLikelyPlayerName(text) {
   const t = text.trim();
-  if (!t || t.length > 32) return false;
+  if (!t || t.length > 24) return false;
   if (GOOD_SECTION_RE.test(t) || BAD_SECTION_RE.test(t)) return false;
-  if (/analysis|weekly|insight|reflection/i.test(t)) return false;
-  return /^[A-Za-z][A-Za-z.'\s-]{0,28}$/.test(t);
+  if (/analysis|weekly|insight|reflection|overview|things to/i.test(t)) return false;
+  if (/^(duration|played|focus|drill|practice|game|serve|volley)$/i.test(t)) return false;
+  if (
+    /^(always|heavy|consistent|lack|fast|high|weak|movement|speedy|take|does|not|top|spin|forehand|backhand|lob|volley|serve|return|baseline|court|ball|good|bad)/i.test(
+      t,
+    )
+  ) {
+    return false;
+  }
+  if (/^[A-Z]{2,4}$/.test(t)) return true;
+  const words = t.split(/\s+/);
+  if (words.length > 2) return false;
+  if (words.length === 1) return /^[A-Z][a-z]{1,20}$/.test(t);
+  return /^[A-Z][a-z]+\s+[A-Z]\.?$/.test(t) || /^[A-Z][a-z]+\s+[A-Z][a-z]+$/.test(t);
 }
 
 /** Ingest Good / Loophole notes from any analysis block subtree. */
 async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
   let section = null;
+  let currentPlayer = null;
+  let inOtherAnalysis = true;
 
   const walkBlocks = async (blocks, playerFromToggle = null) => {
     for (const block of blocks) {
       if (block.type === 'toggle') {
         const toggleTitle = blockPlainText(block);
+        if (MY_PERFORMANCE_RE.test(toggleTitle)) {
+          inOtherAnalysis = false;
+          continue;
+        }
+        if (ANALYSIS_TITLE_RE.test(toggleTitle)) {
+          inOtherAnalysis = true;
+          section = null;
+          currentPlayer = null;
+        }
         const playerName = isLikelyPlayerName(toggleTitle) ? toggleTitle : playerFromToggle;
         const nested = await notionFetchAllChildren(block.id);
         await walkBlocks(nested, playerName);
         continue;
       }
 
-      if (block.type === 'heading_3') {
+      if (block.type === 'heading_3' || block.type === 'heading_2') {
         const h = blockPlainText(block);
-        if (GOOD_SECTION_RE.test(h)) section = 'good';
-        else if (BAD_SECTION_RE.test(h)) section = 'bad';
-        continue;
+        if (MY_PERFORMANCE_RE.test(h)) {
+          inOtherAnalysis = false;
+          continue;
+        }
+        if (ANALYSIS_TITLE_RE.test(h)) {
+          inOtherAnalysis = true;
+          section = null;
+          currentPlayer = null;
+          continue;
+        }
+        if (GOOD_SECTION_RE.test(h)) {
+          section = 'good';
+          currentPlayer = null;
+          continue;
+        }
+        if (BAD_SECTION_RE.test(h)) {
+          section = 'bad';
+          currentPlayer = null;
+          continue;
+        }
+        if (inOtherAnalysis && isLikelyPlayerName(h)) {
+          currentPlayer = h;
+          continue;
+        }
       }
 
       if (!CHEAT_LINE_BLOCK_TYPES.has(block.type)) continue;
 
       const line = blockPlainText(block);
+      if (MY_PERFORMANCE_RE.test(line)) {
+        inOtherAnalysis = false;
+        continue;
+      }
+      if (ANALYSIS_TITLE_RE.test(line)) {
+        inOtherAnalysis = true;
+        section = null;
+        currentPlayer = null;
+        continue;
+      }
+      if (!inOtherAnalysis) continue;
+
+      if (GOOD_SECTION_RE.test(line)) {
+        section = 'good';
+        currentPlayer = null;
+        continue;
+      }
+      if (BAD_SECTION_RE.test(line)) {
+        section = 'bad';
+        currentPlayer = null;
+        continue;
+      }
+
+      if (isLikelyPlayerName(line) && !line.includes(':')) {
+        currentPlayer = line;
+        if (block.has_children) {
+          const nested = await notionFetchAllChildren(block.id);
+          await walkBlocks(nested, currentPlayer);
+        }
+        continue;
+      }
+
       const parsed = parsePlayerLine(line, section, byPlayer);
       section = parsed.section;
 
-      if (!parsed.consumed && playerFromToggle && section && line.trim()) {
-        pushNote(byPlayer, playerFromToggle, line, section);
+      const activePlayer = currentPlayer || playerFromToggle;
+      if (!parsed.consumed && activePlayer && line.trim()) {
+        const noteSection = section || classifyObservedNote(line);
+        pushNote(byPlayer, activePlayer, line, noteSection);
       }
 
       if (block.has_children) {
         const nested = await notionFetchAllChildren(block.id);
-        await walkBlocks(nested, playerFromToggle);
+        await walkBlocks(nested, currentPlayer || playerFromToggle);
       }
     }
   };
@@ -254,6 +353,7 @@ async function subtreeHasCheatSections(blockId) {
   const children = await notionFetchAllChildren(blockId);
   for (const block of children) {
     const text = blockPlainText(block);
+    if (ANALYSIS_TITLE_RE.test(text)) return true;
     if (GOOD_SECTION_RE.test(text) || BAD_SECTION_RE.test(text)) return true;
     if (block.has_children && (await subtreeHasCheatSections(block.id))) return true;
   }
@@ -266,9 +366,7 @@ async function parseGameCheatNotes(pageId) {
 
   async function visitToggle(toggleId, title = '') {
     const toggleTitle = title || '';
-    if (ANALYSIS_TITLE_RE.test(toggleTitle)) {
-      await ingestPlayerAnalysisBlock(toggleId, byPlayer);
-    } else if (await subtreeHasCheatSections(toggleId)) {
+    if (ANALYSIS_TITLE_RE.test(toggleTitle) || (await subtreeHasCheatSections(toggleId))) {
       await ingestPlayerAnalysisBlock(toggleId, byPlayer);
     }
 
