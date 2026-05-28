@@ -1,4 +1,4 @@
-# Baseline · Tennis Practice Tracker
+# Ace · Tennis Practice Tracker
 
 Practice tips and session notes sync from [Tennis practice insights](https://www.notion.so/Tennis-practice-insights-32470a7de7e0803e9f3ad8904cf25efe) on Notion.
 

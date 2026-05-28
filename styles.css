@@ -208,10 +208,15 @@ input, textarea, select { font-family: inherit; }
   margin-bottom: 14px;
   width: 100%;
 }
-.brand-logo svg {
+.brand-logo svg,
+.brand-logo img {
   width: 44px; height: 44px;
   display: block;
   filter: drop-shadow(0 2px 8px rgba(22, 163, 74, 0.32));
+}
+.brand-logo img {
+  border-radius: 10px;
+  object-fit: cover;
 }
 .brand-text { display: flex; flex-direction: column; align-items: center; gap: 1px; }
 .brand-name {
@@ -294,19 +299,10 @@ input, textarea, select { font-family: inherit; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 0;
   padding-top: 16px;
   border-top: 1px solid var(--border);
   width: 100%;
-}
-.rail .foot-row {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--ink-4);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  text-align: center;
-  padding: 0 4px;
 }
 
 /* ============ Content ============ */

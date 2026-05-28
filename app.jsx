@@ -280,13 +280,11 @@ function App() {
       <aside className="rail">
         <div className="brand">
           <div className="brand-logo" aria-hidden="true">
-            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="20" cy="20" r="19" fill="#16A34A" stroke="#15803D" strokeWidth="1.5"/>
-              <path d="M3 15 Q20 8 37 15" stroke="white" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
-              <path d="M3 25 Q20 32 37 25" stroke="white" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
-              <path d="M15 1.5 Q8 20 15 38.5" stroke="white" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
-              <path d="M25 1.5 Q32 20 25 38.5" stroke="white" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
-            </svg>
+            <img
+              src="https://s3u.tmimgcdn.com/u37752224/2d452af3211da90b43504c8cd4aa775b.gif"
+              alt="Ace logo"
+              loading="lazy"
+            />
           </div>
           <div className="brand-text">
             <div className="brand-name">ACE</div>
@@ -318,10 +316,6 @@ function App() {
               <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
             )}
           </button>
-          <div className="foot-row">
-            {state.notionLoading ? 'Syncing Notion…' : state.notionError || 'Synced from Notion'}
-          </div>
-          <div className="foot-row">{state.entries.length} sessions · {state.notionSource || 'notion'}</div>
         </div>
       </aside>
 
