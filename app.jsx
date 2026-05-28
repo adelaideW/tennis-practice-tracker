@@ -281,7 +281,7 @@ function App() {
         <div className="brand">
           <div className="brand-logo" aria-hidden="true">
             <img
-              src="https://s3u.tmimgcdn.com/u37752224/2d452af3211da90b43504c8cd4aa775b.gif"
+              src="https://img.magnific.com/premium-vector/cartoonish-tennis-ball-vector-illustration-icon_722324-273.jpg"
               alt="Ace logo"
               loading="lazy"
             />
