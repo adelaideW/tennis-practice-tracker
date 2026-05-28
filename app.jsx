@@ -113,10 +113,6 @@ const TOUR_RESULTS_WEEK = [
   { id: 'rg-w-3', date: '2026-05-22', tournament: 'Roland-Garros', round: 'R128', tour: 'WTA', winner: 'E. Rybakina', winnerSub: 'KAZ · #4', loser: 'M. Sakkari', loserSub: 'GRE', score: '6—2  6—4' },
   { id: 'rg-m-4', date: '2026-05-21', tournament: 'Roland-Garros', round: 'R64', tour: 'ATP', winner: 'C. Ruud', winnerSub: 'NOR · #8', loser: 'F. Cerundolo', loserSub: 'ARG', score: '6—3  6—4  6—2' },
   { id: 'rg-w-4', date: '2026-05-21', tournament: 'Roland-Garros', round: 'R64', tour: 'WTA', winner: 'J. Pegula', winnerSub: 'USA · #5', loser: 'S. Stephens', loserSub: 'USA', score: '6—1  6—4' },
-  { id: 'rome-m-f', date: '2026-05-17', tournament: 'Italian Open · Rome', round: 'Final', tour: 'ATP', winner: 'A. Zverev', winnerSub: 'GER · #4', loser: 'J. Sinner', loserSub: 'ITA · #1', score: '6—3  4—6  6—2', modal: 'rome' },
-  { id: 'rome-w-f', date: '2026-05-16', tournament: 'Italian Open · Rome', round: 'Final', tour: 'WTA', winner: 'I. Świątek', winnerSub: 'POL · #1', loser: 'A. Sabalenka', loserSub: 'BLR · #2', score: '6—2  6—3', modal: 'rome' },
-  { id: 'rome-m-sf1', date: '2026-05-15', tournament: 'Italian Open · Rome', round: 'SF', tour: 'ATP', winner: 'A. Zverev', winnerSub: 'GER', loser: 'C. Ruud', loserSub: 'NOR', score: '6—4  6—3', modal: 'rome' },
-  { id: 'rome-w-sf1', date: '2026-05-15', tournament: 'Italian Open · Rome', round: 'SF', tour: 'WTA', winner: 'I. Świątek', winnerSub: 'POL', loser: 'C. Gauff', loserSub: 'USA', score: '6—3  6—1', modal: 'rome' },
 ];
 
 // Sample recent stories — clearly framed as "feed" to make the refresh button feel earned

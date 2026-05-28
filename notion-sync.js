@@ -409,7 +409,7 @@ function dedupeNotes(notes) {
   const out = [];
   const seen = new Set();
   for (const note of notes || []) {
-    const key = normalizeNoteKey(note);
+    const key = String(note || '').trim().replace(/\s+/g, ' ');
     if (!key || seen.has(key)) continue;
     seen.add(key);
     out.push(note);
@@ -446,9 +446,7 @@ function buildCheatNotesFromNotion(payload) {
   const players = payload.cheatNotes
     .map((row) => {
       const goodRaw = dedupeNotes(row.good || []);
-      const badRaw = dedupeNotes(row.bad || []).filter(
-        (note) => !goodRaw.some((g) => normalizeNoteKey(g) === normalizeNoteKey(note)),
-      );
+      const badRaw = dedupeNotes(row.bad || []);
       const goodAt = goodRaw.map((n) => formatCheatNoteLine(n)).filter(Boolean);
       const badAt = badRaw.map((n) => formatCheatNoteLine(n)).filter(Boolean);
       return {

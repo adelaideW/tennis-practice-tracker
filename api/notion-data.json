@@ -1,0 +1,222 @@
+{
+  "pageUrl": "https://www.notion.so/Tennis-practice-insights-32470a7de7e0803e9f3ad8904cf25efe",
+  "updatedAt": "2026-05-25T17:55:01.053Z",
+  "weeklyPriorities": [
+    "Volley — especially backhand",
+    "2nd serve success rate — topspin + sidespin, keep it in",
+    "Overhead — run behind the ball, lift racket after the ball drops slightly",
+    "Approaching shots — anticipate speed, prepare then move; aim service box; first volley deep not a winner",
+    "Corner aiming",
+    "Forehand slice — learn and practice"
+  ],
+  "weeklyOverview": {
+    "focus": "Volley; approaching shots for slow and high balls; 2nd serves",
+    "drill": "Rally, double games, volley at net, single games, serving, ball machine volley"
+  },
+  "focus": {
+    "headline": "Volley — especially backhand",
+    "body": "This week in Notion you're prioritizing backhand volley, second-serve consistency, overhead footwork, and approach patterns that set up a deep first volley. Your latest session with Kimo showed better overhead contact and forehand volley reactions — keep building backhand volley feet and pace changes on high balls.",
+    "cues": [
+      "Volley backhand — level face, active feet",
+      "2nd serve — spin in, keep it in",
+      "Run behind the lob, then come forward"
+    ]
+  },
+  "latestDaily": {
+    "date": "2026-05-23",
+    "label": "Sat",
+    "context": "practice w/ Kimo",
+    "good": [
+      "Prepare higher on lob/high balls (forehand might go out); backhand hit on rise for high balls",
+      "Overhead practice made progress — hit sweet spot and better direction",
+      "Volley — some good forehands, better reaction time"
+    ],
+    "bad": [
+      "Volley backhand — tilting racket head, lack of foot movement at the net",
+      "Baseline ground strokes — hard time changing pace and increasing speed on high balls / lobs"
+    ],
+    "learning": []
+  },
+  "sessions": [
+    {
+      "id": "notion-2026-05-23",
+      "date": "2026-05-23",
+      "context": "practice w/ Kimo",
+      "duration": 90,
+      "intensity": 3,
+      "good": ["Prepare higher on lob/high balls; backhand hit on rise", "Overhead progress — sweet spot and direction", "Volley — good forehands, reaction time"],
+      "bad": ["Volley backhand — tilting racket head, lack of foot movement", "Baseline — hard time changing pace on high balls / lobs"]
+    },
+    {
+      "id": "notion-2026-05-22",
+      "date": "2026-05-22",
+      "context": "Single game w/ Jessy (5-6; 15-30)",
+      "duration": 90,
+      "intensity": 4,
+      "tags": ["point", "serve", "ground"],
+      "good": ["Adjust faster to new player style", "Second serves in (but lack speed)", "Baseline rally consistency", "Backhand take high ball on rise"],
+      "bad": ["Easy shots", "Not recovered after baseline shots", "Hesitate to come to net — no man's zone", "Lack confidence on winners", "Too many unforced errors", "Missed chances on game points"]
+    },
+    {
+      "id": "notion-2026-05-21",
+      "date": "2026-05-21",
+      "context": "practice w/ coach",
+      "duration": 120,
+      "intensity": 3,
+      "tags": ["serve", "volley", "overhead", "ground"],
+      "good": ["More consistent on baseline corner — corner (forehand better than backhand)"],
+      "bad": ["Serve — too many double faults on second serves", "Volley — backhand, do not cross right leg", "Overhead — failed", "Recovery footwork on game points", "Drop ball game — take on rise for spiny balls"]
+    },
+    {
+      "id": "notion-2026-05-20",
+      "date": "2026-05-20",
+      "context": "Double game w/ Anna, Nydia, Tess, Lili",
+      "duration": 90,
+      "intensity": 3,
+      "tags": ["point", "volley", "return"],
+      "good": ["Return on serve more accurate — stand inside for short serves", "Baseline consistency"],
+      "bad": ["Volley mostly out — add backspin, reduce racket speed on fast balls"]
+    },
+    {
+      "id": "notion-2026-05-19",
+      "date": "2026-05-19",
+      "context": "practice on wall",
+      "duration": 60,
+      "intensity": 2,
+      "tags": ["warmup", "overhead"],
+      "good": ["Better contact point for overhead", "10 consecutive overheads"],
+      "bad": ["Consistency dropped in heat — endurance needed", "Sunlight distracts serving"]
+    },
+    {
+      "id": "notion-2026-05-18",
+      "date": "2026-05-18",
+      "context": "Rally with Anuchan",
+      "duration": 75,
+      "intensity": 3,
+      "tags": ["ground"],
+      "good": ["Lower gravity center, more stable before hitting", "Few good crosscourt passing shots"],
+      "bad": ["Mid court response and timing off", "Struggle with backhand high balls"],
+      "learning": ["Prepare racket high on high balls", "Forced crosscourt has more success than down the line"]
+    },
+    {
+      "id": "notion-2026-05-17",
+      "date": "2026-05-17",
+      "context": "Australian double w/ Kimo & Gary; rally with Seth",
+      "duration": 90,
+      "intensity": 3,
+      "tags": ["point", "serve", "volley"],
+      "good": ["1st serve", "Volley improved", "Forehand stability"],
+      "bad": ["Struggle returning Kimo's lobs", "Backhand corner — needs faster anticipation", "Slice stability"],
+      "learning": ["Anticipate ball will come to you at net in doubles"]
+    },
+    {
+      "id": "notion-2026-05-16",
+      "date": "2026-05-16",
+      "context": "Double games with Anna, Nydia, Lili; w/ Kimo, Gary, Harbor",
+      "duration": 120,
+      "intensity": 3,
+      "tags": ["point", "serve", "volley"],
+      "good": ["Return on serving", "Dictate directions on forehand", "1st serve, less double fault", "Volley improving"],
+      "bad": ["Lob out, straight shot long", "Top side spin 2nd serve not accurate", "Volley at net long — lower legs, backspin on fast shots"]
+    },
+    {
+      "id": "notion-2026-05-15",
+      "date": "2026-05-15",
+      "context": "Serving/volley solo; rally & game w/ Chen",
+      "duration": 90,
+      "intensity": 3,
+      "tags": ["serve", "volley", "ground"],
+      "good": ["1st serve when in", "Dictate directions on purpose", "Lob"],
+      "bad": ["Mindset after double fault", "Taking ball on rise when returning", "Backhand volley"]
+    },
+    {
+      "id": "notion-2026-05-14",
+      "date": "2026-05-14",
+      "context": "rally with Anuchan",
+      "duration": 75,
+      "intensity": 2,
+      "tags": ["ground", "volley"],
+      "good": ["Forehand penetration", "Swing volley in the air"],
+      "bad": ["Volley at net", "Overheads"]
+    },
+    {
+      "id": "notion-2026-05-13",
+      "date": "2026-05-13",
+      "context": "Double game with Lili, Anna, Nydia",
+      "duration": 90,
+      "intensity": 3,
+      "tags": ["point", "serve", "volley"],
+      "good": ["Serving speed for 1st serve"],
+      "bad": ["Not consistent", "2nd serve lacks speed and angle", "Hard time on approaching shots", "Volleys"],
+      "learning": ["Doubles need strategy and communication between partners"]
+    },
+    {
+      "id": "notion-2026-05-12",
+      "date": "2026-05-12",
+      "context": "Rally with Roman",
+      "duration": 75,
+      "intensity": 3,
+      "tags": ["ground"],
+      "good": ["Forehand more directional"],
+      "bad": ["Late on fast balls", "Not enough angle", "Backhand lacks topspin", "Hard time on low flat trajectories"]
+    },
+    {
+      "id": "notion-2026-05-10",
+      "date": "2026-05-10",
+      "context": "Volley practice, single game, short court w/ coach",
+      "duration": 120,
+      "intensity": 4,
+      "tags": ["volley", "serve", "point"],
+      "good": ["Won a set", "Serve angle", "Less double fault", "Dropshot works well"],
+      "bad": ["Slow reaction to dropshots", "Volley backhand flipping wrist", "2nd serve success rate low"],
+      "learning": ["Be prepared for short balls when your shot was slow", "Cross court slice works on short balls"]
+    },
+    {
+      "id": "notion-2026-05-08",
+      "date": "2026-05-08",
+      "context": "Practice w/ Anuchan; single game w/ Jessika",
+      "duration": 90,
+      "intensity": 3,
+      "tags": ["ground", "volley", "point"],
+      "good": ["Consistency and angle when rallying", "Good lob when opponent at net", "Swing volley"],
+      "bad": ["Approaching shots too fast and long", "No advantage after good serve", "Dropshots into net", "Double faults", "Overhead fails on trash balls"],
+      "learning": ["Go next to ball on approaches", "Overheads — go around the ball first", "When serve well, come to net immediately"]
+    },
+    {
+      "id": "notion-2026-05-06",
+      "date": "2026-05-06",
+      "context": "Double game with Anna, Lili, Lydia",
+      "duration": 90,
+      "intensity": 3,
+      "tags": ["point", "serve"],
+      "good": ["Won double with Lili", "2nd serve went well"],
+      "bad": ["Volley always too late", "Lob sometimes lacks depth"],
+      "learning": ["More comfortable at baseline than net", "Try slice more when you get the chance"]
+    },
+    {
+      "id": "notion-2026-05-04",
+      "date": "2026-05-04",
+      "context": "1st USTA 3.0 match",
+      "duration": 120,
+      "intensity": 5,
+      "tags": ["point", "serve", "mental"],
+      "good": ["Won USTA 3.0 S1 (6-2, 1-6, 10-1)", "2nd serve very stable", "Backhand stable", "Mindset switch after game"],
+      "bad": ["1st serve all out", "Anticipation for short balls", "Lobs return", "Focus when losing", "Drop shot and overhead"],
+      "learning": ["Lob + drop shot can be a weapon", "Move for all shots when quality was high"]
+    }
+  ],
+  "notesDraft": "Context: practice w/ Kimo\n\nGood:\n- Prepare higher on lob/high balls (forehand might go out); backhand hit on rise for high balls\n- Overhead practice made progress — hit sweet spot and better direction\n- Volley — some good forehands, better reaction time\n\nNeeds work:\n- Volley backhand — tilting racket head, lack of foot movement at the net\n- Baseline ground strokes — hard time changing pace and increasing speed on high balls / lobs\n\nWeekly focus (from Notion):\n- Volley — especially backhand\n- 2nd serve — topspin + sidespin, keep it in\n- Overhead — run behind the ball, prepare after the ball drops\n- Approaching shots — deep first volley, not a winner\n- Corner aiming · Forehand slice",
+  "cheatNotes": [
+    { "name": "Anna", "good": ["Baseline top spin, serve - toss and right leg kick (need to learn)", "heavy top spin forehand, baseline return, return on lobs"], "bad": ["Volley, rushed for slow and weak ball treatment, footwork on diagonal shots, slow serve, double game court coverage", "volley into the net, slow serve, long when taking weak balls, hard time with drop shots and slice"] },
+    { "name": "Anuchan", "good": ["Coming to the net often, lobs, Forehand topspin", "slices, variety, powerful forehand, volley improving"], "bad": ["Backhand - late, not enough footwork, forehand - not consistent"] },
+    { "name": "Chen", "good": ["Forehand depth, speed on serve sometimes, volley practice"], "bad": ["hard time taking lobs, slow serves most times, not enough direction for balls, late on short balls - out"] },
+    { "name": "Coach", "good": ["dropshot, serve/shot placement, consistency"], "bad": ["One-handed backhand out"] },
+    { "name": "Gary", "good": ["linear fast trajectory on ground strokes with consistency"], "bad": ["struggle with short balls, slow serves, taking low balls, no volley, low trajectory on ground strokes"] },
+    { "name": "Jessy", "good": ["Baseline forehand, 1st serve placement"], "bad": ["dropshots, do not come to the net"] },
+    { "name": "Kimo", "good": ["Lobs depth, volley, on court movement", "1st serve speed, volley at net, double movement and position on court, consistency on lobs"], "bad": ["Lack killing/finishing groudstroke shots, backhand weak", "not enough killing shots, serve and return can be weak, overhead time is off"] },
+    { "name": "Lili", "good": ["Volley, backhand slice, forehand speed (if in sweet spot)", "fast backspin on backhand"], "bad": ["baseline not stable, backhand mostly out", "lack preparation, balls long, weak serves and volley"] },
+    { "name": "Nydia", "good": ["Volley at net, serve consistency and placement", "consistent serves, volley anticipation, return on serve"], "bad": ["slow serve, baseline weak, double game court coverage", "volley long, weak backhand, lack movement for lobs"] },
+    { "name": "Roman", "good": ["speed and direction on ground strokes, take ball on the run. Stable when aiming at corner; slices"], "bad": ["backhand short balls, deep slices, forehand corner"] },
+    { "name": "Tess", "good": ["Strategy and ball placement in double game, volley, serve - no double fault"], "bad": [] }
+  ]
+}

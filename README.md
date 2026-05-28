@@ -17,6 +17,14 @@ On Vercel, set:
 
 Without a token, the app uses `notion-data.json` (update this snapshot after editing Notion).
 
+```bash
+NOTION_TOKEN=secret_… node scripts/sync-notion-snapshot.mjs
+```
+
+### Live tour results
+
+Recent Results on the Calendar tab loads **Roland-Garros** matches from ESPN via `/api/tour-results-live` (refreshes every 6 hours).
+
 ## Local preview
 
 ```bash

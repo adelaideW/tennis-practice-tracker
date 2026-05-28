@@ -638,10 +638,37 @@ const ROME_2026 = {
 };
 
 const TOUR_DAILY_KEY = 'tennis-tour-daily-v1';
-const TOUR_RESULTS_CACHE_KEY = 'tennis-tour-results-v2';
+const TOUR_RESULTS_CACHE_KEY = 'tennis-tour-results-v3';
 const TOUR_RESULTS_REFRESH_MS = 6 * 60 * 60 * 1000;
 const TOUR_RESULTS_PREVIEW = 4;
 const TOUR_RESULTS_WINDOW_DAYS = 7;
+const ROLAND_GARROS_GOOGLE_URL =
+  'https://www.google.com/search?q=roland+garros+scores';
+
+const TOURNAMENT_NAME_ALIASES = {
+  'Roland-Garros': [/roland[\s-]*garros/i, /french\s*open/i],
+};
+
+function getActiveTournament() {
+  return CALENDAR_2026.find((t) => t.state === 'live') || null;
+}
+
+function matchesTournamentName(tournament, calendarName) {
+  if (!tournament || !calendarName) return false;
+  const aliases = TOURNAMENT_NAME_ALIASES[calendarName] || [
+    new RegExp(calendarName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
+  ];
+  return aliases.some((re) => re.test(tournament));
+}
+
+function filterActiveTournamentResults(results) {
+  const active = getActiveTournament();
+  if (!active) return getResultsInPastDays(results, TOUR_RESULTS_WINDOW_DAYS);
+  const filtered = results.filter((r) => matchesTournamentName(r.tournament, active.name));
+  return filtered.sort(
+    (a, b) => b.date.localeCompare(a.date) || String(b.id).localeCompare(String(a.id)),
+  );
+}
 
 function formatResultWhen(iso) {
   return new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', {
@@ -685,11 +712,14 @@ function sanitizeTourResults(list) {
 }
 
 function getFallbackTourResults() {
+  const rgOnly = TOUR_RESULTS_WEEK.filter((r) =>
+    matchesTournamentName(r.tournament, 'Roland-Garros'),
+  );
   const today = new Date();
   return sanitizeTourResults(
-    TOUR_RESULTS_WEEK.map((r, i) => {
+    rgOnly.map((r, i) => {
       const d = new Date(today);
-      d.setDate(today.getDate() - (i % TOUR_RESULTS_WINDOW_DAYS));
+      d.setDate(today.getDate() - Math.min(i, TOUR_RESULTS_WINDOW_DAYS - 1));
       return { ...r, date: d.toISOString().slice(0, 10) };
     }),
   );
@@ -728,27 +758,12 @@ function saveTourResultsCache(results, refreshedAt) {
   return payload;
 }
 
-async function generateTourResultsFromAI() {
-  if (!window.claude?.complete) return null;
-  const today = new Date().toISOString().slice(0, 10);
-  const prompt = `You are a tennis tour results editor. Today is ${today}.
-
-Return ONLY a JSON array (no markdown fence) of 10 recent ATP or WTA match results from the past ${TOUR_RESULTS_WINDOW_DAYS} days at Roland-Garros 2026 or Italian Open · Rome 2026.
-
-Each object must have:
-- id (unique string)
-- date (YYYY-MM-DD within the past ${TOUR_RESULTS_WINDOW_DAYS} days)
-- tournament (full name)
-- round (e.g. R128, R64, QF, SF, Final)
-- tour ("ATP" or "WTA")
-- winner, winnerSub (country · seed), loser, loserSub, score (use em-dash with double spaces, e.g. "6—4  6—2")
-
-Use plausible 2026 players (Sinner, Alcaraz, Zverev, Świątek, Sabalenka, Gauff, etc.).`;
-
+async function fetchLiveTourResults() {
   try {
-    const txt = await window.claude.complete(prompt);
-    const parsed = JSON.parse(txt.replace(/```json|```/g, '').trim());
-    const clean = sanitizeTourResults(parsed);
+    const res = await fetch(`/api/tour-results-live?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const clean = sanitizeTourResults(data.results || []);
     return clean.length ? clean : null;
   } catch (_) {
     return null;
@@ -761,7 +776,7 @@ async function refreshTourResultsCache({ force = false } = {}) {
     return cached;
   }
 
-  let results = await generateTourResultsFromAI();
+  let results = await fetchLiveTourResults();
   if (!results?.length) {
     results = getFallbackTourResults();
   }
@@ -1011,8 +1026,9 @@ function Calendar() {
   const [tourResults, setTourResults] = useS1(() => getFallbackTourResults());
   const [resultsRefreshedAt, setResultsRefreshedAt] = useS1(null);
 
+  const activeTournament = useM1(() => getActiveTournament(), []);
   const weekResults = useM1(
-    () => getResultsInPastDays(tourResults, TOUR_RESULTS_WINDOW_DAYS),
+    () => filterActiveTournamentResults(tourResults),
     [tourResults],
   );
   const recentResults = useM1(
@@ -1198,7 +1214,18 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
                   </button>
                 </div>
                 <span className="mono-small">
-                  Updated {resultsRefreshedLabel} · auto every 6h · last {TOUR_RESULTS_WINDOW_DAYS} days
+                  {activeTournament ? `${activeTournament.name} · live scores` : `Last ${TOUR_RESULTS_WINDOW_DAYS} days`}
+                  {' · '}
+                  Updated {resultsRefreshedLabel} · auto every 6h
+                  {' · '}
+                  <a
+                    className="tourney-link"
+                    href={ROLAND_GARROS_GOOGLE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    More on Google ↗
+                  </a>
                 </span>
               </div>
             </div>
@@ -1211,7 +1238,11 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
                 />
               ))}
               {!recentResults.length && (
-                <p className="mono-small" style={{margin: 0}}>No results in the past week.</p>
+                <p className="mono-small" style={{margin: 0}}>
+                  {activeTournament
+                    ? `No ${activeTournament.name} results yet — try refresh.`
+                    : 'No recent results.'}
+                </p>
               )}
             </div>
             {weekResults.length > 0 && (
@@ -1221,8 +1252,8 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
                 onClick={() => setShowWeekResults(true)}
               >
                 {weekResults.length > TOUR_RESULTS_PREVIEW
-                  ? `See more · ${weekResults.length} matches this week`
-                  : `See all ${weekResults.length} matches this week`}
+                  ? `See more · ${weekResults.length} ${activeTournament ? activeTournament.name : ''} matches`.trim()
+                  : `See all ${weekResults.length} matches`}
               </button>
             )}
           </div>
