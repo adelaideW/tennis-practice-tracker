@@ -102,35 +102,38 @@ function parseToggleLines(lines) {
 /** Parse every daily reflection toggle under "Daily reflection". */
 async function parseAllDailySessions(pageId) {
   const blocks = await notionFetchAllChildren(pageId);
-  let inDailySection = false;
   const sessions = [];
+  const LINE_BLOCK_TYPES = new Set(['bulleted_list_item', 'numbered_list_item', 'paragraph']);
+  const DAY_TITLE_RE = /(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i;
 
-  for (const block of blocks) {
-    if (block.type === 'heading_3') {
-      const text = (block.heading_3?.rich_text || []).map((t) => t.plain_text).join('');
-      inDailySection = /daily reflection/i.test(text);
-      continue;
-    }
-    if (!inDailySection || block.type !== 'toggle') continue;
-
-    const title = (block.toggle?.rich_text || []).map((t) => t.plain_text).join('');
-    if (!/\d{4}-\d{2}-\d{2}/.test(title) && !/(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i.test(title)) {
-      continue;
-    }
-
-    const children = await notionFetchAllChildren(block.id);
-    const lines = [];
-    for (const child of children) {
-      if (child.type === 'bulleted_list_item' || child.type === 'numbered_list_item') {
-        const line = blockPlainText(child);
-        if (line.trim()) lines.push(line.trim());
+  const collectLinesDeep = async (parentId) => {
+    const out = [];
+    const walk = async (items) => {
+      for (const item of items) {
+        if (LINE_BLOCK_TYPES.has(item.type)) {
+          const line = blockPlainText(item);
+          if (line) out.push(line);
+        }
+        if (item.has_children) {
+          const nested = await notionFetchAllChildren(item.id);
+          await walk(nested);
+        }
       }
-    }
+    };
+    const top = await notionFetchAllChildren(parentId);
+    await walk(top);
+    return out;
+  };
 
+  const parseSessionToggle = async (toggleBlock) => {
+    const title = blockPlainText(toggleBlock);
+    if (!/\d{4}-\d{2}-\d{2}/.test(title) && !DAY_TITLE_RE.test(title)) {
+      return;
+    }
+    const lines = await collectLinesDeep(toggleBlock.id);
     const parsed = parseToggleLines(lines);
     const dateMatch = title.match(/(\d{4}-\d{2}-\d{2})/);
     const date = dateMatch ? dateMatch[1] : title;
-
     sessions.push({
       id: `notion-${date}`,
       date,
@@ -140,6 +143,42 @@ async function parseAllDailySessions(pageId) {
       bad: parsed.bad,
       learning: parsed.learning,
     });
+  };
+
+  const parseDailyContainer = async (containerId) => {
+    const children = await notionFetchAllChildren(containerId);
+    for (const child of children) {
+      if (child.type !== 'toggle') continue;
+      await parseSessionToggle(child);
+    }
+  };
+
+  let inDailySection = false;
+
+  for (const block of blocks) {
+    if (block.type === 'heading_3') {
+      const text = (block.heading_3?.rich_text || []).map((t) => t.plain_text).join('');
+      if (/daily reflection/i.test(text)) {
+        inDailySection = true;
+        if (block.has_children) {
+          await parseDailyContainer(block.id);
+          inDailySection = false;
+        }
+      } else {
+        inDailySection = false;
+      }
+      continue;
+    }
+    if (block.type === 'toggle') {
+      const title = blockPlainText(block);
+      if (/daily reflection/i.test(title)) {
+        await parseDailyContainer(block.id);
+        inDailySection = false;
+        continue;
+      }
+      if (!inDailySection) continue;
+      await parseSessionToggle(block);
+    }
   }
 
   sessions.sort((a, b) => (a.date < b.date ? 1 : -1));

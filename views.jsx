@@ -70,13 +70,21 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
   const today = new Date();
   const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const [refreshSeed, setRefreshSeed] = useS1(0);
+  const [lastRefreshedAt, setLastRefreshedAt] = useS1(null);
+  const todayDashboard = useM1(() => {
+    if (notionPayload && window.applyNotionPayload) {
+      return window.applyNotionPayload({ ...notionPayload, _refreshSeed: refreshSeed });
+    }
+    return null;
+  }, [notionPayload, refreshSeed]);
+  const todayEntries = todayDashboard?.entries?.length ? todayDashboard.entries : state.entries;
 
-  const totalSessions = state.entries.length;
-  const totalMinutes = state.entries.reduce((a, e) => a + (e.duration || 60), 0);
+  const totalSessions = todayEntries.length;
+  const totalMinutes = todayEntries.reduce((a, e) => a + (e.duration || 60), 0);
   const totalHours = parseFloat((totalMinutes / 60).toFixed(1));
 
   const streak = useM1(() => {
-    const days = new Set(state.entries.map(e => e.date.slice(0, 10)));
+    const days = new Set(todayEntries.map(e => e.date.slice(0, 10)));
     if (!days.size) return 0;
     let s = 0;
     const probe = new Date();
@@ -85,20 +93,20 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
       probe.setDate(probe.getDate() - 1);
     }
     return s;
-  }, [state.entries]);
+  }, [todayEntries]);
 
   const topSkills = useM1(() => {
     const counts = {};
-    state.entries.forEach((e) => (e.tags || []).forEach((k) => { counts[k] = (counts[k] || 0) + 1; }));
+    todayEntries.forEach((e) => (e.tags || []).forEach((k) => { counts[k] = (counts[k] || 0) + 1; }));
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4);
     const max = sorted[0]?.[1] || 1;
     return sorted.map(([k, count]) => ({
       label: (PRACTICE_TAGS.find((p) => p.k === k) || {}).l || k,
       pct: Math.round((count / max) * 100),
     }));
-  }, [state.entries]);
+  }, [todayEntries]);
 
-  const recentSessions = state.entries.slice(0, 3);
+  const recentSessions = todayEntries.slice(0, 3);
   const focus = useM1(() => {
     if (notionPayload && window.buildFocusFromNotion) {
       return window.buildFocusFromNotion({ ...notionPayload, _refreshSeed: refreshSeed });
@@ -106,10 +114,22 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
     return state.focus;
   }, [notionPayload, state.focus, refreshSeed]);
   const notionPage = window.NOTION_INSIGHTS_PAGE;
+  const refreshedIso = lastRefreshedAt || state.notionUpdatedAt || notionPayload?.updatedAt || null;
+  const refreshedLabel = refreshedIso
+    ? new Date(refreshedIso).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : null;
 
   const handleRefresh = async () => {
     setRefreshSeed((n) => n + 1);
-    if (syncFromNotion) await syncFromNotion();
+    if (syncFromNotion) {
+      const data = await syncFromNotion();
+      if (data) setLastRefreshedAt(new Date().toISOString());
+    }
   };
 
   return (
@@ -154,6 +174,11 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
             <div>Your focus brief loads from weekly priorities and the latest daily reflection in Notion.</div>
           )}
         </div>
+        {refreshedLabel && (
+          <div className="mono-small" style={{ marginTop: 8 }}>
+            Last refreshed on {refreshedLabel}
+          </div>
+        )}
         <div className="focus-cta">
           <button className="btn-primary" onClick={handleRefresh} disabled={state.notionLoading}>
             {state.notionLoading && <span className="spinner"></span>}
@@ -211,7 +236,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
         {/* Activity chart card */}
         <div className="activity-card">
           <div className="activity-card-title">7-Day Activity</div>
-          <ActivityChart entries={state.entries} />
+          <ActivityChart entries={todayEntries} />
         </div>
 
         {/* Recent sessions card */}
