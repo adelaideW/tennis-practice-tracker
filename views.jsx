@@ -648,7 +648,7 @@ const ROME_2026 = {
 const TOUR_DAILY_KEY = 'tennis-tour-daily-v1';
 const TOUR_RESULTS_CACHE_KEY = 'tennis-tour-results-v3';
 const TOUR_RESULTS_REFRESH_MS = 6 * 60 * 60 * 1000;
-const TOUR_RESULTS_PREVIEW = 4;
+const TOUR_RESULTS_PREVIEW = 5;
 const TOUR_RESULTS_WINDOW_DAYS = 7;
 const ROLAND_GARROS_GOOGLE_URL =
   'https://www.google.com/search?q=roland+garros+scores';
@@ -862,23 +862,51 @@ function TourResultSnippet({ match, onOpen }) {
   );
 }
 
+function filterResultsByTour(results, tourTab) {
+  if (tourTab === 'ATP' || tourTab === 'WTA') {
+    return results.filter((r) => r.tour === tourTab);
+  }
+  return results;
+}
+
 function WeekResultsModal({ results, onClose, onOpenTourney }) {
+  const [tourTab, setTourTab] = useS1('all');
+  const [query, setQuery] = useS1('');
+
   useE1(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  const filteredResults = useM1(() => {
+    const q = query.trim().toLowerCase();
+    const byTour = filterResultsByTour(results, tourTab);
+    if (!q) return byTour;
+    return byTour.filter((m) => {
+      const dateLabel = formatResultWhen(m.date).toLowerCase();
+      const rawDate = String(m.date || '').toLowerCase();
+      return (
+        m.winner.toLowerCase().includes(q) ||
+        m.loser.toLowerCase().includes(q) ||
+        m.tournament.toLowerCase().includes(q) ||
+        m.round.toLowerCase().includes(q) ||
+        dateLabel.includes(q) ||
+        rawDate.includes(q)
+      );
+    });
+  }, [results, tourTab, query]);
+
   const byDate = useM1(() => {
     const groups = {};
-    results.forEach((m) => {
+    filteredResults.forEach((m) => {
       if (!groups[m.date]) groups[m.date] = [];
       groups[m.date].push(m);
     });
     return Object.keys(groups)
       .sort((a, b) => b.localeCompare(a))
       .map((date) => ({ date, matches: groups[date] }));
-  }, [results]);
+  }, [filteredResults]);
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -888,9 +916,31 @@ function WeekResultsModal({ results, onClose, onOpenTourney }) {
           <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
           <div className="kicker">Past {TOUR_RESULTS_WINDOW_DAYS} days</div>
           <h2>Week in results</h2>
-          <div className="modal-meta">{results.length} matches · ATP &amp; WTA</div>
+          <div className="modal-meta">{filteredResults.length} matches · ATP &amp; WTA</div>
         </div>
         <div className="modal-body">
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+            <div className="tour-tabs" role="tablist" aria-label="Result tours">
+              {['all', 'ATP', 'WTA'].map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  className={`btn-secondary${tourTab === tab ? ' active' : ''}`}
+                  onClick={() => setTourTab(tab)}
+                  style={{ padding: '6px 10px', fontSize: 11 }}
+                >
+                  {tab === 'all' ? 'All' : tab}
+                </button>
+              ))}
+            </div>
+            <input
+              type="search"
+              placeholder="Search player or date (e.g. May 27, 2026-05-27)"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              style={{ flex: '1 1 240px', minWidth: 220 }}
+            />
+          </div>
           {byDate.map(({ date, matches }) => (
             <div key={date} className="week-results-day">
               <div className="week-results-day-label">{formatResultWhen(date)}</div>
@@ -903,8 +953,8 @@ function WeekResultsModal({ results, onClose, onOpenTourney }) {
               ))}
             </div>
           ))}
-          {!results.length && (
-            <p className="mono-small" style={{ margin: 0 }}>No results in this window yet.</p>
+          {!filteredResults.length && (
+            <p className="mono-small" style={{ margin: 0 }}>No matching results in this window yet.</p>
           )}
         </div>
       </div>
@@ -1030,6 +1080,7 @@ function Calendar() {
   const [resultsLoading, setResultsLoading] = useS1(false);
   const [modal, setModal] = useS1(null);
   const [showWeekResults, setShowWeekResults] = useS1(false);
+  const [resultsTourTab, setResultsTourTab] = useS1('all');
   const [dailyLabel, setDailyLabel] = useS1(() => formatDailyLabel());
   const [tourResults, setTourResults] = useS1(() => getFallbackTourResults());
   const [resultsRefreshedAt, setResultsRefreshedAt] = useS1(null);
@@ -1039,9 +1090,13 @@ function Calendar() {
     () => filterActiveTournamentResults(tourResults),
     [tourResults],
   );
+  const filteredWeekResults = useM1(
+    () => filterResultsByTour(weekResults, resultsTourTab),
+    [weekResults, resultsTourTab],
+  );
   const recentResults = useM1(
-    () => weekResults.slice(0, TOUR_RESULTS_PREVIEW),
-    [weekResults],
+    () => filteredWeekResults.slice(0, TOUR_RESULTS_PREVIEW),
+    [filteredWeekResults],
   );
 
   const resultsRefreshedLabel = formatResultsRefreshedLabel(resultsRefreshedAt);
@@ -1235,6 +1290,19 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
                     More on Google ↗
                   </a>
                 </span>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  {['all', 'ATP', 'WTA'].map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      className={`btn-secondary${resultsTourTab === tab ? ' active' : ''}`}
+                      onClick={() => setResultsTourTab(tab)}
+                      style={{ padding: '5px 10px', fontSize: 11 }}
+                    >
+                      {tab === 'all' ? 'All' : tab}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="recent-results-list">
@@ -1253,15 +1321,15 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
                 </p>
               )}
             </div>
-            {weekResults.length > 0 && (
+            {filteredWeekResults.length > 0 && (
               <button
                 type="button"
                 className="btn-secondary see-more-results"
                 onClick={() => setShowWeekResults(true)}
               >
-                {weekResults.length > TOUR_RESULTS_PREVIEW
-                  ? `See more · ${weekResults.length} ${activeTournament ? activeTournament.name : ''} matches`.trim()
-                  : `See all ${weekResults.length} matches`}
+                {filteredWeekResults.length > TOUR_RESULTS_PREVIEW
+                  ? `See more · ${filteredWeekResults.length} ${resultsTourTab === 'all' ? '' : resultsTourTab} matches`.trim()
+                  : `See all ${filteredWeekResults.length} matches`}
               </button>
             )}
           </div>

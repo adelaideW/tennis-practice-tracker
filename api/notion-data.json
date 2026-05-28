@@ -1,6 +1,6 @@
 {
   "pageUrl": "https://www.notion.so/Tennis-practice-insights-32470a7de7e0803e9f3ad8904cf25efe",
-  "updatedAt": "2026-05-28T05:29:19.271Z",
+  "updatedAt": "2026-05-28T05:39:00.000Z",
   "weeklyPriorities": [
     "Volley — especially backhand",
     "2nd serve success rate — topspin + sidespin, keep it in",
@@ -431,12 +431,20 @@
     {
       "name": "Anuchan",
       "good": [
+        "Consistency and angle when rallying",
+        "Good lob when opponent at net",
+        "Swing volley",
         "Coming to the net often, lobs, Forehand topspin",
         "slices, variety, powerful forehand, volley improving",
         "Heavy top spin forehand with good speed and penetration",
         "Lob and slice"
       ],
       "bad": [
+        "Approaching shots too fast and long",
+        "No advantage after good serve",
+        "Dropshots into net",
+        "Double faults",
+        "Overhead fails on trash balls",
         "Backhand - late, not enough footwork, forehand - not consistent",
         "Lack consistency and aiming",
         "Backhand too late and hit on the fall",
@@ -472,6 +480,7 @@
     {
       "name": "Coach",
       "good": [
+        "More consistent on baseline corner — corner (forehand better than backhand)",
         "dropshot, serve/shot placement, consistency",
         "Spin, lob, drop shot",
         "Manipulate the pace, speed, placement",
@@ -479,6 +488,11 @@
         "Harder to predict"
       ],
       "bad": [
+        "Serve — too many double faults on second serves",
+        "Volley — backhand, do not cross right leg",
+        "Overhead — failed",
+        "Recovery footwork on game points",
+        "Drop ball game — take on rise for spiny balls",
         "One-handed backhand out",
         "Does not deal well with deep lobs",
         "Have trouble with speedy serves → From Robert",
@@ -509,17 +523,45 @@
       ]
     },
     {
-      "name": "Jessy",
+      "name": "Jessie",
       "good": [
+        "Adjust faster to new player style",
+        "Second serves in (but lack speed)",
+        "Baseline rally consistency",
+        "Backhand take high ball on rise",
         "Baseline forehand, 1st serve placement"
       ],
       "bad": [
+        "Easy shots",
+        "Not recovered after baseline shots",
+        "Hesitate to come to net — no man's zone",
+        "Lack confidence on winners",
+        "Too many unforced errors",
+        "Missed chances on game points",
         "dropshots, do not come to the net"
+      ]
+    },
+    {
+      "name": "Jessika",
+      "good": [
+        "Consistency and angle when rallying",
+        "Good lob when opponent at net",
+        "Swing volley"
+      ],
+      "bad": [
+        "Approaching shots too fast and long",
+        "No advantage after good serve",
+        "Dropshots into net",
+        "Double faults",
+        "Overhead fails on trash balls"
       ]
     },
     {
       "name": "Kimo",
       "good": [
+        "Prepare higher on lob/high balls; backhand hit on rise",
+        "Overhead progress — sweet spot and direction",
+        "Volley — good forehands, reaction time",
         "Lobs depth, volley, on court movement",
         "1st serve speed, volley at net, double movement and position on court, consistency on lobs",
         "Ball goes hight but speed is low",
@@ -535,6 +577,8 @@
         "Knows where the opponent is, tend to hit down the line on the side alleys — needs attention!"
       ],
       "bad": [
+        "Volley backhand — tilting racket head, lack of foot movement",
+        "Baseline — hard time changing pace on high balls / lobs",
         "Lack killing/finishing groudstroke shots, backhand weak",
         "not enough killing shots, serve and return can be weak, overhead time is off",
         "Not very consistent if lob is high",
@@ -670,5 +714,6 @@
       ]
     }
   ],
-  "cheatNotesSource": "markdown-export"
+  "cheatNotesSource": "notion+snapshot",
+  "source": "snapshot"
 }

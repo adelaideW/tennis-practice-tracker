@@ -19,7 +19,7 @@ const GOOD_SECTION_RE = /^(good(\s+at)?|strengths)\s*:?\s*$/i;
 const BAD_SECTION_RE = /^(loophole|bad|weakness(es)?|needs?\s*work|exploit)\s*:?\s*$/i;
 const ANALYSIS_TITLE_RE = /analysis on other/i;
 const MY_PERFORMANCE_RE = /analysis on my(\s+performance)?/i;
-const PLAYER_ALIASES = { Jessie: 'Jessy', Jessika: 'Jessy' };
+const PLAYER_ALIASES = { Jessy: 'Jessie', Jessie: 'Jessie', coach: 'Coach' };
 
 function normalizePlayerName(name) {
   return PLAYER_ALIASES[name.trim()] || name.trim();

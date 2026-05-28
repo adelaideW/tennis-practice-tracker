@@ -166,8 +166,9 @@ const ANALYSIS_TITLE_RE = /analysis on other/i;
 const MY_PERFORMANCE_RE = /analysis on my(\s+performance)?/i;
 
 const PLAYER_ALIASES = {
-  Jessie: 'Jessy',
-  Jessika: 'Jessy',
+  Jessy: 'Jessie',
+  Jessie: 'Jessie',
+  coach: 'Coach',
 };
 
 function normalizePlayerName(name) {
@@ -422,6 +423,53 @@ function mergeCheatNotes(live, snapshot) {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+function deriveCheatNotesFromSessions(sessions = []) {
+  const byPlayer = new Map();
+
+  const push = (name, note, section) => {
+    const n = normalizePlayerName(name);
+    const trimmed = String(note || '').trim();
+    if (!n || !trimmed) return;
+    if (!byPlayer.has(n)) byPlayer.set(n, { name: n, good: [], bad: [] });
+    const row = byPlayer.get(n);
+    const list = section === 'good' ? row.good : row.bad;
+    if (!list.includes(trimmed)) list.push(trimmed);
+  };
+
+  const extractPlayers = (context) => {
+    const c = String(context || '');
+    const out = [];
+    for (const m of c.matchAll(/\b(?:single game|practice|played)\s+w\/\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/gi)) {
+      out.push(m[1].trim());
+    }
+    return [...new Set(out)];
+  };
+
+  for (const s of sessions) {
+    const players = extractPlayers(s.context || s.label || '');
+    if (!players.length) continue;
+    for (const p of players) {
+      for (const g of s.good || []) push(p, g, 'good');
+      for (const b of s.bad || []) push(p, b, 'bad');
+    }
+  }
+
+  return [...byPlayer.values()]
+    .filter((p) => p.good.length || p.bad.length)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function normalizeCheatNoteRows(rows = []) {
+  return mergeCheatNotes(
+    rows.map((r) => ({
+      name: normalizePlayerName(r.name || ''),
+      good: r.good || [],
+      bad: r.bad || [],
+    })),
+    [],
+  );
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
 
@@ -439,11 +487,16 @@ export default async function handler(req, res) {
     const page = await notionFetch(`/pages/${pageId}`);
     const snap = await loadSnapshot();
     const sessions = await parseAllDailySessions(pageId);
+    const sessionsForPayload = sessions.length ? sessions : snap.sessions || [];
     let cheatNotes = [];
     let cheatNotesSource = 'snapshot';
-    const snapCheat = snap.cheatNotes || [];
+    const snapCheat = normalizeCheatNoteRows(snap.cheatNotes || []);
+    const sessionCheat = deriveCheatNotesFromSessions(sessionsForPayload);
     try {
-      const liveCheat = await parseGameCheatNotes(pageId);
+      const liveCheat = mergeCheatNotes(
+        await parseGameCheatNotes(pageId),
+        sessionCheat,
+      );
       if (liveCheat.length) {
         cheatNotes = liveCheat;
         cheatNotesSource = 'notion';
@@ -452,12 +505,18 @@ export default async function handler(req, res) {
           cheatNotesSource = 'notion+snapshot';
         }
       } else {
-        cheatNotes = snapCheat;
-        cheatNotesSource = snapCheat.length ? 'snapshot' : 'notion';
+        cheatNotes = mergeCheatNotes(sessionCheat, snapCheat);
+        cheatNotesSource = cheatNotes.length ? 'notion+snapshot' : 'notion';
       }
     } catch (cheatErr) {
       cheatNotes = snapCheat;
       cheatNotesSource = 'snapshot';
+    }
+
+    // Always enrich cheat notes with player-specific daily-session context.
+    cheatNotes = mergeCheatNotes(cheatNotes, sessionCheat);
+    if (cheatNotesSource === 'snapshot' && sessionCheat.length) {
+      cheatNotesSource = 'notion+snapshot';
     }
 
     const payload = {
@@ -467,7 +526,7 @@ export default async function handler(req, res) {
       weeklyOverview: snap.weeklyOverview,
       focus: snap.focus,
       source: 'notion',
-      sessions: sessions.length ? sessions : snap.sessions,
+      sessions: sessionsForPayload,
       latestDaily: sessions[0] || snap.latestDaily,
       cheatNotes: cheatNotes.length ? cheatNotes : snapCheat,
       cheatNotesSource,
