@@ -995,6 +995,31 @@ input, textarea, select { font-family: inherit; }
 }
 .see-more-results { width: 100%; margin-top: 14px; justify-content: center; }
 .week-results-modal { max-width: 640px; }
+.cheat-lock-modal { max-width: 460px; }
+.cheat-lock-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cheat-password-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--ink);
+  padding: 11px 12px;
+  font-size: 14px;
+}
+.cheat-password-input::placeholder { color: var(--ink-3); }
+.cheat-password-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.cheat-lock-error {
+  margin: 0;
+  font-size: 12px;
+  color: #f87171;
+}
 .week-results-controls {
   display: flex;
   flex-direction: column;

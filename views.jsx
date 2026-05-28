@@ -504,10 +504,14 @@ function GameCheatNoteColumn({ playerName, columnKey, label, items, emptyLabel }
   );
 }
 
-function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionError }) {
+function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionError, isUnlocked, onUnlock }) {
   const notionPage = window.NOTION_INSIGHTS_PAGE;
   const [refreshSeed, setRefreshSeed] = useS1(0);
   const [lastSyncedAt, setLastSyncedAt] = useS1(null);
+  const [password, setPassword] = useS1('');
+  const [authError, setAuthError] = useS1('');
+  const passRef = useR1(null);
+  const CHEAT_PASSWORD = 'AdelaideW';
 
   const cheat = useM1(
     () => (notionPayload && window.buildCheatNotesFromNotion
@@ -539,6 +543,62 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
     const data = await syncFromNotion();
     if (data) setLastSyncedAt(new Date().toISOString());
   };
+
+  useE1(() => {
+    if (!isUnlocked && passRef.current) {
+      passRef.current.focus();
+    }
+  }, [isUnlocked]);
+
+  const handleUnlock = () => {
+    if (password.trim() === CHEAT_PASSWORD) {
+      setAuthError('');
+      setPassword('');
+      if (onUnlock) onUnlock();
+      return;
+    }
+    setAuthError('Incorrect password. Please try again.');
+  };
+
+  if (!isUnlocked) {
+    return (
+      <div className="modal-overlay">
+        <div className="modal cheat-lock-modal" role="dialog" aria-modal="true" aria-labelledby="cheat-lock-title">
+          <div className="modal-header">
+            <div className="deco" aria-hidden="true"></div>
+            <div className="kicker">Protected Section</div>
+            <h2 id="cheat-lock-title">Game cheat note is locked</h2>
+            <div className="modal-meta">Enter password to view this page</div>
+          </div>
+          <div className="modal-body">
+            <div className="cheat-lock-form">
+              <label className="mono-small" htmlFor="cheat-password-input">Password</label>
+              <input
+                id="cheat-password-input"
+                ref={passRef}
+                type="password"
+                className="cheat-password-input"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (authError) setAuthError('');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleUnlock();
+                }}
+                placeholder="Enter password"
+                autoComplete="off"
+              />
+              {authError && <p className="cheat-lock-error">{authError}</p>}
+              <button type="button" className="btn-primary" onClick={handleUnlock}>
+                Unlock
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

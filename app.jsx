@@ -172,6 +172,7 @@ function App() {
     notionError: null,
   });
   const [notionPayload, setNotionPayload] = useState(null);
+  const [cheatUnlocked, setCheatUnlocked] = useState(false);
   const [themeLocked, setThemeLocked] = useState(false);
   const [lockedTheme, setLockedTheme] = useState('dark');
   const [theme, setTheme] = useState(() => getThemeFromLocalTime());
@@ -340,6 +341,8 @@ function App() {
             syncFromNotion={syncFromNotion}
             notionLoading={state.notionLoading}
             notionError={state.notionError}
+            isUnlocked={cheatUnlocked}
+            onUnlock={() => setCheatUnlocked(true)}
           />
         )}
         {route === 'calendar' && <window.Calendar />}
