@@ -286,9 +286,6 @@ function App() {
               loading="lazy"
             />
           </div>
-          <div className="brand-text">
-            <div className="brand-name">ACE</div>
-          </div>
         </div>
 
         <nav className="nav">
