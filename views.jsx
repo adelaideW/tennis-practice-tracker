@@ -562,38 +562,33 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
 
   if (!isUnlocked) {
     return (
-      <div className="modal-overlay">
-        <div className="modal cheat-lock-modal" role="dialog" aria-modal="true" aria-labelledby="cheat-lock-title">
-          <div className="modal-header">
-            <div className="deco" aria-hidden="true"></div>
-            <div className="kicker">Protected Section</div>
-            <h2 id="cheat-lock-title">Game cheat note is locked</h2>
-            <div className="modal-meta">Enter password to view this page</div>
-          </div>
-          <div className="modal-body">
-            <div className="cheat-lock-form">
-              <label className="mono-small" htmlFor="cheat-password-input">Password</label>
-              <input
-                id="cheat-password-input"
-                ref={passRef}
-                type="password"
-                className="cheat-password-input"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (authError) setAuthError('');
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleUnlock();
-                }}
-                placeholder="Enter password"
-                autoComplete="off"
-              />
-              {authError && <p className="cheat-lock-error">{authError}</p>}
-              <button type="button" className="btn-primary" onClick={handleUnlock}>
-                Unlock
-              </button>
-            </div>
+      <div className="cheat-lock-page">
+        <div className="cheat-lock-panel" role="group" aria-labelledby="cheat-lock-title">
+          <div className="kicker">Protected Section</div>
+          <h2 id="cheat-lock-title">Game cheat note is locked</h2>
+          <p className="muted" style={{ margin: 0 }}>Enter password to view this page.</p>
+          <div className="cheat-lock-form">
+            <label className="mono-small" htmlFor="cheat-password-input">Password</label>
+            <input
+              id="cheat-password-input"
+              ref={passRef}
+              type="password"
+              className="cheat-password-input"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (authError) setAuthError('');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleUnlock();
+              }}
+              placeholder="Enter password"
+              autoComplete="off"
+            />
+            {authError && <p className="cheat-lock-error">{authError}</p>}
+            <button type="button" className="btn-primary" onClick={handleUnlock}>
+              Unlock
+            </button>
           </div>
         </div>
       </div>

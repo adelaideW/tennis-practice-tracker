@@ -995,7 +995,23 @@ input, textarea, select { font-family: inherit; }
 }
 .see-more-results { width: 100%; margin-top: 14px; justify-content: center; }
 .week-results-modal { max-width: 640px; }
-.cheat-lock-modal { max-width: 460px; }
+.cheat-lock-page {
+  min-height: calc(100vh - 180px);
+  display: grid;
+  place-items: center;
+  padding: 22px 0;
+}
+.cheat-lock-panel {
+  width: min(460px, 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 .cheat-lock-form {
   display: flex;
   flex-direction: column;
