@@ -66,9 +66,10 @@ function ActivityChart({ entries }) {
   );
 }
 
-function Today({ state, setRoute, syncFromNotion }) {
+function Today({ state, setRoute, syncFromNotion, notionPayload }) {
   const today = new Date();
   const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const [refreshSeed, setRefreshSeed] = useS1(0);
 
   const totalSessions = state.entries.length;
   const totalMinutes = state.entries.reduce((a, e) => a + (e.duration || 60), 0);
@@ -98,8 +99,18 @@ function Today({ state, setRoute, syncFromNotion }) {
   }, [state.entries]);
 
   const recentSessions = state.entries.slice(0, 3);
-  const focus = state.focus;
+  const focus = useM1(() => {
+    if (notionPayload && window.buildFocusFromNotion) {
+      return window.buildFocusFromNotion({ ...notionPayload, _refreshSeed: refreshSeed });
+    }
+    return state.focus;
+  }, [notionPayload, state.focus, refreshSeed]);
   const notionPage = window.NOTION_INSIGHTS_PAGE;
+
+  const handleRefresh = async () => {
+    setRefreshSeed((n) => n + 1);
+    if (syncFromNotion) await syncFromNotion();
+  };
 
   return (
     <>
@@ -144,7 +155,7 @@ function Today({ state, setRoute, syncFromNotion }) {
           )}
         </div>
         <div className="focus-cta">
-          <button className="btn-primary" onClick={syncFromNotion} disabled={state.notionLoading}>
+          <button className="btn-primary" onClick={handleRefresh} disabled={state.notionLoading}>
             {state.notionLoading && <span className="spinner"></span>}
             {state.notionLoading ? 'Syncing…' : 'Refresh from Notion'}
           </button>
@@ -919,8 +930,17 @@ function WeekResultsModal({ results, onClose, onOpenTourney }) {
           <div className="modal-meta">{filteredResults.length} matches · ATP &amp; WTA</div>
         </div>
         <div className="modal-body">
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-            <div className="tour-tabs" role="tablist" aria-label="Result tours">
+          <div className="week-results-controls">
+            <div className="week-results-search-row">
+              <input
+                type="search"
+                className="week-results-search"
+                placeholder="Search player or date (e.g. May 27, 2026-05-27)"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+            <div className="tour-tabs week-results-tabs" role="tablist" aria-label="Result tours">
               {['all', 'ATP', 'WTA'].map((tab) => (
                 <button
                   key={tab}
@@ -933,13 +953,6 @@ function WeekResultsModal({ results, onClose, onOpenTourney }) {
                 </button>
               ))}
             </div>
-            <input
-              type="search"
-              placeholder="Search player or date (e.g. May 27, 2026-05-27)"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              style={{ flex: '1 1 240px', minWidth: 220 }}
-            />
           </div>
           {byDate.map(({ date, matches }) => (
             <div key={date} className="week-results-day">

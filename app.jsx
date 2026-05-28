@@ -327,7 +327,12 @@ function App() {
 
       <main className="content" data-screen-label={pages[route].l}>
         {route === 'today' && (
-          <window.Today state={state} setRoute={setRoute} syncFromNotion={syncFromNotion} />
+          <window.Today
+            state={state}
+            setRoute={setRoute}
+            syncFromNotion={syncFromNotion}
+            notionPayload={notionPayload}
+          />
         )}
         {route === 'tips' && (
           <window.Tips
