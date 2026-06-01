@@ -499,6 +499,7 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
   const [expandedPlayers, setExpandedPlayers] = useS1(() => new Set());
   const passRef = useR1(null);
   const CHEAT_PASSWORD = 'AdelaideW';
+  const SUMMARY_LINE_LIMIT = 120;
 
   const cheat = useM1(
     () => (notionPayload && window.buildCheatNotesFromNotion
@@ -563,10 +564,31 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
     }
 
     const summarizePlayer = async (player) => {
+      const formatSummary = (raw) => {
+        const base = String(raw || '')
+          .replace(/```[\s\S]*?```/g, '')
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+        const pickLine = (prefix, fallback) => {
+          const found = base.find((line) => line.toLowerCase().startsWith(prefix.toLowerCase()));
+          const value = (found || `${prefix} ${fallback}`).trim();
+          return value.length > SUMMARY_LINE_LIMIT ? `${value.slice(0, SUMMARY_LINE_LIMIT - 1).trim()}…` : value;
+        };
+
+        return [
+          pickLine('Strengths:', 'Not enough notes yet.'),
+          pickLine('Exploit:', 'Not enough notes yet.'),
+          pickLine('Plan:', 'Use high-percentage patterns and discipline.'),
+        ].join('\n');
+      };
+
       const prompt = [
         'You are a tennis match strategist.',
         `Summarize opponent notes for "${player.name}" in at most 3 short lines.`,
         'Keep each line concise and practical.',
+        'Each line should be under 120 characters.',
         'Format exactly as plain text with line breaks, no bullets, no markdown.',
         'Line 1 starts with "Strengths:".',
         'Line 2 starts with "Exploit:".',
@@ -578,13 +600,7 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
       try {
         const raw = await window.claude.complete(prompt);
         if (cancelled) return;
-        const cleaned = String(raw || '')
-          .replace(/```[\s\S]*?```/g, '')
-          .split('\n')
-          .map((line) => line.trim())
-          .filter(Boolean)
-          .slice(0, 3)
-          .join('\n');
+        const cleaned = formatSummary(raw);
         if (!cleaned) return;
         setAiSummaries((prev) => ({ ...prev, [player.name]: cleaned }));
       } catch {

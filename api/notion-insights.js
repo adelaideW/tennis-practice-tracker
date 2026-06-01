@@ -286,7 +286,8 @@ const CHEAT_LINE_BLOCK_TYPES = new Set([
 const GOOD_SECTION_RE = /^(good(\s+at)?|strengths)\s*:?\s*$/i;
 const BAD_SECTION_RE = /^(loophole|bad|weakness(es)?|needs?\s*work|exploit)\s*:?\s*$/i;
 const ANALYSIS_TITLE_RE = /analysis on other/i;
-const MY_PERFORMANCE_RE = /analysis on my(\s+performance)?/i;
+const MY_PERFORMANCE_RE =
+  /\b(?:analysis\s+(?:on|of)\s+my(?:\s+performance|\s+game)?|my\s+(?:performance|game|weakness(?:es)?|notes)|personal\s+weakness(?:es)?|myself)\b/i;
 
 const PLAYER_ALIASES = {
   Jessy: 'Jessie',
@@ -378,20 +379,35 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
   let currentPlayer = null;
   let inOtherAnalysis = true;
 
+  const resetPlayerContext = () => {
+    section = null;
+    currentPlayer = null;
+  };
+
+  const looksLikeSelfNote = (text) => {
+    const cleaned = String(text || '').trim().replace(/^[-•]\s*/, '').toLowerCase();
+    if (!cleaned) return false;
+    return (
+      /^(my|i|me)\b/.test(cleaned) ||
+      /^(weakness|weaknesses|to improve)\b/.test(cleaned) ||
+      /\b(my game|my performance|my weakness|my weaknesses)\b/.test(cleaned)
+    );
+  };
+
   const walkBlocks = async (blocks, playerFromToggle = null) => {
     for (const block of blocks) {
       if (block.type === 'toggle') {
         const toggleTitle = blockPlainText(block);
         if (MY_PERFORMANCE_RE.test(toggleTitle)) {
           inOtherAnalysis = false;
+          resetPlayerContext();
           continue;
         }
         if (ANALYSIS_TITLE_RE.test(toggleTitle)) {
           inOtherAnalysis = true;
-          section = null;
-          currentPlayer = null;
+          resetPlayerContext();
         }
-        const playerName = isLikelyPlayerName(toggleTitle) ? toggleTitle : playerFromToggle;
+        const playerName = isLikelyPlayerName(toggleTitle) ? toggleTitle : null;
         const nested = await notionFetchAllChildren(block.id);
         await walkBlocks(nested, playerName);
         continue;
@@ -401,12 +417,12 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
         const h = blockPlainText(block);
         if (MY_PERFORMANCE_RE.test(h)) {
           inOtherAnalysis = false;
+          resetPlayerContext();
           continue;
         }
         if (ANALYSIS_TITLE_RE.test(h)) {
           inOtherAnalysis = true;
-          section = null;
-          currentPlayer = null;
+          resetPlayerContext();
           continue;
         }
         if (GOOD_SECTION_RE.test(h)) {
@@ -430,12 +446,12 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
       const line = blockPlainText(block);
       if (MY_PERFORMANCE_RE.test(line)) {
         inOtherAnalysis = false;
+        resetPlayerContext();
         continue;
       }
       if (ANALYSIS_TITLE_RE.test(line)) {
         inOtherAnalysis = true;
-        section = null;
-        currentPlayer = null;
+        resetPlayerContext();
         continue;
       }
       if (!inOtherAnalysis) continue;
@@ -465,6 +481,7 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
 
       const activePlayer = currentPlayer || playerFromToggle;
       if (!parsed.consumed && activePlayer && line.trim()) {
+        if (looksLikeSelfNote(line)) continue;
         const noteSection = section || classifyObservedNote(line);
         pushNote(byPlayer, activePlayer, line, noteSection);
       }
@@ -621,12 +638,8 @@ export default async function handler(req, res) {
     let cheatNotes = [];
     let cheatNotesSource = 'snapshot';
     const snapCheat = normalizeCheatNoteRows(snap.cheatNotes || []);
-    const sessionCheat = deriveCheatNotesFromSessions(sessionsForPayload);
     try {
-      const liveCheat = mergeCheatNotes(
-        await parseGameCheatNotes(pageId),
-        sessionCheat,
-      );
+      const liveCheat = await parseGameCheatNotes(pageId);
       if (liveCheat.length) {
         cheatNotes = liveCheat;
         cheatNotesSource = 'notion';
@@ -635,18 +648,12 @@ export default async function handler(req, res) {
           cheatNotesSource = 'notion+snapshot';
         }
       } else {
-        cheatNotes = mergeCheatNotes(sessionCheat, snapCheat);
+        cheatNotes = snapCheat;
         cheatNotesSource = cheatNotes.length ? 'notion+snapshot' : 'notion';
       }
     } catch (cheatErr) {
       cheatNotes = snapCheat;
       cheatNotesSource = 'snapshot';
-    }
-
-    // Always enrich cheat notes with player-specific daily-session context.
-    cheatNotes = mergeCheatNotes(cheatNotes, sessionCheat);
-    if (cheatNotesSource === 'snapshot' && sessionCheat.length) {
-      cheatNotesSource = 'notion+snapshot';
     }
 
     let weeklyPriorities = snap.weeklyPriorities || [];

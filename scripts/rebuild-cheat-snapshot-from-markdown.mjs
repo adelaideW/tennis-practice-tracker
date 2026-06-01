@@ -18,7 +18,8 @@ if (!exportPath) {
 const GOOD_SECTION_RE = /^(good(\s+at)?|strengths)\s*:?\s*$/i;
 const BAD_SECTION_RE = /^(loophole|bad|weakness(es)?|needs?\s*work|exploit)\s*:?\s*$/i;
 const ANALYSIS_TITLE_RE = /analysis on other/i;
-const MY_PERFORMANCE_RE = /analysis on my(\s+performance)?/i;
+const MY_PERFORMANCE_RE =
+  /\b(?:analysis\s+(?:on|of)\s+my(?:\s+performance|\s+game)?|my\s+(?:performance|game|weakness(?:es)?|notes)|personal\s+weakness(?:es)?|myself)\b/i;
 const PLAYER_ALIASES = { Jessy: 'Jessie', Jessie: 'Jessie', coach: 'Coach' };
 
 function normalizePlayerName(name) {
@@ -58,6 +59,16 @@ function parseMarkdownCheatNotes(text) {
   let inOtherAnalysis = false;
   let section = null;
   let currentPlayer = null;
+
+  const looksLikeSelfNote = (note) => {
+    const cleaned = String(note || '').trim().replace(/^[-•]\s*/, '').toLowerCase();
+    if (!cleaned) return false;
+    return (
+      /^(my|i|me)\b/.test(cleaned) ||
+      /^(weakness|weaknesses|to improve)\b/.test(cleaned) ||
+      /\b(my game|my performance|my weakness|my weaknesses)\b/.test(cleaned)
+    );
+  };
 
   const push = (name, note, sec) => {
     const n = normalizePlayerName(name);
@@ -110,7 +121,7 @@ function parseMarkdownCheatNotes(text) {
       continue;
     }
 
-    if (currentPlayer) {
+    if (currentPlayer && !looksLikeSelfNote(bullet)) {
       push(currentPlayer, bullet, section || classifyObservedNote(bullet));
     }
   }
