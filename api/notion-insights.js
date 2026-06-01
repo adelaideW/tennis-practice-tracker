@@ -385,7 +385,7 @@ function isLikelyPlayerName(text) {
 /** Ingest Good / Loophole notes from any analysis block subtree. */
 async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
   let section = null;
-  let inOtherAnalysis = true;
+  let inOtherAnalysis = false;
 
   const resetPlayerContext = () => {
     section = null;
