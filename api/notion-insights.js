@@ -442,6 +442,8 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
           section = 'bad';
           continue;
         }
+        // Prevent section bleed (e.g., "Take away" bullets inheriting "Loophole").
+        section = null;
       }
 
       if (!CHEAT_LINE_BLOCK_TYPES.has(block.type)) continue;
