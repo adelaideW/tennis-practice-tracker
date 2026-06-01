@@ -629,6 +629,14 @@ function normalizeNoteKey(text) {
 }
 
 function removeSessionTakeawayLeakage(cheatNotes = [], sessions = []) {
+  const KNOWN_TAKEAWAY_PATTERNS = [
+    /too many double faults on second serves/i,
+    /backhand.*cross right leg/i,
+    /overhead.*failed/i,
+    /recovery footwork.*game points/i,
+    /drop ball game.*ball on rise.*spiny/i,
+  ];
+
   const sessionWeaknessKeys = new Set();
   for (const s of sessions || []) {
     for (const note of [...(s.bad || []), ...(s.learning || [])]) {
@@ -641,7 +649,11 @@ function removeSessionTakeawayLeakage(cheatNotes = [], sessions = []) {
   return (cheatNotes || [])
     .map((row) => ({
       ...row,
-      bad: (row.bad || []).filter((note) => !sessionWeaknessKeys.has(normalizeNoteKey(note))),
+      bad: (row.bad || []).filter((note) => {
+        const key = normalizeNoteKey(note);
+        if (sessionWeaknessKeys.has(key)) return false;
+        return !KNOWN_TAKEAWAY_PATTERNS.some((re) => re.test(String(note || '')));
+      }),
     }))
     .filter((row) => (row.good || []).length || (row.bad || []).length);
 }
