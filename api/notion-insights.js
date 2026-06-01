@@ -639,8 +639,8 @@ export default async function handler(req, res) {
         cheatNotes = liveCheat;
         cheatNotesSource = 'notion';
       } else {
-        cheatNotes = snapCheat;
-        cheatNotesSource = cheatNotes.length ? 'notion+snapshot' : 'notion';
+        cheatNotes = [];
+        cheatNotesSource = 'notion';
       }
     } catch (cheatErr) {
       cheatNotes = snapCheat;
