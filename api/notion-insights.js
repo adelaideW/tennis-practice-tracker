@@ -725,6 +725,7 @@ export default async function handler(req, res) {
       latestDaily: sessions[0] || snap.latestDaily,
       cheatNotes: cheatNotes.length ? cheatNotes : snapCheat,
       cheatNotesSource,
+      parserVersion: 'cheat-filter-v7',
     };
 
     return res.status(200).json(payload);
