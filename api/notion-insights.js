@@ -386,6 +386,8 @@ function isLikelyPlayerName(text) {
 async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
   let section = null;
   let inOtherAnalysis = false;
+  const SESSION_TOGGLE_RE =
+    /(\d{4}-\d{2}-\d{2})|^(mon|tue|wed|thu|fri|sat|sun)(day)?\b/i;
 
   const resetPlayerContext = () => {
     section = null;
@@ -405,6 +407,9 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
     for (const block of blocks) {
       if (block.type === 'toggle') {
         const toggleTitle = blockPlainText(block);
+        if (SESSION_TOGGLE_RE.test(toggleTitle.trim())) {
+          continue;
+        }
         if (MY_PERFORMANCE_RE.test(toggleTitle)) {
           inOtherAnalysis = false;
           resetPlayerContext();
