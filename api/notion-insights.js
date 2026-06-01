@@ -382,10 +382,21 @@ function isLikelyPlayerName(text) {
   return /^[A-Z][a-z]+\s+[A-Z]\.?$/.test(t) || /^[A-Z][a-z]+\s+[A-Z][a-z]+$/.test(t);
 }
 
-/** Ingest Good / Loophole notes from any analysis block subtree. */
-async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
+function isPlayerAnalysisTitle(title) {
+  const t = String(title || '').trim();
+  return ANALYSIS_TITLE_RE.test(t) || PLAYER_STYLE_ANALYSIS_RE.test(t);
+}
+
+function isUserPlanNote(line) {
+  const cleaned = String(line || '').trim();
+  return /^\*/.test(cleaned) || /\*(be prepared|needs to|try to|remember to)\b/i.test(cleaned);
+}
+
+/** Ingest Good / Loophole notes from explicit analysis block subtrees only. */
+async function ingestPlayerAnalysisBlock(parentId, byPlayer, parentTitle = '') {
   let section = null;
-  let inOtherAnalysis = false;
+  let inOtherAnalysis = isPlayerAnalysisTitle(parentTitle);
+  const rootPlayer = extractPlayerFromAnalysisTitle(parentTitle);
   const SESSION_TOGGLE_RE =
     /(\d{4}-\d{2}-\d{2})|^(mon|tue|wed|thu|fri|sat|sun)(day)?\b/i;
 
@@ -475,17 +486,23 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
         continue;
       }
 
-      const hasExplicitPlayerSection = Boolean(playerFromToggle);
-      const parsed = hasExplicitPlayerSection
-        ? parsePlayerLine(line, section, byPlayer)
-        : { section, consumed: true };
+      if (section && !rootPlayer && isLikelyPlayerName(line) && !line.includes(':')) {
+        if (block.has_children) {
+          const nested = await notionFetchAllChildren(block.id);
+          await walkBlocks(nested, line);
+        }
+        continue;
+      }
+
+      const parsed = parsePlayerLine(line, section, byPlayer);
       section = parsed.section;
 
-      const activePlayer = playerFromToggle;
-      // Only accept bullets when they are explicitly under Good/Loophole sections.
-      if (!parsed.consumed && activePlayer && section && line.trim()) {
-        if (looksLikeSelfNote(line)) continue;
-        pushNote(byPlayer, activePlayer, line, section);
+      const activePlayer = playerFromToggle || rootPlayer;
+      if (!parsed.consumed && activePlayer && line.trim()) {
+        if (looksLikeSelfNote(line) || isUserPlanNote(line)) continue;
+        const noteSection = section || (rootPlayer ? classifyObservedNote(line) : null);
+        if (!noteSection) continue;
+        pushNote(byPlayer, activePlayer, line, noteSection);
       }
 
       if (block.has_children) {
@@ -496,30 +513,23 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
   };
 
   const top = await notionFetchAllChildren(parentId);
-  await walkBlocks(top);
-}
-
-async function subtreeHasCheatSections(blockId) {
-  const children = await notionFetchAllChildren(blockId);
-  for (const block of children) {
-    const text = blockPlainText(block);
-    if (ANALYSIS_TITLE_RE.test(text)) return true;
-    if (GOOD_SECTION_RE.test(text) || BAD_SECTION_RE.test(text)) return true;
-    if (block.has_children && (await subtreeHasCheatSections(block.id))) return true;
-  }
-  return false;
+  await walkBlocks(top, rootPlayer);
 }
 
 /** Walk entire insights page — all weekly / historical player analysis toggles. */
 async function parseGameCheatNotes(pageId) {
   const byPlayer = new Map();
   const DAILY_REFLECTION_RE = /daily reflection/i;
+  const SESSION_TOGGLE_RE =
+    /(\d{4}-\d{2}-\d{2})|^(mon|tue|wed|thu|fri|sat|sun)(day)?\b/i;
 
   async function visitToggle(toggleId, title = '') {
     const toggleTitle = title || '';
     if (DAILY_REFLECTION_RE.test(toggleTitle)) return;
-    if (ANALYSIS_TITLE_RE.test(toggleTitle) || (await subtreeHasCheatSections(toggleId))) {
-      await ingestPlayerAnalysisBlock(toggleId, byPlayer);
+    if (SESSION_TOGGLE_RE.test(toggleTitle.trim())) return;
+    if (MY_PERFORMANCE_RE.test(toggleTitle)) return;
+    if (isPlayerAnalysisTitle(toggleTitle)) {
+      await ingestPlayerAnalysisBlock(toggleId, byPlayer, toggleTitle);
     }
 
     const children = await notionFetchAllChildren(toggleId);
@@ -624,7 +634,7 @@ function normalizeCheatNoteRows(rows = []) {
 function normalizeNoteKey(text) {
   return String(text || '')
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 }
 
@@ -634,7 +644,7 @@ function removeSessionTakeawayLeakage(cheatNotes = [], sessions = []) {
     /backhand.*cross right leg/i,
     /overhead.*failed/i,
     /recovery footwork.*game points/i,
-    /drop ball game.*ball on rise.*spiny/i,
+    /drop ball game.*(ball on rise|take on rise).*spiny/i,
   ];
 
   const sessionWeaknessKeys = new Set();
@@ -644,16 +654,19 @@ function removeSessionTakeawayLeakage(cheatNotes = [], sessions = []) {
       if (key) sessionWeaknessKeys.add(key);
     }
   }
-  if (!sessionWeaknessKeys.size) return cheatNotes;
+
+  const shouldDrop = (note) => {
+    const raw = String(note || '');
+    const key = normalizeNoteKey(raw);
+    if (sessionWeaknessKeys.has(key)) return true;
+    return KNOWN_TAKEAWAY_PATTERNS.some((re) => re.test(raw));
+  };
 
   return (cheatNotes || [])
     .map((row) => ({
       ...row,
-      bad: (row.bad || []).filter((note) => {
-        const key = normalizeNoteKey(note);
-        if (sessionWeaknessKeys.has(key)) return false;
-        return !KNOWN_TAKEAWAY_PATTERNS.some((re) => re.test(String(note || '')));
-      }),
+      good: (row.good || []).filter((note) => !shouldDrop(note)),
+      bad: (row.bad || []).filter((note) => !shouldDrop(note)),
     }))
     .filter((row) => (row.good || []).length || (row.bad || []).length);
 }
@@ -725,7 +738,7 @@ export default async function handler(req, res) {
       latestDaily: sessions[0] || snap.latestDaily,
       cheatNotes: cheatNotes.length ? cheatNotes : snapCheat,
       cheatNotesSource,
-      parserVersion: 'cheat-filter-v7',
+      parserVersion: 'cheat-filter-v8',
     };
 
     return res.status(200).json(payload);
