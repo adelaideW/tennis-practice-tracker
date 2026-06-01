@@ -313,6 +313,7 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
         <div>
           <div className="kicker">
             Top 5 from Notion · {sharpen.sessionCount || 0} sessions analyzed
+            {notionPayload?.weeklySource === 'notion' ? ' · weekly priorities live' : ''}
           </div>
           <h1>Sharpen <em>the craft.</em></h1>
         </div>

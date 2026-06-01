@@ -6,7 +6,7 @@ Practice tips and session notes sync from [Tennis practice insights](https://www
 
 - **Today dashboard** loads sessions, stats, charts, and focus brief from Notion — no manual logging.
 - Add **Daily reflection** entries in Notion; use **Refresh from Notion** on the dashboard to pull updates.
-- **Sharpen the craft** ranks your **top 5 improvement areas** from all Notion notes (weekly priorities + every daily reflection), with matched tips, drills, and YouTube/article links. Use **Refresh from Notion** after you log new notes.
+- **Sharpen the craft** ranks your **top 5 improvement areas** from all Notion notes (latest **Weekly insights** priorities + every daily reflection), with matched tips, drills, and YouTube/article links. Use **Refresh from Notion** after you log new notes — weekly priorities and daily reflections both update live when `NOTION_TOKEN` is set on Vercel.
 
 ### Live API (optional)
 

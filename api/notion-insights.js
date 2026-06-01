@@ -185,6 +185,90 @@ async function parseAllDailySessions(pageId) {
   return sessions;
 }
 
+const WEEKLY_LINE_BLOCK_TYPES = new Set(['bulleted_list_item', 'numbered_list_item', 'paragraph']);
+
+/** Latest "Week of …" block under Weekly insights → priorities + overview focus/drill. */
+async function parseWeeklyPriorities(pageId) {
+  const blocks = await notionFetchAllChildren(pageId);
+  let weeklyContainerId = null;
+
+  for (const block of blocks) {
+    const text = blockPlainText(block);
+    if (!/weekly\s+insights/i.test(text)) continue;
+    if (block.has_children) {
+      weeklyContainerId = block.id;
+      break;
+    }
+  }
+
+  if (!weeklyContainerId) return null;
+
+  const weekToggles = (await notionFetchAllChildren(weeklyContainerId)).filter(
+    (b) => b.type === 'toggle' && /^week\s+of\b/i.test(blockPlainText(b)),
+  );
+  if (!weekToggles.length) return null;
+
+  const latestWeek = weekToggles[0];
+  const weekChildren = await notionFetchAllChildren(latestWeek.id);
+  const overview = { focus: '', drill: '' };
+  const priorities = [];
+
+  for (const child of weekChildren) {
+    if (child.type !== 'toggle') continue;
+    const title = blockPlainText(child);
+
+    if (/^overview$/i.test(title)) {
+      const lines = await collectWeeklyLines(child.id);
+      for (const line of lines) {
+        const cleaned = line.replace(/^[-•]\s*/, '').trim();
+        const focusM = cleaned.match(/^focus:\s*(.+)$/i);
+        const drillM = cleaned.match(/^drill:\s*(.+)$/i);
+        if (focusM) overview.focus = focusM[1].trim();
+        if (drillM) overview.drill = drillM[1].trim();
+      }
+      continue;
+    }
+
+    if (/things to (?:do\/try|try).*priorit/i.test(title)) {
+      const bullets = await collectTopLevelBullets(child.id);
+      for (const text of bullets) {
+        const trimmed = text.trim();
+        if (trimmed && !priorities.includes(trimmed)) priorities.push(trimmed);
+      }
+    }
+  }
+
+  return {
+    weekLabel: blockPlainText(latestWeek),
+    weeklyPriorities: priorities,
+    weeklyOverview: overview,
+  };
+}
+
+async function collectWeeklyLines(parentId) {
+  const out = [];
+  const children = await notionFetchAllChildren(parentId);
+  for (const item of children) {
+    if (WEEKLY_LINE_BLOCK_TYPES.has(item.type)) {
+      const line = blockPlainText(item);
+      if (line) out.push(line);
+    }
+  }
+  return out;
+}
+
+async function collectTopLevelBullets(parentId) {
+  const out = [];
+  const children = await notionFetchAllChildren(parentId);
+  for (const item of children) {
+    if (item.type === 'bulleted_list_item' || item.type === 'numbered_list_item') {
+      const text = blockPlainText(item);
+      if (text) out.push(text);
+    }
+  }
+  return out;
+}
+
 function blockPlainText(block) {
   const type = block.type;
   const data = block[type];
@@ -565,12 +649,32 @@ export default async function handler(req, res) {
       cheatNotesSource = 'notion+snapshot';
     }
 
+    let weeklyPriorities = snap.weeklyPriorities || [];
+    let weeklyOverview = snap.weeklyOverview || { focus: '', drill: '' };
+    let focus = snap.focus;
+    let weeklySource = 'snapshot';
+    try {
+      const weeklyLive = await parseWeeklyPriorities(pageId);
+      if (weeklyLive?.weeklyPriorities?.length) {
+        weeklyPriorities = weeklyLive.weeklyPriorities;
+        weeklySource = 'notion';
+        focus = undefined;
+      }
+      if (weeklyLive?.weeklyOverview?.focus || weeklyLive?.weeklyOverview?.drill) {
+        weeklyOverview = weeklyLive.weeklyOverview;
+        weeklySource = 'notion';
+      }
+    } catch (_) {
+      /* keep snapshot weekly fields */
+    }
+
     const payload = {
       pageUrl: page.url || snap.pageUrl,
       updatedAt: page.last_edited_time || snap.updatedAt,
-      weeklyPriorities: snap.weeklyPriorities,
-      weeklyOverview: snap.weeklyOverview,
-      focus: snap.focus,
+      weeklyPriorities,
+      weeklyOverview,
+      weeklySource,
+      focus,
       source: 'notion',
       sessions: sessionsForPayload,
       latestDaily: sessions[0] || snap.latestDaily,

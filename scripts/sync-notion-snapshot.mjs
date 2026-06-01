@@ -50,8 +50,8 @@ async function main() {
       const res = await fetch(apiUrl, { cache: 'no-store' });
       if (res.ok) {
         payload = await res.json();
-        if (payload?.cheatNotes?.length) {
-          console.log(`Fetched cheat notes from ${apiUrl}`);
+        if (payload?.cheatNotes?.length || payload?.sessions?.length || payload?.weeklyPriorities?.length) {
+          console.log(`Fetched Notion payload from ${apiUrl}`);
           break;
         }
       }
@@ -60,8 +60,8 @@ async function main() {
     }
   }
 
-  if (!payload?.cheatNotes?.length) {
-    console.error('No cheat notes returned. Deploy API or run `npx vercel dev` and set SYNC_API_URL.');
+  if (!payload?.cheatNotes?.length && !payload?.sessions?.length && !payload?.weeklyPriorities?.length) {
+    console.error('Empty Notion payload. Deploy API or run `npx vercel dev` and set SYNC_API_URL.');
     process.exit(1);
   }
 
@@ -70,18 +70,33 @@ async function main() {
     ...existing,
     pageUrl: page.url || existing.pageUrl,
     updatedAt: page.last_edited_time || new Date().toISOString(),
-    cheatNotes: payload.cheatNotes,
-    cheatNotesSource: payload.cheatNotesSource || 'notion',
+    cheatNotes: payload.cheatNotes || existing.cheatNotes,
+    cheatNotesSource: payload.cheatNotesSource || existing.cheatNotesSource || 'notion',
     source: 'snapshot',
   };
 
+  if (payload.sessions?.length) {
+    out.sessions = payload.sessions;
+    out.latestDaily = payload.latestDaily || payload.sessions[0];
+  }
+  if (payload.weeklyPriorities?.length) {
+    out.weeklyPriorities = payload.weeklyPriorities;
+    out.weeklyOverview = payload.weeklyOverview || existing.weeklyOverview;
+    out.weeklySource = payload.weeklySource || 'notion';
+    delete out.focus;
+  }
+
   await writeFile(join(root, 'notion-data.json'), `${JSON.stringify(out, null, 2)}\n`, 'utf8');
   await copyFile(join(root, 'notion-data.json'), join(root, 'api', 'notion-data.json'));
-  const count = payload.cheatNotes.reduce(
+  const cheatCount = (out.cheatNotes || []).reduce(
     (s, p) => s + (p.good?.length || 0) + (p.bad?.length || 0),
     0,
   );
-  console.log(`Wrote notion-data.json — ${payload.cheatNotes.length} players, ${count} notes.`);
+  console.log(
+    `Wrote notion-data.json — ${out.sessions?.length || 0} sessions, ` +
+      `${out.weeklyPriorities?.length || 0} weekly priorities, ` +
+      `${(out.cheatNotes || []).length} cheat players (${cheatCount} notes).`,
+  );
 }
 
 main().catch((e) => {
