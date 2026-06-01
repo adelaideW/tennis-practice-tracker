@@ -705,7 +705,10 @@ export default async function handler(req, res) {
       cheatNotes = snapCheat;
       cheatNotesSource = 'snapshot';
     }
-    cheatNotes = removeSessionTakeawayLeakage(cheatNotes, sessionsForPayload);
+    const preFilterCoachBad = (cheatNotes.find((c) => c.name === 'Coach')?.bad || []).length;
+    const authoritativeCheat = cheatNotes.length ? cheatNotes : snapCheat;
+    cheatNotes = removeSessionTakeawayLeakage(authoritativeCheat, sessionsForPayload);
+    const postFilterCoachBad = (cheatNotes.find((c) => c.name === 'Coach')?.bad || []).length;
 
     let weeklyPriorities = snap.weeklyPriorities || [];
     let weeklyOverview = snap.weeklyOverview || { focus: '', drill: '' };
@@ -736,9 +739,10 @@ export default async function handler(req, res) {
       source: 'notion',
       sessions: sessionsForPayload,
       latestDaily: sessions[0] || snap.latestDaily,
-      cheatNotes: cheatNotes.length ? cheatNotes : snapCheat,
+      cheatNotes,
       cheatNotesSource,
       parserVersion: 'cheat-filter-v8',
+      cheatFilterDebug: { preFilterCoachBad, postFilterCoachBad },
     };
 
     return res.status(200).json(payload);
