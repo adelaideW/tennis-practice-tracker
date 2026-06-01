@@ -508,9 +508,11 @@ async function subtreeHasCheatSections(blockId) {
 /** Walk entire insights page — all weekly / historical player analysis toggles. */
 async function parseGameCheatNotes(pageId) {
   const byPlayer = new Map();
+  const DAILY_REFLECTION_RE = /daily reflection/i;
 
   async function visitToggle(toggleId, title = '') {
     const toggleTitle = title || '';
+    if (DAILY_REFLECTION_RE.test(toggleTitle)) return;
     if (ANALYSIS_TITLE_RE.test(toggleTitle) || (await subtreeHasCheatSections(toggleId))) {
       await ingestPlayerAnalysisBlock(toggleId, byPlayer);
     }
