@@ -66,7 +66,6 @@ function parseMarkdownCheatNotes(text) {
   const byPlayer = new Map();
   let inOtherAnalysis = false;
   let section = null;
-  let currentPlayer = null;
   let titlePlayer = null;
 
   const looksLikeSelfNote = (note) => {
@@ -97,13 +96,11 @@ function parseMarkdownCheatNotes(text) {
     if (MY_PERFORMANCE_RE.test(bullet)) {
       inOtherAnalysis = false;
       section = null;
-      currentPlayer = null;
       continue;
     }
     if (ANALYSIS_TITLE_RE.test(bullet)) {
       inOtherAnalysis = true;
       section = null;
-      currentPlayer = null;
       titlePlayer = null;
       continue;
     }
@@ -111,7 +108,6 @@ function parseMarkdownCheatNotes(text) {
     if (playerFromTitle) {
       inOtherAnalysis = true;
       section = null;
-      currentPlayer = null;
       titlePlayer = playerFromTitle;
       continue;
     }
@@ -119,12 +115,10 @@ function parseMarkdownCheatNotes(text) {
 
     if (GOOD_SECTION_RE.test(bullet)) {
       section = 'good';
-      currentPlayer = null;
       continue;
     }
     if (BAD_SECTION_RE.test(bullet)) {
       section = 'bad';
-      currentPlayer = null;
       continue;
     }
 
@@ -134,12 +128,7 @@ function parseMarkdownCheatNotes(text) {
       continue;
     }
 
-    if (isLikelyPlayerName(bullet) && !bullet.includes(':')) {
-      currentPlayer = bullet;
-      continue;
-    }
-
-    const activePlayer = currentPlayer || titlePlayer;
+    const activePlayer = titlePlayer;
     // Keep only explicit Good/Loophole entries under a known player section.
     if (activePlayer && section && !looksLikeSelfNote(bullet)) {
       push(activePlayer, bullet, section);

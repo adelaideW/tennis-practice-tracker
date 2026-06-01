@@ -385,12 +385,10 @@ function isLikelyPlayerName(text) {
 /** Ingest Good / Loophole notes from any analysis block subtree. */
 async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
   let section = null;
-  let currentPlayer = null;
   let inOtherAnalysis = true;
 
   const resetPlayerContext = () => {
     section = null;
-    currentPlayer = null;
   };
 
   const looksLikeSelfNote = (text) => {
@@ -438,16 +436,10 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
         }
         if (GOOD_SECTION_RE.test(h)) {
           section = 'good';
-          currentPlayer = null;
           continue;
         }
         if (BAD_SECTION_RE.test(h)) {
           section = 'bad';
-          currentPlayer = null;
-          continue;
-        }
-        if (inOtherAnalysis && isLikelyPlayerName(h)) {
-          currentPlayer = h;
           continue;
         }
       }
@@ -469,28 +461,20 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
 
       if (GOOD_SECTION_RE.test(line)) {
         section = 'good';
-        currentPlayer = null;
         continue;
       }
       if (BAD_SECTION_RE.test(line)) {
         section = 'bad';
-        currentPlayer = null;
         continue;
       }
 
-      if (isLikelyPlayerName(line) && !line.includes(':')) {
-        currentPlayer = line;
-        if (block.has_children) {
-          const nested = await notionFetchAllChildren(block.id);
-          await walkBlocks(nested, currentPlayer);
-        }
-        continue;
-      }
-
-      const parsed = parsePlayerLine(line, section, byPlayer);
+      const hasExplicitPlayerSection = Boolean(playerFromToggle);
+      const parsed = hasExplicitPlayerSection
+        ? parsePlayerLine(line, section, byPlayer)
+        : { section, consumed: true };
       section = parsed.section;
 
-      const activePlayer = currentPlayer || playerFromToggle;
+      const activePlayer = playerFromToggle;
       // Only accept bullets when they are explicitly under Good/Loophole sections.
       if (!parsed.consumed && activePlayer && section && line.trim()) {
         if (looksLikeSelfNote(line)) continue;
@@ -499,7 +483,7 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
 
       if (block.has_children) {
         const nested = await notionFetchAllChildren(block.id);
-        await walkBlocks(nested, currentPlayer || playerFromToggle);
+        await walkBlocks(nested, playerFromToggle);
       }
     }
   };
