@@ -715,7 +715,20 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
             </div>
           ) : (
             cheat.players.map((player) => (
-              <section key={player.name} className="card game-cheat-card">
+              <section
+                key={player.name}
+                className="card game-cheat-card game-cheat-card--clickable"
+                onClick={() => togglePlayerExpanded(player.name)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    togglePlayerExpanded(player.name);
+                  }
+                }}
+                aria-expanded={expandedPlayers.has(player.name)}
+              >
                 <div className="game-cheat-head">
                   <h2 className="game-cheat-name">{player.name}</h2>
                   <div className="game-cheat-head-actions">
@@ -725,7 +738,10 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
                     <button
                       type="button"
                       className="game-cheat-collapse-btn"
-                      onClick={() => togglePlayerExpanded(player.name)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePlayerExpanded(player.name);
+                      }}
                       aria-expanded={expandedPlayers.has(player.name)}
                     >
                       {expandedPlayers.has(player.name) ? 'Hide details' : 'Show details'}

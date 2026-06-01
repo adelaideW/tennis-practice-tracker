@@ -696,6 +696,17 @@ input, textarea, select { font-family: inherit; }
 .game-cheat-card {
   padding: 20px 22px 22px;
 }
+.game-cheat-card--clickable {
+  cursor: pointer;
+}
+.game-cheat-card--clickable:hover {
+  border-color: var(--border);
+  box-shadow: var(--shadow-md);
+}
+.game-cheat-card--clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .game-cheat-head {
   display: flex;
   align-items: baseline;
