@@ -638,10 +638,6 @@ export default async function handler(req, res) {
       if (liveCheat.length) {
         cheatNotes = liveCheat;
         cheatNotesSource = 'notion';
-        if (countCheatNotes(liveCheat) < countCheatNotes(snapCheat)) {
-          cheatNotes = mergeCheatNotes(liveCheat, snapCheat);
-          cheatNotesSource = 'notion+snapshot';
-        }
       } else {
         cheatNotes = snapCheat;
         cheatNotesSource = cheatNotes.length ? 'notion+snapshot' : 'notion';
