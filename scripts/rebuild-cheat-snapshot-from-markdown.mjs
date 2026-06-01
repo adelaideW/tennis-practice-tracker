@@ -18,12 +18,20 @@ if (!exportPath) {
 const GOOD_SECTION_RE = /^(good(\s+at)?|strengths)\s*:?\s*$/i;
 const BAD_SECTION_RE = /^(loophole|bad|weakness(es)?|needs?\s*work|exploit)\s*:?\s*$/i;
 const ANALYSIS_TITLE_RE = /analysis on other/i;
+const PLAYER_STYLE_ANALYSIS_RE = /analysis on\s+(.+?)['’]?\s+s?\s+play style/i;
 const MY_PERFORMANCE_RE =
   /\b(?:analysis\s+(?:on|of)\s+my(?:\s+performance|\s+game)?|my\s+(?:performance|game|weakness(?:es)?|notes)|personal\s+weakness(?:es)?|myself)\b/i;
 const PLAYER_ALIASES = { Jessy: 'Jessie', Jessie: 'Jessie', coach: 'Coach' };
 
 function normalizePlayerName(name) {
   return PLAYER_ALIASES[name.trim()] || name.trim();
+}
+
+function extractPlayerFromAnalysisTitle(text) {
+  const title = String(text || '').trim();
+  const m = title.match(PLAYER_STYLE_ANALYSIS_RE);
+  if (!m?.[1]) return null;
+  return m[1].trim().replace(/^other\s+/i, '').replace(/\s+/g, ' ');
 }
 
 function classifyObservedNote(note) {
@@ -59,6 +67,7 @@ function parseMarkdownCheatNotes(text) {
   let inOtherAnalysis = false;
   let section = null;
   let currentPlayer = null;
+  let titlePlayer = null;
 
   const looksLikeSelfNote = (note) => {
     const cleaned = String(note || '').trim().replace(/^[-•]\s*/, '').toLowerCase();
@@ -95,6 +104,15 @@ function parseMarkdownCheatNotes(text) {
       inOtherAnalysis = true;
       section = null;
       currentPlayer = null;
+      titlePlayer = null;
+      continue;
+    }
+    const playerFromTitle = extractPlayerFromAnalysisTitle(bullet);
+    if (playerFromTitle) {
+      inOtherAnalysis = true;
+      section = null;
+      currentPlayer = null;
+      titlePlayer = playerFromTitle;
       continue;
     }
     if (!inOtherAnalysis) continue;
@@ -121,8 +139,10 @@ function parseMarkdownCheatNotes(text) {
       continue;
     }
 
-    if (currentPlayer && !looksLikeSelfNote(bullet)) {
-      push(currentPlayer, bullet, section || classifyObservedNote(bullet));
+    const activePlayer = currentPlayer || titlePlayer;
+    // Keep only explicit Good/Loophole entries under a known player section.
+    if (activePlayer && section && !looksLikeSelfNote(bullet)) {
+      push(activePlayer, bullet, section);
     }
   }
 

@@ -286,6 +286,7 @@ const CHEAT_LINE_BLOCK_TYPES = new Set([
 const GOOD_SECTION_RE = /^(good(\s+at)?|strengths)\s*:?\s*$/i;
 const BAD_SECTION_RE = /^(loophole|bad|weakness(es)?|needs?\s*work|exploit)\s*:?\s*$/i;
 const ANALYSIS_TITLE_RE = /analysis on other/i;
+const PLAYER_STYLE_ANALYSIS_RE = /analysis on\s+(.+?)['’]?\s+s?\s+play style/i;
 const MY_PERFORMANCE_RE =
   /\b(?:analysis\s+(?:on|of)\s+my(?:\s+performance|\s+game)?|my\s+(?:performance|game|weakness(?:es)?|notes)|personal\s+weakness(?:es)?|myself)\b/i;
 
@@ -305,6 +306,14 @@ function isExcludedCheatPlayer(name) {
 function normalizePlayerName(name) {
   const t = name.trim();
   return PLAYER_ALIASES[t] || t;
+}
+
+function extractPlayerFromAnalysisTitle(text) {
+  const title = String(text || '').trim();
+  const m = title.match(PLAYER_STYLE_ANALYSIS_RE);
+  if (!m?.[1]) return null;
+  const candidate = m[1].trim().replace(/^other\s+/i, '').replace(/\s+/g, ' ');
+  return isLikelyPlayerName(candidate) ? candidate : null;
 }
 
 function classifyObservedNote(note) {
@@ -407,7 +416,9 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
           inOtherAnalysis = true;
           resetPlayerContext();
         }
-        const playerName = isLikelyPlayerName(toggleTitle) ? toggleTitle : null;
+        const playerName =
+          extractPlayerFromAnalysisTitle(toggleTitle) ||
+          (isLikelyPlayerName(toggleTitle) ? toggleTitle : null);
         const nested = await notionFetchAllChildren(block.id);
         await walkBlocks(nested, playerName);
         continue;
@@ -480,10 +491,10 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer) {
       section = parsed.section;
 
       const activePlayer = currentPlayer || playerFromToggle;
-      if (!parsed.consumed && activePlayer && line.trim()) {
+      // Only accept bullets when they are explicitly under Good/Loophole sections.
+      if (!parsed.consumed && activePlayer && section && line.trim()) {
         if (looksLikeSelfNote(line)) continue;
-        const noteSection = section || classifyObservedNote(line);
-        pushNote(byPlayer, activePlayer, line, noteSection);
+        pushNote(byPlayer, activePlayer, line, section);
       }
 
       if (block.has_children) {
