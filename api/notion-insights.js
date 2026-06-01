@@ -638,27 +638,28 @@ function normalizeNoteKey(text) {
     .trim();
 }
 
-function removeSessionTakeawayLeakage(cheatNotes = [], sessions = []) {
+function removeSessionNoteLeakage(cheatNotes = [], sessions = []) {
   const KNOWN_TAKEAWAY_PATTERNS = [
     /too many double faults on second serves/i,
     /backhand.*cross right leg/i,
     /overhead.*failed/i,
     /recovery footwork.*game points/i,
     /drop ball game.*(ball on rise|take on rise).*spiny/i,
+    /more consistent on baseline corner/i,
   ];
 
-  const sessionWeaknessKeys = new Set();
+  const sessionNoteKeys = new Set();
   for (const s of sessions || []) {
-    for (const note of [...(s.bad || []), ...(s.learning || [])]) {
+    for (const note of [...(s.good || []), ...(s.bad || []), ...(s.learning || [])]) {
       const key = normalizeNoteKey(note);
-      if (key) sessionWeaknessKeys.add(key);
+      if (key) sessionNoteKeys.add(key);
     }
   }
 
   const shouldDrop = (note) => {
     const raw = String(note || '');
     const key = normalizeNoteKey(raw);
-    if (sessionWeaknessKeys.has(key)) return true;
+    if (sessionNoteKeys.has(key)) return true;
     return KNOWN_TAKEAWAY_PATTERNS.some((re) => re.test(raw));
   };
 
@@ -705,10 +706,8 @@ export default async function handler(req, res) {
       cheatNotes = snapCheat;
       cheatNotesSource = 'snapshot';
     }
-    const preFilterCoachBad = (cheatNotes.find((c) => c.name === 'Coach')?.bad || []).length;
     const authoritativeCheat = cheatNotes.length ? cheatNotes : snapCheat;
-    cheatNotes = removeSessionTakeawayLeakage(authoritativeCheat, sessionsForPayload);
-    const postFilterCoachBad = (cheatNotes.find((c) => c.name === 'Coach')?.bad || []).length;
+    cheatNotes = removeSessionNoteLeakage(authoritativeCheat, sessionsForPayload);
 
     let weeklyPriorities = snap.weeklyPriorities || [];
     let weeklyOverview = snap.weeklyOverview || { focus: '', drill: '' };
@@ -741,8 +740,7 @@ export default async function handler(req, res) {
       latestDaily: sessions[0] || snap.latestDaily,
       cheatNotes,
       cheatNotesSource,
-      parserVersion: 'cheat-filter-v8',
-      cheatFilterDebug: { preFilterCoachBad, postFilterCoachBad },
+      parserVersion: 'cheat-filter-v9',
     };
 
     return res.status(200).json(payload);
