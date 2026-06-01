@@ -71,6 +71,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
   const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const [refreshSeed, setRefreshSeed] = useS1(0);
   const [lastRefreshedAt, setLastRefreshedAt] = useS1(null);
+  const [focusExpanded, setFocusExpanded] = useS1(false);
   const todayDashboard = useM1(() => {
     if (notionPayload && window.applyNotionPayload) {
       return window.applyNotionPayload({ ...notionPayload, _refreshSeed: refreshSeed });
@@ -114,6 +115,10 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
     return state.focus;
   }, [notionPayload, state.focus, refreshSeed]);
   const notionPage = window.NOTION_INSIGHTS_PAGE;
+  const focusBody = focus?.body || '';
+  const focusCues = focus?.cues || [];
+  const focusNeedsToggle = focusBody.length > 240 || focusCues.length > 4;
+  const visibleFocusCues = focusExpanded ? focusCues : focusCues.slice(0, 4);
   const refreshedIso = lastRefreshedAt || state.notionUpdatedAt || notionPayload?.updatedAt || null;
   const refreshedLabel = refreshedIso
     ? new Date(refreshedIso).toLocaleString('en-US', {
@@ -165,9 +170,20 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
             <div>{state.notionError}</div>
           ) : focus ? (
             <>
-              <div>{focus.body}</div>
-              {focus.cues?.length > 0 && (
-                <ul>{focus.cues.slice(0, 4).map((c, i) => <li key={i}>{c}</li>)}</ul>
+              <div className={focusExpanded ? 'focus-detail-text' : 'focus-detail-text focus-detail-text--clamp'}>
+                {focusBody}
+              </div>
+              {focusCues.length > 0 && (
+                <ul>{visibleFocusCues.map((c, i) => <li key={i}>{c}</li>)}</ul>
+              )}
+              {focusNeedsToggle && (
+                <button
+                  type="button"
+                  className="focus-show-more-btn"
+                  onClick={() => setFocusExpanded((v) => !v)}
+                >
+                  {focusExpanded ? 'Show less' : 'Show more details'}
+                </button>
               )}
             </>
           ) : (
@@ -657,7 +673,7 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
                   </span>
                 </div>
                 {player.summary && (
-                  <p className="game-cheat-summary muted">{player.summary}</p>
+                  <p className="game-cheat-summary game-cheat-summary--clamp muted">{player.summary}</p>
                 )}
                 <div className="game-cheat-grid">
                   <GameCheatNoteColumn
