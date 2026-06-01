@@ -527,7 +527,6 @@
     {
       "name": "Coach",
       "good": [
-        "More consistent on baseline corner — corner (forehand better than backhand)",
         "dropshot, serve/shot placement, consistency",
         "Spin, lob, drop shot",
         "Manipulate the pace, speed, placement",
@@ -535,11 +534,6 @@
         "Harder to predict"
       ],
       "bad": [
-        "Serve — too many double faults on second serves",
-        "Volley — backhand, do not cross right leg",
-        "Overhead — failed",
-        "Recovery footwork on game points",
-        "Drop ball game — take on rise for spiny balls",
         "One-handed backhand out",
         "Does not deal well with deep lobs",
         "Have trouble with speedy serves → From Robert",
@@ -579,11 +573,9 @@
         "Baseline forehand, 1st serve placement"
       ],
       "bad": [
-        "Easy shots",
         "Not recovered after baseline shots",
         "Hesitate to come to net — no man's zone",
         "Lack confidence on winners",
-        "Too many unforced errors",
         "Missed chances on game points",
         "dropshots, do not come to the net"
       ]
@@ -761,5 +753,6 @@
       ]
     }
   ],
-  "cheatNotesSource": "notion+snapshot"
+  "cheatNotesSource": "notion",
+  "parserVersion": "cheat-filter-v9"
 }
