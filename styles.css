@@ -577,6 +577,13 @@ input, textarea, select { font-family: inherit; }
 }
 .focus-card .focus-body ul { margin: 6px 0 0; padding: 0 0 0 16px; }
 .focus-card .focus-body li { margin: 4px 0; }
+.focus-card .focus-body li,
+.game-cheat-bullets li {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
 .focus-card .focus-cta { display: flex; gap: 8px; margin-top: 18px; position: relative; }
 .focus-card .btn-primary { background: var(--btn-primary-bg); color: #ffffff; border-color: var(--btn-primary-bg); font-weight: 700; box-shadow: 0 8px 20px var(--btn-primary-shadow); }
 .focus-card .btn-primary:hover { background: var(--btn-primary-hover); border-color: var(--btn-primary-hover); color: #ffffff; }
@@ -720,12 +727,8 @@ input, textarea, select { font-family: inherit; }
   margin: 0 0 16px;
   font-size: 13px;
   line-height: 1.55;
-}
-.game-cheat-summary--clamp {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .game-cheat-grid {
   display: grid;
@@ -747,54 +750,6 @@ input, textarea, select { font-family: inherit; }
 .game-cheat-bullets li + li {
   margin-top: 6px;
 }
-.game-cheat-bullets--scroll {
-  max-height: min(280px, 50vh);
-  overflow-y: auto;
-  padding-right: 4px;
-}
-.game-cheat-expand-btn {
-  margin-top: 4px;
-  padding: 0;
-  border: none;
-  background: none;
-  font-family: var(--sans);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--accent);
-  cursor: pointer;
-  text-align: left;
-}
-.game-cheat-expand-btn:hover,
-.game-cheat-expand-btn:focus-visible {
-  text-decoration: underline;
-}
-.game-cheat-expand-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.focus-detail-text--clamp {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 6;
-  overflow: hidden;
-}
-.focus-show-more-btn {
-  margin-top: 8px;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.focus-show-more-btn:hover,
-.focus-show-more-btn:focus-visible {
-  text-decoration: underline;
-}
-
 @media (max-width: 900px) {
   .game-cheat-grid {
     grid-template-columns: 1fr;
@@ -1058,6 +1013,44 @@ input, textarea, select { font-family: inherit; }
 .cheat-password-input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+.cheat-password-row {
+  position: relative;
+}
+.cheat-password-row .cheat-password-input {
+  padding-right: 42px;
+}
+.cheat-password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-3);
+  color: var(--ink-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.cheat-password-toggle:hover {
+  color: var(--ink);
+}
+.cheat-password-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.cheat-password-toggle svg {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .cheat-lock-error {
   margin: 0;

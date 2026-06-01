@@ -71,7 +71,6 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
   const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const [refreshSeed, setRefreshSeed] = useS1(0);
   const [lastRefreshedAt, setLastRefreshedAt] = useS1(null);
-  const [focusExpanded, setFocusExpanded] = useS1(false);
   const todayDashboard = useM1(() => {
     if (notionPayload && window.applyNotionPayload) {
       return window.applyNotionPayload({ ...notionPayload, _refreshSeed: refreshSeed });
@@ -117,8 +116,6 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
   const notionPage = window.NOTION_INSIGHTS_PAGE;
   const focusBody = focus?.body || '';
   const focusCues = focus?.cues || [];
-  const focusNeedsToggle = focusBody.length > 240 || focusCues.length > 4;
-  const visibleFocusCues = focusExpanded ? focusCues : focusCues.slice(0, 4);
   const refreshedIso = lastRefreshedAt || state.notionUpdatedAt || notionPayload?.updatedAt || null;
   const refreshedLabel = refreshedIso
     ? new Date(refreshedIso).toLocaleString('en-US', {
@@ -170,20 +167,9 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
             <div>{state.notionError}</div>
           ) : focus ? (
             <>
-              <div className={focusExpanded ? 'focus-detail-text' : 'focus-detail-text focus-detail-text--clamp'}>
-                {focusBody}
-              </div>
+              <div className="focus-detail-text">{focusBody}</div>
               {focusCues.length > 0 && (
-                <ul>{visibleFocusCues.map((c, i) => <li key={i}>{c}</li>)}</ul>
-              )}
-              {focusNeedsToggle && (
-                <button
-                  type="button"
-                  className="focus-show-more-btn"
-                  onClick={() => setFocusExpanded((v) => !v)}
-                >
-                  {focusExpanded ? 'Show less' : 'Show more details'}
-                </button>
+                <ul>{focusCues.map((c, i) => <li key={i}>{c}</li>)}</ul>
               )}
             </>
           ) : (
@@ -483,35 +469,16 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
 }
 
 // ============== GAME CHEAT NOTE ==============
-const CHEAT_BULLET_PREVIEW = 4;
-
 function GameCheatNoteColumn({ playerName, columnKey, label, items, emptyLabel }) {
-  const [expanded, setExpanded] = useS1(false);
-  const hasMore = items.length > CHEAT_BULLET_PREVIEW;
-  const visible = expanded || !hasMore ? items : items.slice(0, CHEAT_BULLET_PREVIEW);
-  const listClass = expanded && hasMore ? 'game-cheat-bullets game-cheat-bullets--scroll' : 'game-cheat-bullets';
-
   return (
     <div className="game-cheat-col">
       <span className="mono-small">{label}</span>
       {items.length ? (
-        <>
-          <ul className={listClass}>
-            {visible.map((line, index) => (
-              <li key={`${playerName}-${columnKey}-${index}`}>{line}</li>
-            ))}
-          </ul>
-          {hasMore && (
-            <button
-              type="button"
-              className="game-cheat-expand-btn"
-              onClick={() => setExpanded((v) => !v)}
-              aria-expanded={expanded}
-            >
-              {expanded ? 'Show less' : `Show all (${items.length})`}
-            </button>
-          )}
-        </>
+        <ul className="game-cheat-bullets">
+          {items.map((line, index) => (
+            <li key={`${playerName}-${columnKey}-${index}`}>{line}</li>
+          ))}
+        </ul>
       ) : (
         <ul className="game-cheat-bullets">
           <li className="muted">{emptyLabel}</li>
@@ -526,6 +493,7 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
   const [refreshSeed, setRefreshSeed] = useS1(0);
   const [lastSyncedAt, setLastSyncedAt] = useS1(null);
   const [password, setPassword] = useS1('');
+  const [showPassword, setShowPassword] = useS1(false);
   const [authError, setAuthError] = useS1('');
   const passRef = useR1(null);
   const CHEAT_PASSWORD = 'AdelaideW';
@@ -586,22 +554,44 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
           <p className="muted" style={{ margin: 0 }}>Enter password to view this page.</p>
           <div className="cheat-lock-form">
             <label className="mono-small" htmlFor="cheat-password-input">Password</label>
-            <input
-              id="cheat-password-input"
-              ref={passRef}
-              type="password"
-              className="cheat-password-input"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (authError) setAuthError('');
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleUnlock();
-              }}
-              placeholder="Enter password"
-              autoComplete="off"
-            />
+            <div className="cheat-password-row">
+              <input
+                id="cheat-password-input"
+                ref={passRef}
+                type={showPassword ? 'text' : 'password'}
+                className="cheat-password-input"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (authError) setAuthError('');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleUnlock();
+                }}
+                placeholder="Enter password"
+                autoComplete="off"
+              />
+              <button
+                type="button"
+                className="cheat-password-toggle"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M3 3l18 18" />
+                    <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                    <path d="M9.9 5.1A9.8 9.8 0 0 1 12 4c4.7 0 8.7 3.2 10 8-0.4 1.3-1 2.5-1.9 3.5" />
+                    <path d="M6.1 6.1C4.2 7.5 2.8 9.6 2 12c1.3 4.8 5.3 8 10 8 1.8 0 3.5-0.5 5-1.3" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M2 12s3.5-8 10-8 10 8 10 8-3.5 8-10 8-10-8-10-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
             {authError && <p className="cheat-lock-error">{authError}</p>}
             <button type="button" className="btn-primary" onClick={handleUnlock}>
               Unlock
@@ -672,9 +662,7 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
                     {player.sessionCount} note{player.sessionCount === 1 ? '' : 's'}
                   </span>
                 </div>
-                {player.summary && (
-                  <p className="game-cheat-summary game-cheat-summary--clamp muted">{player.summary}</p>
-                )}
+                {player.summary && <p className="game-cheat-summary muted">{player.summary}</p>}
                 <div className="game-cheat-grid">
                   <GameCheatNoteColumn
                     playerName={player.name}

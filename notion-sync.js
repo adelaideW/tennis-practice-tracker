@@ -425,10 +425,8 @@ function formatCheatNoteLine(note, maxLen = 320) {
 
 function buildCheatSummary(goodAt, badAt) {
   const parts = [];
-  if (goodAt.length) parts.push(`Strengths: ${condenseCheatNote(goodAt[0], 72)}`);
-  if (badAt.length) parts.push(`Exploit: ${condenseCheatNote(badAt[0], 72)}`);
-  if (goodAt.length > 1) parts.push(`+${goodAt.length - 1} more strength${goodAt.length > 2 ? 's' : ''}`);
-  if (badAt.length > 1) parts.push(`+${badAt.length - 1} loophole${badAt.length > 2 ? 's' : ''}`);
+  if (goodAt.length) parts.push(`Strengths: ${goodAt.join(' · ')}`);
+  if (badAt.length) parts.push(`Exploit: ${badAt.join(' · ')}`);
   return parts.join(' · ');
 }
 
