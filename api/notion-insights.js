@@ -210,6 +210,13 @@ const PLAYER_ALIASES = {
   coach: 'Coach',
 };
 
+/** Practice equipment / session labels — not opponents for game cheat notes. */
+const EXCLUDED_CHEAT_PLAYER_RE = /^ball\s*machine$/i;
+
+function isExcludedCheatPlayer(name) {
+  return EXCLUDED_CHEAT_PLAYER_RE.test(String(name || '').trim());
+}
+
 function normalizePlayerName(name) {
   const t = name.trim();
   return PLAYER_ALIASES[t] || t;
@@ -227,7 +234,7 @@ function classifyObservedNote(note) {
 function pushNote(byPlayer, name, note, section) {
   const trimmedName = normalizePlayerName(name);
   const trimmedNote = note.trim().replace(/,\s*$/, '');
-  if (!trimmedName || !trimmedNote) return;
+  if (!trimmedName || !trimmedNote || isExcludedCheatPlayer(trimmedName)) return;
   if (/^(good|loophole|bad|overview|focus|drill)$/i.test(trimmedName)) return;
   if (!byPlayer.has(trimmedName)) {
     byPlayer.set(trimmedName, { name: trimmedName, good: [], bad: [] });
@@ -263,7 +270,7 @@ function parsePlayerLine(line, section, byPlayer) {
 
 function isLikelyPlayerName(text) {
   const t = text.trim();
-  if (!t || t.length > 24) return false;
+  if (!t || t.length > 24 || isExcludedCheatPlayer(t)) return false;
   if (GOOD_SECTION_RE.test(t) || BAD_SECTION_RE.test(t)) return false;
   if (/analysis|weekly|insight|reflection|overview|things to/i.test(t)) return false;
   if (/^(duration|played|focus|drill|practice|game|serve|volley)$/i.test(t)) return false;
@@ -440,7 +447,7 @@ function mergeCheatNotes(live, snapshot) {
 
   const mergeList = (rows) => {
     for (const row of rows || []) {
-      if (!row?.name) continue;
+      if (!row?.name || isExcludedCheatPlayer(row.name)) continue;
       if (!byName.has(row.name)) {
         byName.set(row.name, { name: row.name, good: [], bad: [] });
       }

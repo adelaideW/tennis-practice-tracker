@@ -432,6 +432,10 @@ function buildCheatSummary(goodAt, badAt) {
   return parts.join(' · ');
 }
 
+function isExcludedCheatPlayer(name) {
+  return /^ball\s*machine$/i.test(String(name || '').trim());
+}
+
 function buildCheatNotesFromNotion(payload) {
   if (!payload?.cheatNotes?.length) {
     return {
@@ -444,6 +448,7 @@ function buildCheatNotesFromNotion(payload) {
   }
 
   const players = payload.cheatNotes
+    .filter((row) => !isExcludedCheatPlayer(row.name))
     .map((row) => {
       const goodRaw = dedupeNotes(row.good || []);
       const badRaw = dedupeNotes(row.bad || []);
