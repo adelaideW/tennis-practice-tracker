@@ -616,6 +616,31 @@ function normalizeCheatNoteRows(rows = []) {
   );
 }
 
+function normalizeNoteKey(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+function removeSessionTakeawayLeakage(cheatNotes = [], sessions = []) {
+  const sessionWeaknessKeys = new Set();
+  for (const s of sessions || []) {
+    for (const note of [...(s.bad || []), ...(s.learning || [])]) {
+      const key = normalizeNoteKey(note);
+      if (key) sessionWeaknessKeys.add(key);
+    }
+  }
+  if (!sessionWeaknessKeys.size) return cheatNotes;
+
+  return (cheatNotes || [])
+    .map((row) => ({
+      ...row,
+      bad: (row.bad || []).filter((note) => !sessionWeaknessKeys.has(normalizeNoteKey(note))),
+    }))
+    .filter((row) => (row.good || []).length || (row.bad || []).length);
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
 
@@ -650,6 +675,7 @@ export default async function handler(req, res) {
       cheatNotes = snapCheat;
       cheatNotesSource = 'snapshot';
     }
+    cheatNotes = removeSessionTakeawayLeakage(cheatNotes, sessionsForPayload);
 
     let weeklyPriorities = snap.weeklyPriorities || [];
     let weeklyOverview = snap.weeklyOverview || { focus: '', drill: '' };
