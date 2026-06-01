@@ -496,6 +496,7 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
   const [showPassword, setShowPassword] = useS1(false);
   const [authError, setAuthError] = useS1('');
   const [aiSummaries, setAiSummaries] = useS1({});
+  const [expandedPlayers, setExpandedPlayers] = useS1(() => new Set());
   const passRef = useR1(null);
   const CHEAT_PASSWORD = 'AdelaideW';
 
@@ -544,6 +545,15 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
       return;
     }
     setAuthError('Incorrect password. Please try again.');
+  };
+
+  const togglePlayerExpanded = (name) => {
+    setExpandedPlayers((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
   };
 
   useE1(() => {
@@ -708,31 +718,43 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
               <section key={player.name} className="card game-cheat-card">
                 <div className="game-cheat-head">
                   <h2 className="game-cheat-name">{player.name}</h2>
-                  <span className="game-cheat-note-count mono-small">
-                    {player.sessionCount} note{player.sessionCount === 1 ? '' : 's'}
-                  </span>
+                  <div className="game-cheat-head-actions">
+                    <span className="game-cheat-note-count mono-small">
+                      {player.sessionCount} note{player.sessionCount === 1 ? '' : 's'}
+                    </span>
+                    <button
+                      type="button"
+                      className="game-cheat-collapse-btn"
+                      onClick={() => togglePlayerExpanded(player.name)}
+                      aria-expanded={expandedPlayers.has(player.name)}
+                    >
+                      {expandedPlayers.has(player.name) ? 'Hide details' : 'Show details'}
+                    </button>
+                  </div>
                 </div>
                 {(aiSummaries[player.name] || player.summary) && (
                   <p className="game-cheat-summary muted">
                     {aiSummaries[player.name] || player.summary}
                   </p>
                 )}
-                <div className="game-cheat-grid">
-                  <GameCheatNoteColumn
-                    playerName={player.name}
-                    columnKey="good"
-                    label="Good at"
-                    items={player.goodAt}
-                    emptyLabel="No strengths logged yet."
-                  />
-                  <GameCheatNoteColumn
-                    playerName={player.name}
-                    columnKey="bad"
-                    label="Exploit (loophole)"
-                    items={player.badAt}
-                    emptyLabel="No clear leaks logged yet."
-                  />
-                </div>
+                {expandedPlayers.has(player.name) && (
+                  <div className="game-cheat-grid">
+                    <GameCheatNoteColumn
+                      playerName={player.name}
+                      columnKey="good"
+                      label="Good at"
+                      items={player.goodAt}
+                      emptyLabel="No strengths logged yet."
+                    />
+                    <GameCheatNoteColumn
+                      playerName={player.name}
+                      columnKey="bad"
+                      label="Exploit (loophole)"
+                      items={player.badAt}
+                      emptyLabel="No clear leaks logged yet."
+                    />
+                  </div>
+                )}
               </section>
             ))
           )}
