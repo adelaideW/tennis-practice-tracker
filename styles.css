@@ -577,13 +577,6 @@ input, textarea, select { font-family: inherit; }
 }
 .focus-card .focus-body ul { margin: 6px 0 0; padding: 0 0 0 16px; }
 .focus-card .focus-body li { margin: 4px 0; }
-.focus-card .focus-body li,
-.game-cheat-bullets li {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
 .focus-card .focus-cta { display: flex; gap: 8px; margin-top: 18px; position: relative; }
 .focus-card .btn-primary { background: var(--btn-primary-bg); color: #ffffff; border-color: var(--btn-primary-bg); font-weight: 700; box-shadow: 0 8px 20px var(--btn-primary-shadow); }
 .focus-card .btn-primary:hover { background: var(--btn-primary-hover); border-color: var(--btn-primary-hover); color: #ffffff; }
@@ -727,8 +720,12 @@ input, textarea, select { font-family: inherit; }
   margin: 0 0 16px;
   font-size: 13px;
   line-height: 1.55;
-  white-space: normal;
+  white-space: pre-line;
   overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 .game-cheat-grid {
   display: grid;

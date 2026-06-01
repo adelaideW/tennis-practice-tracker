@@ -425,8 +425,16 @@ function formatCheatNoteLine(note, maxLen = 320) {
 
 function buildCheatSummary(goodAt, badAt) {
   const parts = [];
-  if (goodAt.length) parts.push(`Strengths: ${goodAt.join(' · ')}`);
-  if (badAt.length) parts.push(`Exploit: ${badAt.join(' · ')}`);
+  if (goodAt.length) {
+    const strengths = goodAt.slice(0, 2).join(' · ');
+    parts.push(`Strengths: ${strengths}`);
+  }
+  if (badAt.length) {
+    const exploits = badAt.slice(0, 2).join(' · ');
+    parts.push(`Exploit: ${exploits}`);
+  }
+  if (goodAt.length > 2) parts.push(`+${goodAt.length - 2} more strength notes`);
+  if (badAt.length > 2) parts.push(`+${badAt.length - 2} more exploit notes`);
   return parts.join(' · ');
 }
 

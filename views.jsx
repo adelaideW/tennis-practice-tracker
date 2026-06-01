@@ -495,6 +495,7 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
   const [password, setPassword] = useS1('');
   const [showPassword, setShowPassword] = useS1(false);
   const [authError, setAuthError] = useS1('');
+  const [aiSummaries, setAiSummaries] = useS1({});
   const passRef = useR1(null);
   const CHEAT_PASSWORD = 'AdelaideW';
 
@@ -544,6 +545,55 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
     }
     setAuthError('Incorrect password. Please try again.');
   };
+
+  useE1(() => {
+    let cancelled = false;
+    if (!isUnlocked || !cheat.players.length || !window.claude?.complete) {
+      return () => { cancelled = true; };
+    }
+
+    const summarizePlayer = async (player) => {
+      const prompt = [
+        'You are a tennis match strategist.',
+        `Summarize opponent notes for "${player.name}" in at most 3 short lines.`,
+        'Keep each line concise and practical.',
+        'Format exactly as plain text with line breaks, no bullets, no markdown.',
+        'Line 1 starts with "Strengths:".',
+        'Line 2 starts with "Exploit:".',
+        'Line 3 starts with "Plan:".',
+        `Strength notes: ${(player.goodAt || []).join(' | ') || 'None'}`,
+        `Exploit notes: ${(player.badAt || []).join(' | ') || 'None'}`,
+      ].join('\n');
+
+      try {
+        const raw = await window.claude.complete(prompt);
+        if (cancelled) return;
+        const cleaned = String(raw || '')
+          .replace(/```[\s\S]*?```/g, '')
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .slice(0, 3)
+          .join('\n');
+        if (!cleaned) return;
+        setAiSummaries((prev) => ({ ...prev, [player.name]: cleaned }));
+      } catch {
+        // Keep deterministic summary fallback from notion-sync.
+      }
+    };
+
+    (async () => {
+      for (const player of cheat.players) {
+        if (cancelled) break;
+        if (aiSummaries[player.name]) continue;
+        // Sequential calls avoid rate spikes and preserve UI responsiveness.
+        // eslint-disable-next-line no-await-in-loop
+        await summarizePlayer(player);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [isUnlocked, cheat.players, aiSummaries]);
 
   if (!isUnlocked) {
     return (
@@ -662,7 +712,11 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
                     {player.sessionCount} note{player.sessionCount === 1 ? '' : 's'}
                   </span>
                 </div>
-                {player.summary && <p className="game-cheat-summary muted">{player.summary}</p>}
+                {(aiSummaries[player.name] || player.summary) && (
+                  <p className="game-cheat-summary muted">
+                    {aiSummaries[player.name] || player.summary}
+                  </p>
+                )}
                 <div className="game-cheat-grid">
                   <GameCheatNoteColumn
                     playerName={player.name}
