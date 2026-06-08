@@ -616,10 +616,18 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer, parentTitle = '') {
         }
         if (GOOD_SECTION_RE.test(h)) {
           section = 'good';
+          if (block.has_children) {
+            const nested = await notionFetchAllChildren(block.id);
+            await walkBlocks(nested, playerFromToggle);
+          }
           continue;
         }
         if (BAD_SECTION_RE.test(h)) {
           section = 'bad';
+          if (block.has_children) {
+            const nested = await notionFetchAllChildren(block.id);
+            await walkBlocks(nested, playerFromToggle);
+          }
           continue;
         }
         // Prevent section bleed (e.g., "Take away" bullets inheriting "Loophole").
@@ -643,10 +651,18 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer, parentTitle = '') {
 
       if (GOOD_SECTION_RE.test(line)) {
         section = 'good';
+        if (block.has_children) {
+          const nested = await notionFetchAllChildren(block.id);
+          await walkBlocks(nested, playerFromToggle);
+        }
         continue;
       }
       if (BAD_SECTION_RE.test(line)) {
         section = 'bad';
+        if (block.has_children) {
+          const nested = await notionFetchAllChildren(block.id);
+          await walkBlocks(nested, playerFromToggle);
+        }
         continue;
       }
 
