@@ -457,7 +457,15 @@ function isRejectedColonPlayerName(name) {
   ) {
     return true;
   }
+  if (/\b(forms?|groundstroke|strokes?|technique|footwork|strategy|placement)\b/i.test(t)) {
+    return true;
+  }
   return false;
+}
+
+function isValidNewPlayerName(name) {
+  const normalized = normalizePlayerName(name);
+  return Boolean(normalized) && !isRejectedColonPlayerName(normalized) && isLikelyPlayerName(normalized);
 }
 
 function normalizePlayerName(name) {
@@ -489,7 +497,7 @@ function pushNote(byPlayer, name, note, section) {
   const trimmedName = normalizePlayerName(name);
   const trimmedNote = note.trim().replace(/,\s*$/, '');
   if (!trimmedName || !trimmedNote || isExcludedCheatPlayer(trimmedName)) return;
-  if (isRejectedColonPlayerName(trimmedName)) return;
+  if (!byPlayer.has(trimmedName) && !isValidNewPlayerName(trimmedName)) return;
   if (!byPlayer.has(trimmedName)) {
     byPlayer.set(trimmedName, { name: trimmedName, good: [], bad: [] });
   }
@@ -509,18 +517,20 @@ function parsePlayerLine(line, section, byPlayer) {
 
   const colon = trimmed.match(/^([^:]{1,40}):\s*(.+)$/);
   if (colon) {
-    if (!isRejectedColonPlayerName(colon[1])) {
+    if (isValidNewPlayerName(colon[1])) {
       pushNote(byPlayer, colon[1], colon[2], section);
+      return { section, consumed: true };
     }
-    return { section, consumed: true };
+    return { section, consumed: false };
   }
 
   const dash = trimmed.match(/^([^—\-]{1,40})\s*[-—]\s*(.+)$/);
   if (dash) {
-    if (!isRejectedColonPlayerName(dash[1])) {
+    if (isValidNewPlayerName(dash[1])) {
       pushNote(byPlayer, dash[1], dash[2], section);
+      return { section, consumed: true };
     }
-    return { section, consumed: true };
+    return { section, consumed: false };
   }
 
   return { section, consumed: false };
