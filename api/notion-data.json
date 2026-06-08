@@ -1,27 +1,161 @@
 {
-  "pageUrl": "https://www.notion.so/Tennis-practice-insights-32470a7de7e0803e9f3ad8904cf25efe",
-  "updatedAt": "2026-06-01T01:29:00.000Z",
+  "pageUrl": "https://app.notion.com/p/Tennis-practice-insights-32470a7de7e0803e9f3ad8904cf25efe",
+  "updatedAt": "2026-06-08T00:36:00.000Z",
   "weeklyPriorities": [
-    "Serve - continue practicing,",
-    "Return serve - better angle",
-    "Finishing shots - more assertive and focus on placement than speed",
-    "Volley - backhand correct the swing part! hit in front of the body",
-    "Lobs - backhand lob, swing volley - practice with ball machine",
-    "Overhead - move back immediately then come forward"
+    "Video taping on every practice session",
+    "Remember to stand on forefoot for game to initiate footwork",
+    "1st serve accuracy and consistency → especially at T",
+    "2nd serve speed",
+    "Backhand volley → hold racket longer, keep racket in the front, look at the ball, push more with left feet",
+    "High ball handling → practice with ball machine, can be going back or take on rise or overhead",
+    "Overhead → practice with wall to find better contact point",
+    "Strategy → build hitting pattern for game"
   ],
   "weeklyOverview": {
-    "focus": "1st Serve placement, 2nd serve speed and form, volley, overhead (a little), ground stroke consistency, game strategy",
-    "drill": "Single/double games, corner rallies, open up on 3rd shot, changing direction - forehand - middle - backhand corner"
+    "focus": "Consistency, volley, approach shots and high lobs, shots varieties, serves, overhead*",
+    "drill": "Rally, double games; switching between ground stroke and slices; Combination feed → Forehand high, backhand high, approach shot, volley; volley feed from baseline; overhead feed from baseline"
   },
   "weeklySource": "notion",
-  "source": "notion",
+  "source": "snapshot",
   "sessions": [
     {
-      "id": "notion-2026-05-31-0",
+      "id": "notion-2026-06-07-0",
+      "date": "2026-06-07",
+      "label": "2026-06-07 Sun",
+      "context": "Rally w/ Seth",
+      "good": [
+        "Second serve is consistent w/ 1 double fault",
+        "Return angle is accurate to the server’s corner",
+        "2 good volley with back slice",
+        "Volley forehand gets more push from foot, racket keep in the front"
+      ],
+      "bad": [
+        "High volley → late and out",
+        "Backhand needs to prepare higher to drive through the ball",
+        "Forehand not enough of unit turn → and late for the fast balls’",
+        "Look closer to the ball movement",
+        "Also need to drop racket head more to generate spin and power",
+        "Stand too close to fast backhand slices from Seth",
+        "Not enough variety in games",
+        "Overhead still not getting into the right position → move back even more before hitting",
+        "Insights",
+        "Serving and return of serve is VERY important in a game!",
+        "Moving back and forth with the ball when standing at the net for double games",
+        "Backhand → turn body more and hold the racket longer to guide volley"
+      ],
+      "learning": [],
+      "timeText": "9:15 - 12:00",
+      "duration": 165
+    },
+    {
+      "id": "notion-2026-06-06-1",
+      "date": "2026-06-06",
+      "label": "2026-06-06 Sat",
+      "context": "Game w/ Alpine hill → Win 6:4/6:4; Serving and volley feeding from baseline w/ Lili",
+      "good": [
+        "2 double fault in the entire game.",
+        "2nd serve consistency with speed",
+        "Stable and calm on important points"
+      ],
+      "bad": [
+        "Not confident enough for 1st serve",
+        "Adjusted too slow to the windy condition",
+        "Too late for short balls..",
+        "Backhand on highballs returns short",
+        "Mid court shots goes out mostly → needs more practice with ball machine",
+        "Not going back enough for high lob balls",
+        "Not enough variety in games",
+        "Not moving enough in game",
+        "1st serve pinpoint → struggle with toss and hitting alignment",
+        "Tossing is not consistent → needs to remove the shoulder movement",
+        "Struggle with short ball feeds → late or out",
+        "Insights",
+        "Needs to play/practice more in wind condition",
+        "Aim more safe in the box when windy",
+        "Lean forward and prepare racket higher for mid court high balls",
+        "When in mid court return w/ good angle and as deep as possible",
+        "Needs to practice short balls more → should start with standing in mid court first, then move back to baseline"
+      ],
+      "learning": [],
+      "timeText": "8:30 - 10:00 serve; 13:00 - 15:20 game; 16:00 - 16:15 wall; 16:15 - 18:15 serve & volley",
+      "duration": 365
+    },
+    {
+      "id": "notion-2026-06-05-2",
+      "date": "2026-06-05",
+      "label": "2026-06-05 Fri",
+      "context": "Rally, serve & return w/ 智仔",
+      "good": [],
+      "bad": [
+        "Inights:",
+        "For pinpoint serve → delay the arm movement",
+        "Look up before even tossing the ball",
+        "Keep the right arm higher to generate more speed"
+      ],
+      "learning": [],
+      "timeText": "16:15 - 19:00",
+      "duration": 165
+    },
+    {
+      "id": "notion-2026-06-04-3",
+      "date": "2026-06-04",
+      "label": "2026-06-04 Thu",
+      "context": "rally/ training with Coach, rally with Henry and Jay",
+      "good": [],
+      "bad": [
+        "Mindset switch after exhausted from work",
+        "Consistency during warmup",
+        "Cannot hit flat shot 🤔 maybe needs to go top to down.",
+        "Hesitation when switching between slice and top spin",
+        "Forehand slices goes long or into the net",
+        "Insights:",
+        "Slices need to be done in a lower position. Above shoulder would be very hard."
+      ],
+      "learning": [],
+      "timeText": "17:00 - 19:45",
+      "duration": 165
+    },
+    {
+      "id": "notion-2026-06-03-4",
+      "date": "2026-06-03",
+      "label": "2026-06-03 Wed",
+      "context": "High ball feed from Anna, ground stroke on the wall",
+      "good": [],
+      "bad": [
+        "Insight: stand further behind the ball for high ones then move forward. Forehand needs to finish up higher at shoulder level"
+      ],
+      "learning": [],
+      "timeText": "17:00 - 19:30",
+      "duration": 150
+    },
+    {
+      "id": "notion-2026-06-02-5",
+      "date": "2026-06-02",
+      "label": "2026-06-02 Tue",
+      "context": "serve practice on ad side",
+      "good": [],
+      "bad": [],
+      "learning": [],
+      "timeText": "17:00 - 19:30",
+      "duration": 150
+    },
+    {
+      "id": "notion-2026-06-01-6",
+      "date": "2026-06-01",
+      "label": "2026-06-01 Mon",
+      "context": "Rally w/ Anuchan; Double game Me & Mina vs Bart & Debrah → 6:6 / 11:11",
+      "good": [],
+      "bad": [
+        "Insight: backhand try always go down the line to keep cross court at forehand position"
+      ],
+      "learning": [],
+      "timeText": "17:30 - 20:00",
+      "duration": 150
+    },
+    {
+      "id": "notion-2026-05-31-7",
       "date": "2026-05-31",
       "label": "2026-05-31 Sun",
-      "timeText": "90min",
-      "duration": 90,
       "context": "Double game with Anna, Kimo and Gary. Me & Anna lost 1:6/1:6",
       "good": [
         "Return angle on Gary’s serve went well",
@@ -39,27 +173,25 @@
         "Toss ball more to the front for 1st serve and do not rush it! Shadow swing before game begins",
         "When double faulted, breath and restart or go bounce balls to reset"
       ],
-      "learning": []
+      "learning": [],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-30-0",
+      "id": "notion-2026-05-30-9",
       "date": "2026-05-30",
       "label": "2026-05-30 Sat",
-      "timeText": "60min",
-      "duration": 60,
       "context": "Practice with Coach",
       "good": [],
       "bad": [
         "Insight: needs to relax and maintain the same speed to increase consistency!! Use 70%-80% speed for all rallies"
       ],
-      "learning": []
+      "learning": [],
+      "duration": 75
     },
     {
-      "id": "notion-2026-05-30-1",
+      "id": "notion-2026-05-30-8",
       "date": "2026-05-30",
       "label": "2026-05-30 Sat",
-      "timeText": "4pm-6pm",
-      "duration": 120,
       "context": "USTA single game won 6:4/6:1",
       "good": [
         "Winning!",
@@ -78,28 +210,31 @@
         "Need to be more assertive for when opportunities rise - practice put away shots",
         "Returning on week serves with good placement - find better angle than use power, try not to return back to server"
       ],
-      "learning": []
+      "learning": [],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-29",
+      "id": "notion-2026-05-29-10",
       "date": "2026-05-29",
       "label": "2026-05-29 Friday",
       "context": "Practice and single game with Chen. Game win 6:1",
       "good": [],
       "bad": [],
-      "learning": []
+      "learning": [],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-28",
+      "id": "notion-2026-05-28-11",
       "date": "2026-05-28",
       "label": "2026-05-28 Thu",
       "context": "practice on 2nd serve",
       "good": [],
       "bad": [],
-      "learning": []
+      "learning": [],
+      "duration": 75
     },
     {
-      "id": "notion-2026-05-27",
+      "id": "notion-2026-05-27-12",
       "date": "2026-05-27",
       "label": "2026-05-27 Wed",
       "context": "cross court with Anna, Rally game w/ Anuchan",
@@ -113,10 +248,11 @@
         "Overhead - missed all 3/3",
         "High ball with less penetration especially backhand - need to take ball on rise, or prepare higher"
       ],
-      "learning": []
+      "learning": [],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-26",
+      "id": "notion-2026-05-26-13",
       "date": "2026-05-26",
       "label": "2026-05-26 Thu",
       "context": "Kick serve & volley practice w/ ball machine",
@@ -133,10 +269,11 @@
         "Pronation happens right after contact",
         "Toss should be above head or left shoulder"
       ],
-      "learning": []
+      "learning": [],
+      "duration": 75
     },
     {
-      "id": "notion-2026-05-23",
+      "id": "notion-2026-05-23-14",
       "date": "2026-05-23",
       "label": "2026-05-23 Sat",
       "context": "practice w/ Kimo",
@@ -149,10 +286,11 @@
         "volley backhand - tilting on racket head, lack of movement on foot for volley.",
         "Baseline ground stroke- hard time change pace and increase speed with high balls / lobs"
       ],
-      "learning": []
+      "learning": [],
+      "duration": 75
     },
     {
-      "id": "notion-2026-05-22",
+      "id": "notion-2026-05-22-15",
       "date": "2026-05-22",
       "label": "2026-05-22 Fri",
       "context": "Single game w/ Jessy",
@@ -165,10 +303,11 @@
         "Too many unforced errors",
         "Missed too many chances on game points!"
       ],
-      "learning": []
+      "learning": [],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-21",
+      "id": "notion-2026-05-21-16",
       "date": "2026-05-21",
       "label": "2026-05-21 Thu",
       "context": "practice w/ coach",
@@ -180,91 +319,101 @@
         "Recovery footwork and judgment in game points",
         "Drop ball game - needs to do better on taking the ball on rise - especially for spiny ones"
       ],
-      "learning": []
+      "learning": [],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-20",
+      "id": "notion-2026-05-20-17",
       "date": "2026-05-20",
       "label": "2026-05-20 Wed",
       "context": "Double game w/ Anna, Nydia, Tess, Lili",
       "good": [],
       "bad": [],
-      "learning": []
+      "learning": [],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-19",
+      "id": "notion-2026-05-19-18",
       "date": "2026-05-19",
       "label": "2026-05-19 Tue",
       "context": "practice on wall",
       "good": [],
       "bad": [],
-      "learning": []
+      "learning": [],
+      "duration": 75
     },
     {
-      "id": "notion-2026-05-18",
+      "id": "notion-2026-05-18-19",
       "date": "2026-05-18",
       "label": "2026-05-18 Mon",
       "context": "Rally with Anuchan",
       "good": [],
       "bad": [],
-      "learning": []
+      "learning": [],
+      "duration": 75
     },
     {
-      "id": "notion-2026-05-17",
+      "id": "notion-2026-05-17-20",
       "date": "2026-05-17",
       "label": "2026-05-17 Sun",
       "context": "Australian double w/ Kimo & Gary, rally with Seth",
       "good": [],
       "bad": [],
-      "learning": []
+      "learning": [],
+      "duration": 75
     },
     {
-      "id": "notion-2026-05-16",
+      "id": "notion-2026-05-16-21",
       "date": "2026-05-16",
       "label": "2026-05-16 Sat",
       "context": "double game with Anna, Nydia, Lili; double game with Kimo, Gary, Harbor",
       "good": [],
       "bad": [],
-      "learning": []
+      "learning": [],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-15",
+      "id": "notion-2026-05-15-22",
       "date": "2026-05-15",
       "label": "2026-05-15 Fri",
       "context": "Serving /volley practice on my own; Rally, volley, serve & return game w/ Chen",
       "good": [],
       "bad": [],
-      "learning": []
+      "learning": [],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-14",
+      "id": "notion-2026-05-14-23",
       "date": "2026-05-14",
       "label": "2026-05-14 Thu",
       "context": "rally with Anuchan",
       "good": [],
       "bad": [],
-      "learning": []
+      "learning": [],
+      "duration": 75
     },
     {
-      "id": "notion-2026-05-13",
+      "id": "notion-2026-05-13-24",
       "date": "2026-05-13",
       "label": "2026-05-13 Wed",
       "context": "double game with Lili, Anna, Nydia",
       "good": [],
       "bad": [],
-      "learning": []
+      "learning": [],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-12",
+      "id": "notion-2026-05-12-25",
       "date": "2026-05-12",
       "label": "2026-05-12 Tue",
       "context": "Rally with Roman",
       "good": [],
       "bad": [],
-      "learning": []
+      "learning": [],
+      "duration": 75
     },
     {
-      "id": "notion-2026-05-10",
+      "id": "notion-2026-05-10-26",
       "date": "2026-05-10",
       "label": "2026-05-10 Sun",
       "context": "Practice volley, single game, short court game w/ coach",
@@ -276,13 +425,14 @@
         "Always thinking of getting the ball back first",
         "Hit with the easy shots not the hard ones",
         "Cross court slice works well for short balls"
-      ]
+      ],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-09",
+      "id": "notion-2026-05-09-27",
       "date": "2026-05-09",
       "label": "2026-05-09 Sat",
-      "context": "Australian game w/ Kimo & Harbor, single game w/ Kimo; Practice serve w/ Lili",
+      "context": "Australian game w/ Kimo & Haber, single game w/ Kimo; Practice serve w/ Lili",
       "good": [],
       "bad": [],
       "learning": [
@@ -290,10 +440,11 @@
         "Stand still then lob!",
         "Move back when many lobs in doubles game",
         "2nd serve can be harder to return if speed up"
-      ]
+      ],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-08",
+      "id": "notion-2026-05-08-28",
       "date": "2026-05-08",
       "label": "2026-05-08 Fri",
       "context": "Practice w/ Anuchan, Single game w/ Jessika",
@@ -306,10 +457,11 @@
         "When up on the net do not retreat.. stay!",
         "Do not stand in the no man’s zone..",
         "Retreat back to baseline after serve"
-      ]
+      ],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-07",
+      "id": "notion-2026-05-07-29",
       "date": "2026-05-07",
       "label": "2026-05-07 Thu",
       "context": "practice w/ Mo",
@@ -321,10 +473,11 @@
         "Try more dropshots.",
         "Needs to be prepared better after hitting a good shot with depth",
         "Aim more to opponent’s backhand when possible"
-      ]
+      ],
+      "duration": 75
     },
     {
-      "id": "notion-2026-05-06",
+      "id": "notion-2026-05-06-30",
       "date": "2026-05-06",
       "label": "2026-05-06 Wed",
       "context": "Double game with Anna, Lili, Lydia",
@@ -334,10 +487,11 @@
         "More comfortable at baseline than net",
         "2nd serve needs more angle and speed while in",
         "Need to add more diversity to game — try slice more when give the chance"
-      ]
+      ],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-04",
+      "id": "notion-2026-05-04-31",
       "date": "2026-05-04",
       "label": "2026-05-04 Mon",
       "context": "1ST USTA 3.0 game",
@@ -356,10 +510,11 @@
         "Swing opponent or make them move is easier to find loophoes",
         "Lob + drop shot/ backspin shot can be a weapon when used right.",
         "Backhand lob needs improvement"
-      ]
+      ],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-03",
+      "id": "notion-2026-05-03-32",
       "date": "2026-05-03",
       "label": "2026-05-03 Sun",
       "context": "Practice w/ coach; Single game with Bingsen",
@@ -377,10 +532,11 @@
       "learning": [
         "Slow down the racket! Move more on the feet!",
         "first 2 sets in a game should be testing the opponent — learn the weakness and find the patter ASAP!"
-      ]
+      ],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-02",
+      "id": "notion-2026-05-02-33",
       "date": "2026-05-02",
       "label": "2026-05-02 SAT",
       "context": "Double game w/ coach, YJ, Robert",
@@ -409,10 +565,11 @@
         "Volley → Hit it in first! Then everything else ..",
         "Lob doesn’t help much with advanced players, angles and ball placement is more important even more than speed",
         "Changing pace can be surprising and disruptive even for advanced players"
-      ]
+      ],
+      "duration": 90
     },
     {
-      "id": "notion-2026-05-01",
+      "id": "notion-2026-05-01-34",
       "date": "2026-05-01",
       "label": "2026-05-01 FRI",
       "context": "practice w/ Mo?",
@@ -432,31 +589,38 @@
         "When in disadvantage or desperate, go for it! But think of why getting into that situation afterwards",
         "Think of how to dictate the ball direction, plan 2 steps ahead.",
         "Be stable / patience till the opportunity rises"
-      ]
+      ],
+      "duration": 90
     }
   ],
   "latestDaily": {
-    "id": "notion-2026-05-31",
-    "date": "2026-05-31",
-    "label": "2026-05-31 Sun",
-    "context": "Double game with Anna, Kimo and Gary. Me & Anna lost 1:6/1:6",
+    "id": "notion-2026-06-07-0",
+    "date": "2026-06-07",
+    "label": "2026-06-07 Sun",
+    "context": "Rally w/ Seth",
     "good": [
-      "Return angle on Gary’s serve went well",
-      "Backhand stability increased - need to move back more before hitting"
+      "Second serve is consistent w/ 1 double fault",
+      "Return angle is accurate to the server’s corner",
+      "2 good volley with back slice",
+      "Volley forehand gets more push from foot, racket keep in the front"
     ],
     "bad": [
-      "1st serves - all out..",
-      "2 double faults in one game",
-      "Distracted and not focus enough when balls lob over net person. - need to always prepare! And assume balls are coming to me!!! Same as when at the net.",
-      "Do not do drop shot for high balls!! - too risky and not worth it.",
-      "Overhead - need to move more be higher the ball and hit up?!",
-      "Volley - backhand!!! do NOT swing racket..",
-      "Forehand baseline angle was not good enough",
-      "Insight",
-      "Toss ball more to the front for 1st serve and do not rush it! Shadow swing before game begins",
-      "When double faulted, breath and restart or go bounce balls to reset"
+      "High volley → late and out",
+      "Backhand needs to prepare higher to drive through the ball",
+      "Forehand not enough of unit turn → and late for the fast balls’",
+      "Look closer to the ball movement",
+      "Also need to drop racket head more to generate spin and power",
+      "Stand too close to fast backhand slices from Seth",
+      "Not enough variety in games",
+      "Overhead still not getting into the right position → move back even more before hitting",
+      "Insights",
+      "Serving and return of serve is VERY important in a game!",
+      "Moving back and forth with the ball when standing at the net for double games",
+      "Backhand → turn body more and hold the racket longer to guide volley"
     ],
-    "learning": []
+    "learning": [],
+    "timeText": "9:15 - 12:00",
+    "duration": 165
   },
   "cheatNotes": [
     {
@@ -759,6 +923,6 @@
       ]
     }
   ],
-  "cheatNotesSource": "notion",
+  "cheatNotesSource": "snapshot",
   "parserVersion": "cheat-filter-v9"
 }
