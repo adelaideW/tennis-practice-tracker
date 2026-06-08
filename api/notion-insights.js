@@ -460,6 +460,9 @@ function isRejectedColonPlayerName(name) {
   if (/\b(forms?|groundstroke|strokes?|technique|footwork|strategy|placement)\b/i.test(t)) {
     return true;
   }
+  if (/^(down|top|cross|slice|drop|lob|flat|deep|weak|slow|fast)$/i.test(t)) {
+    return true;
+  }
   return false;
 }
 
@@ -524,7 +527,10 @@ function parsePlayerLine(line, section, byPlayer) {
     return { section, consumed: false };
   }
 
-  const dash = trimmed.match(/^([^—\-]{1,40})\s*[-—]\s*(.+)$/);
+  // Em-dash only, or spaced hyphen — not hyphens inside phrases like "Down-the-line".
+  const dash =
+    trimmed.match(/^([^—]{1,40})\s*—\s*(.+)$/) ||
+    trimmed.match(/^([^:]{1,40})\s+-\s+(.+)$/);
   if (dash) {
     if (isValidNewPlayerName(dash[1])) {
       pushNote(byPlayer, dash[1], dash[2], section);
