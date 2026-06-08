@@ -163,6 +163,8 @@ function isValidNotionPayload(data) {
 }
 
 async function fetchNotionInsights() {
+  let apiFailure = null;
+
   try {
     const res = await fetch(`/api/notion-insights?t=${Date.now()}`, { cache: 'no-store' });
     if (res.ok) {
@@ -170,14 +172,28 @@ async function fetchNotionInsights() {
       if (isValidNotionPayload(data)) {
         return { ...data, source: data.source || 'api' };
       }
+      apiFailure = data?.apiError || data?.error || 'Notion API returned an empty payload';
+    } else {
+      const errText = await res.text().catch(() => '');
+      apiFailure = errText || `Notion API error (${res.status})`;
     }
   } catch (e) {
-    /* fallback */
+    apiFailure = e.message || 'Could not reach Notion API';
   }
+
   const fallback = await fetch('notion-data.json', { cache: 'no-store' });
-  if (!fallback.ok) throw new Error('Could not load Notion insights');
+  if (!fallback.ok) throw new Error(apiFailure || 'Could not load Notion insights');
   const data = await fallback.json();
-  return { ...data, source: 'snapshot' };
+  return {
+    ...data,
+    source: 'snapshot',
+    cheatNotesSource: 'snapshot',
+    weeklySource: 'snapshot',
+    apiError: apiFailure || data.apiError || null,
+    syncWarning:
+      data.syncWarning ||
+      (apiFailure ? 'Live Notion API unavailable — showing offline snapshot' : null),
+  };
 }
 
 function useNotionInsights() {

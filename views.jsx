@@ -337,7 +337,9 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
           <p className="muted" style={{ margin: 0, fontSize: 13 }}>
             Ranked from weekly priorities and every daily reflection in Notion — with drills and video links.
           </p>
-          {notionError && <span className="notion-new-badge">{notionError}</span>}
+          {(notionError || notionPayload?.syncWarning) && (
+            <span className="notion-new-badge">{notionError || notionPayload.syncWarning}</span>
+          )}
         </div>
         <button
           type="button"
@@ -705,7 +707,9 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
           <p className="muted" style={{ margin: 0, fontSize: 13 }}>
             Pulled from “Analysis on other Player’s style” in your Notion insights (weekly + game notes) — Good and Loophole bullets per player. Source: {syncModeLabel}.
           </p>
-          {notionError && <span className="notion-new-badge">{notionError}</span>}
+          {(notionError || notionPayload?.syncWarning) && (
+            <span className="notion-new-badge">{notionError || notionPayload.syncWarning}</span>
+          )}
         </div>
         <button
           type="button"

@@ -191,7 +191,7 @@ function App() {
         notionUpdatedAt: data.updatedAt,
         notionSource: data.source,
         notionLoading: false,
-        notionError: null,
+        notionError: data.syncWarning || data.apiError || null,
       }));
       return data;
     } catch (e) {

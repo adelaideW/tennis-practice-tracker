@@ -230,6 +230,21 @@ async function parseWeeklyPriorities(pageId) {
   );
   if (!weekToggles.length) return null;
 
+  const parseWeekToggleDate = (title) => {
+    const t = String(title || '').trim();
+    const iso = t.match(/(\d{4}-\d{2}-\d{2})/);
+    if (iso) return new Date(iso[1]).getTime();
+    const monthDay = t.match(/week\s+of\s+([a-z]+)\s+(\d{1,2})/i);
+    if (monthDay) {
+      const parsed = Date.parse(`${monthDay[1]} ${monthDay[2]}, ${new Date().getFullYear()}`);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    return 0;
+  };
+
+  weekToggles.sort(
+    (a, b) => parseWeekToggleDate(blockPlainText(b)) - parseWeekToggleDate(blockPlainText(a)),
+  );
   const latestWeek = weekToggles[0];
   const weekChildren = await notionFetchAllChildren(latestWeek.id);
   const overview = { focus: '', drill: '' };
@@ -700,7 +715,12 @@ export default async function handler(req, res) {
   if (!process.env.NOTION_TOKEN) {
     try {
       const snap = await loadSnapshot();
-      return res.status(200).json({ ...snap, cheatNotesSource: 'snapshot' });
+      return res.status(200).json({
+        ...snap,
+        source: 'snapshot',
+        cheatNotesSource: 'snapshot',
+        weeklySource: 'snapshot',
+      });
     } catch (e) {
       return res.status(503).json({ error: 'Notion token not configured and snapshot missing' });
     }
@@ -712,24 +732,24 @@ export default async function handler(req, res) {
     const snap = await loadSnapshot();
     const sessions = await parseAllDailySessions(pageId);
     const sessionsForPayload = sessions.length ? sessions : snap.sessions || [];
-    let cheatNotes = [];
+    let liveCheat = [];
     let cheatNotesSource = 'snapshot';
     const snapCheat = normalizeCheatNoteRows(snap.cheatNotes || []);
     try {
-      const liveCheat = await parseGameCheatNotes(pageId);
-      if (liveCheat.length) {
-        cheatNotes = liveCheat;
+      liveCheat = await parseGameCheatNotes(pageId);
+      if (liveCheat.length && snapCheat.length) {
+        cheatNotesSource = 'notion+snapshot';
+      } else if (liveCheat.length) {
         cheatNotesSource = 'notion';
       } else {
-        cheatNotes = [];
-        cheatNotesSource = 'notion';
+        cheatNotesSource = snapCheat.length ? 'snapshot' : 'notion';
       }
     } catch (cheatErr) {
-      cheatNotes = snapCheat;
-      cheatNotesSource = 'snapshot';
+      liveCheat = [];
+      cheatNotesSource = snapCheat.length ? 'snapshot' : 'notion';
     }
-    const authoritativeCheat = cheatNotes.length ? cheatNotes : snapCheat;
-    cheatNotes = removeSessionNoteLeakage(authoritativeCheat, sessionsForPayload);
+    const mergedCheat = mergeCheatNotes(liveCheat, snapCheat);
+    let cheatNotes = removeSessionNoteLeakage(mergedCheat, sessionsForPayload);
 
     let weeklyPriorities = snap.weeklyPriorities || [];
     let weeklyOverview = snap.weeklyOverview || { focus: '', drill: '' };
@@ -773,7 +793,9 @@ export default async function handler(req, res) {
         ...snap,
         source: 'snapshot',
         cheatNotesSource: 'snapshot',
+        weeklySource: 'snapshot',
         apiError: e.message,
+        syncWarning: 'Live Notion API unavailable — showing offline snapshot',
       });
     } catch (err) {
       return res.status(500).json({ error: e.message });
