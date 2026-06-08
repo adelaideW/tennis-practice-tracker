@@ -631,7 +631,8 @@
         "Forehand consistency",
         "Down-the-line backhand shots",
         "Heavy top spin forehand",
-        "Return on second serves with good angle"
+        "Return on second serves with good angle",
+        "Consistency at baseline, less double fault, proactive at net - but even tho hit into the net"
       ],
       "bad": [
         "Volley, rushed for slow and weak ball treatment, footwork on diagonal shots, slow serve, double game court coverage",
@@ -642,7 +643,8 @@
         "Lob tends to go low or out",
         "Volley, lob, drop shots",
         "Does not deal well with fast serve or return",
-        "Serve → can attack due to low speed, but need to stand close to service box"
+        "Serve → can attack due to low speed, but need to stand close to service box",
+        "Volley at net, speed and angle when taking weak balls, game strategy in doubles - movement to cover the court"
       ]
     },
     {
@@ -654,7 +656,8 @@
         "Coming to the net often, lobs, Forehand topspin",
         "slices, variety, powerful forehand, volley improving",
         "Heavy top spin forehand with good speed and penetration",
-        "Lob and slice"
+        "Lob and slice",
+        "Good forehand angle and speed, game strategy on lobs, backhand slices"
       ],
       "bad": [
         "Approaching shots too fast and long",
@@ -666,7 +669,8 @@
         "Lack consistency and aiming",
         "Backhand too late and hit on the fall",
         "Lack split steps and active movement",
-        "Hard time with short/soft balls → into the net"
+        "Hard time with short/soft balls → into the net",
+        "Volley, backhand taking the ball too late, lack split steps, forehand needs to push more foreward"
       ]
     },
     {
@@ -675,23 +679,27 @@
         "High top spin forehand",
         "Fast and penetrating one handed backhand",
         "Take the ball in air",
-        "Volley"
+        "Volley",
+        "Volley at net, Always find chance to come to the net, backhand slice, fast 1st serve when in"
       ],
       "bad": [
         "Lack consistency but balls tend to go in",
         "Lack movement",
         "Always stay at baseline",
         "</details>",
-        "<details>"
+        "<details>",
+        "Rushed, easily agitated after 1 double fault, forehand likely goes long, not moving enough"
       ]
     },
     {
       "name": "Chen",
       "good": [
-        "Forehand depth, speed on serve sometimes, volley practice"
+        "Forehand depth, speed on serve sometimes, volley practice",
+        "Forehand high balls to the backhand corner, some good 1st serves, lobs"
       ],
       "bad": [
-        "hard time taking lobs, slow serves most times, not enough direction for balls, late on short balls - out"
+        "hard time taking lobs, slow serves most times, not enough direction for balls, late on short balls - out",
+        "Backhand high ball, ground strokes lack ability to hit down the line, hit long for deep balls, issues with approaching shots"
       ]
     },
     {
@@ -701,23 +709,70 @@
         "Spin, lob, drop shot",
         "Manipulate the pace, speed, placement",
         "2nd serve with heavy side spin usually to corner",
-        "Harder to predict"
+        "Harder to predict",
+        "Slices, dictation on ball placement, relaxed when serving, no double fault, Anticipation 🤔"
       ],
       "bad": [
         "One-handed backhand out",
         "Does not deal well with deep lobs",
         "Have trouble with speedy serves → From Robert",
         "First serve goes long → sometimes",
-        "Serve is easier to read → most of time goes to corner, T leads to error"
+        "Serve is easier to read → most of time goes to corner, T leads to error",
+        "Forehand mishit or return short when ball are deep, not fast enough for drop shots, forehand is more likely to go long than backhand, backhand is mostly slices and come back low - lack penetrating power"
       ]
+    },
+    {
+      "name": "Debrah",
+      "good": [
+        "Serving form, not many double faults, some good volleys"
+      ],
+      "bad": [
+        "Highballs in general, standing too close to center when serving on ad-side in double games, not enough court coverage, low confidence on 2nd serves"
+      ]
+    },
+    {
+      "name": "Down",
+      "good": [
+        "the-line backhand shots"
+      ],
+      "bad": []
     },
     {
       "name": "Gary",
       "good": [
-        "linear fast trajectory on ground strokes with consistency"
+        "linear fast trajectory on ground strokes with consistency",
+        "Ground stroke speed and direction, backhand slice → fast and low, forehand → good directional angle",
+        "low penetrating forehand, good placement on return, backhand down the line"
       ],
       "bad": [
-        "struggle with short balls, slow serves, taking low balls, no volley, low trajectory on ground strokes"
+        "struggle with short balls, slow serves, taking low balls, no volley, low trajectory on ground strokes",
+        "lack variety, serve is slow, anchor at baseline and does not come to the net and volley, lack position awareness, hitting flat and struggle with low balls",
+        "Hard time taking low balls - hitting trajectory is linear, lack versatile in game, volley reflex, slow in movement for corner shots"
+      ]
+    },
+    {
+      "name": "Groundstroke forms",
+      "good": [
+        "> Always hit in front of the body, good topspin on backhand"
+      ],
+      "bad": []
+    },
+    {
+      "name": "Haber",
+      "good": [
+        "1st serve angle if in, can direct angle with forehand if not forced, volley angle sometimes"
+      ],
+      "bad": [
+        "backhand → late, inconsistent and lack of drive through, hit too fast and lack consistency, double fault a lot → serve goes long, lack movement on court"
+      ]
+    },
+    {
+      "name": "Henry",
+      "good": [
+        "willing to run for all shots, top spin forehand, some good backhand slices"
+      ],
+      "bad": [
+        "Not consistent, backhand slice goes short, lack directional aiming, struggle with high balls, lack split steps and footwork preparation"
       ]
     },
     {
@@ -726,11 +781,13 @@
         "Good serve serve speed if not out",
         "Good volley",
         "Can take opportunities when given!",
-        "Doesn’t deal with kick serve well"
+        "Doesn’t deal with kick serve well",
+        "Shots varieties, forehand slice, shot depth, court coverage and willing to run, able to lift up corner low balls"
       ],
       "bad": [
         "Ground strokes are not stable",
-        "Try play sneaky but leads to errors"
+        "Try play sneaky but leads to errors",
+        "Hitting flat → likely to go into the net than long, struggle with top spin shots → return short"
       ]
     },
     {
@@ -766,6 +823,17 @@
       ]
     },
     {
+      "name": "Khei",
+      "good": [
+        "Mid court angle and put away shots, backhand can take balls on rise and can dictate angle, serve angle → corner for deuce court, t for ad court, court coverage and willing to run",
+        "backhand down the line, game strategy, ability to execute killing shots when opportunity rises, return on serving - hit up if cannot guarantee quality"
+      ],
+      "bad": [
+        "serve is slow, forehand lack speed and only return high balls, struggle with forehand high balls, no split steps, no dropshot or slice",
+        "Forehand penetration - likely to go up or long, backhand push too much - goes into the net, late for short balls, aiming too much to the corner leads to unforced errors."
+      ]
+    },
+    {
       "name": "Kimo",
       "good": [
         "Prepare higher on lob/high balls; backhand hit on rise",
@@ -783,7 +851,8 @@
         "Doesn’t deal with lob/ kick serve well",
         "Runs everything down",
         "Good on forehand sideways spin",
-        "Knows where the opponent is, tend to hit down the line on the side alleys — needs attention!"
+        "Knows where the opponent is, tend to hit down the line on the side alleys — needs attention!",
+        "Movement across court, lob stability, 2nd serve consistency, volley reactions"
       ],
       "bad": [
         "Volley backhand — tilting racket head, lack of foot movement",
@@ -794,7 +863,8 @@
         "Volley is good when low, tend to miss if high",
         "Serve is stable but slow, only 2nd serve - can approach if needed",
         "Lobs sometimes doesn’t work well. Creates depth but too slow, prone to be attacked.",
-        "Does not hit hard even given the chance"
+        "Does not hit hard even given the chance",
+        "Lacking killing shots, backspin tends to go into the net, lack confidence in 1st serve, overhead timing, play more conservatively unless leading on points - maybe can take advantage here"
       ]
     },
     {
@@ -803,14 +873,16 @@
         "Volley, backhand slice, forehand speed (if in sweet spot)",
         "fast backspin on backhand",
         "Fast flat forehand",
-        "Volley"
+        "Volley",
+        "More stable in service box rally"
       ],
       "bad": [
         "baseline not stable, backhand mostly out",
         "lack preparation, balls long, weak serves and volley",
         "Lack consistency",
         "Poor backhand with no preparation",
-        "Lack movement"
+        "Lack movement",
+        "No racket drop only using wrist to generate power, lack top spin, backhand not stable - can only slice back, and most goes long or fly"
       ]
     },
     {
@@ -823,6 +895,15 @@
         "Serve goes long → double fault",
         "Does not come to the net → No volley?",
         "Lack of variety in game → limited datapoint"
+      ]
+    },
+    {
+      "name": "Mina",
+      "good": [
+        "Baseline return and lobs, can take volley opportunities when given"
+      ],
+      "bad": [
+        "Serve → multiple double faults"
       ]
     },
     {
@@ -890,6 +971,15 @@
       ]
     },
     {
+      "name": "Seth",
+      "good": [
+        "Heavy top spin forehand, fast backhand slice, excellent court awareness → high balls never go out, accurate directional control on forehand side"
+      ],
+      "bad": [
+        "Struggle with high balls with western grip, cannot run fast, backhand → no drive though and only has slice and high balls (similar to Michael)"
+      ]
+    },
+    {
       "name": "Tess",
       "good": [
         "Strategy and ball placement in double game, volley, serve - no double fault"
@@ -921,8 +1011,17 @@
         "Not as comfortable at the net",
         "Serve has not double fault"
       ]
+    },
+    {
+      "name": "智仔",
+      "good": [
+        "Serve angle for ad court, not many double faults, forehand with good depth"
+      ],
+      "bad": [
+        "Backhand in general especially with high balls, lack spin and speed on 2nd serve, lack directional control on ground strokes, not moving enough"
+      ]
     }
   ],
-  "cheatNotesSource": "snapshot",
+  "cheatNotesSource": "notion+snapshot",
   "parserVersion": "cheat-filter-v9"
 }
