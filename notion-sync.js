@@ -54,12 +54,14 @@ function dailyToEntry(daily, index) {
     : new Date().toISOString().slice(0, 10);
   const blob = [daily.context, ...(daily.good || []), ...(daily.bad || []), ...(daily.learning || [])].join(' ');
   const isMatch = /game|match|usta/i.test(blob);
+  const fallbackDuration = isMatch ? 90 : 75;
+  const resolveDuration = window.resolveSessionDuration || ((d, fb) => d?.duration ?? fb);
   return {
     id: daily.id || `notion-${dateStr}-${index}`,
     date: `${dateStr}T17:00:00.000Z`,
     tags: daily.tags?.length ? daily.tags : inferTags(blob),
     intensity: daily.intensity ?? (isMatch ? 3 : 2),
-    duration: daily.duration ?? (isMatch ? 90 : 75),
+    duration: resolveDuration(daily, fallbackDuration),
     notes: daily.notes || formatDailyNotes(daily),
     context: daily.context || '',
     source: 'notion',
@@ -532,3 +534,6 @@ window.applyNotionPayload = applyNotionPayload;
 window.buildSharpenFromNotion = buildSharpenFromNotion;
 window.buildCheatNotesFromNotion = buildCheatNotesFromNotion;
 window.rankTopImprovementAreas = rankTopImprovementAreas;
+if (typeof window.groupEntriesByDate !== 'function') {
+  window.groupEntriesByDate = (entries, limit = 3) => entries.slice(0, limit);
+}

@@ -106,7 +106,9 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
     }));
   }, [todayEntries]);
 
-  const recentSessions = todayEntries.slice(0, 3);
+  const recentSessions = window.groupEntriesByDate
+    ? window.groupEntriesByDate(todayEntries, 3)
+    : todayEntries.slice(0, 3);
   const focus = useM1(() => {
     if (notionPayload && window.buildFocusFromNotion) {
       return window.buildFocusFromNotion({ ...notionPayload, _refreshSeed: refreshSeed });

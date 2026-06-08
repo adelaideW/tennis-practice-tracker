@@ -2,6 +2,8 @@
  * Vercel serverless: live Notion fetch when NOTION_TOKEN is set.
  * Falls back to notion-data.json snapshot when unset.
  */
+import { extractSessionMinutes, resolveSessionDuration } from './session-time.mjs';
+
 const PAGE_ID = process.env.NOTION_PAGE_ID || '32470a7de7e0803e9f3ad8904cf25efe';
 const NOTION_VERSION = '2022-06-28';
 
@@ -62,11 +64,17 @@ function parseToggleLines(lines) {
   const learning = [];
   let section = null;
   let context = '';
+  let timeText = '';
 
   for (const line of lines) {
     const lower = line.toLowerCase();
     if (lower.startsWith('context:')) {
       context = line.replace(/^context:\s*/i, '');
+      continue;
+    }
+    const timeMatch = line.match(/^(?:time|duration|played)\s*:\s*(.+)$/i);
+    if (timeMatch) {
+      timeText = timeMatch[1].trim();
       continue;
     }
     if (lower.startsWith('context')) {
@@ -96,7 +104,7 @@ function parseToggleLines(lines) {
     else if (!context && !section) context = bullet;
   }
 
-  return { context, good, bad, learning };
+  return { context, good, bad, learning, timeText, lines };
 }
 
 /** Parse every daily reflection toggle under "Daily reflection". */
@@ -134,14 +142,28 @@ async function parseAllDailySessions(pageId) {
     const parsed = parseToggleLines(lines);
     const dateMatch = title.match(/(\d{4}-\d{2}-\d{2})/);
     const date = dateMatch ? dateMatch[1] : title;
+    const context = parsed.context || title;
+    const blob = [context, ...(parsed.good || []), ...(parsed.bad || []), ...(parsed.learning || [])].join(' ');
+    const isMatch = /game|match|usta/i.test(blob);
+    const fallbackDuration = isMatch ? 90 : 75;
+    const duration = resolveSessionDuration(
+      {
+        timeText: parsed.timeText,
+        context,
+        lines: parsed.lines,
+      },
+      fallbackDuration,
+    );
     sessions.push({
-      id: `notion-${date}`,
+      id: `notion-${date}-${sessions.length}`,
       date,
       label: title,
-      context: parsed.context || title,
+      context,
       good: parsed.good,
       bad: parsed.bad,
       learning: parsed.learning,
+      timeText: parsed.timeText || undefined,
+      duration,
     });
   };
 
