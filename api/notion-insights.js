@@ -313,20 +313,19 @@ async function parseAllDailySessions(pageId) {
 
 const WEEKLY_LINE_BLOCK_TYPES = new Set(['bulleted_list_item', 'numbered_list_item', 'paragraph']);
 
-/** Latest "Week of …" block under Weekly insights → priorities + overview focus/drill. */
-async function parseWeeklyPriorities(pageId) {
+async function findWeeklyInsightsContainer(pageId) {
   const blocks = await notionFetchAllChildren(pageId);
-  let weeklyContainerId = null;
-
   for (const block of blocks) {
     const text = blockPlainText(block);
     if (!/weekly\s+insights/i.test(text)) continue;
-    if (block.has_children) {
-      weeklyContainerId = block.id;
-      break;
-    }
+    if (block.has_children) return block.id;
   }
+  return null;
+}
 
+/** Latest "Week of …" block under Weekly insights → priorities + overview focus/drill. */
+async function parseWeeklyPriorities(pageId) {
+  const weeklyContainerId = await findWeeklyInsightsContainer(pageId);
   if (!weeklyContainerId) return null;
 
   const weekToggles = (await notionFetchAllChildren(weeklyContainerId)).filter(
@@ -444,8 +443,28 @@ function isExcludedCheatPlayer(name) {
   return EXCLUDED_CHEAT_PLAYER_RE.test(String(name || '').trim());
 }
 
+const REJECTED_COLON_PLAYER_RE =
+  /^(good|loophole|bad|overview|focus|drill|context|insight|insights|learning|practice|game|serve|volley|duration|played|time|players?|events?|main focus|weakness|needs? improvement|strategy|strategies)$/i;
+
+function isRejectedColonPlayerName(name) {
+  const t = String(name || '').trim();
+  if (!t || REJECTED_COLON_PLAYER_RE.test(t)) return true;
+  if (/^(duration|played|focus|drill|practice|game|serve|volley)$/i.test(t)) return true;
+  if (
+    /^(always|heavy|consistent|lack|fast|high|weak|movement|speedy|take|does|not|top|spin|forehand|backhand|lob|volley|serve|return|baseline|court|ball|good|bad|winning)$/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function normalizePlayerName(name) {
-  const t = name.trim();
+  const t = String(name || '')
+    .trim()
+    .replace(/\s*\([^)]*\)\s*$/, '')
+    .trim();
   return PLAYER_ALIASES[t] || t;
 }
 
@@ -470,7 +489,7 @@ function pushNote(byPlayer, name, note, section) {
   const trimmedName = normalizePlayerName(name);
   const trimmedNote = note.trim().replace(/,\s*$/, '');
   if (!trimmedName || !trimmedNote || isExcludedCheatPlayer(trimmedName)) return;
-  if (/^(good|loophole|bad|overview|focus|drill)$/i.test(trimmedName)) return;
+  if (isRejectedColonPlayerName(trimmedName)) return;
   if (!byPlayer.has(trimmedName)) {
     byPlayer.set(trimmedName, { name: trimmedName, good: [], bad: [] });
   }
@@ -490,13 +509,17 @@ function parsePlayerLine(line, section, byPlayer) {
 
   const colon = trimmed.match(/^([^:]{1,40}):\s*(.+)$/);
   if (colon) {
-    pushNote(byPlayer, colon[1], colon[2], section);
+    if (!isRejectedColonPlayerName(colon[1])) {
+      pushNote(byPlayer, colon[1], colon[2], section);
+    }
     return { section, consumed: true };
   }
 
   const dash = trimmed.match(/^([^—\-]{1,40})\s*[-—]\s*(.+)$/);
   if (dash) {
-    pushNote(byPlayer, dash[1], dash[2], section);
+    if (!isRejectedColonPlayerName(dash[1])) {
+      pushNote(byPlayer, dash[1], dash[2], section);
+    }
     return { section, consumed: true };
   }
 
@@ -657,12 +680,34 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer, parentTitle = '') {
   await walkBlocks(top, rootPlayer);
 }
 
+/** Ingest Good / Loophole notes from every weekly "Analysis on other Player's style" block. */
+async function parseWeeklyCheatNotes(pageId, byPlayer) {
+  const weeklyContainerId = await findWeeklyInsightsContainer(pageId);
+  if (!weeklyContainerId) return;
+
+  const weekToggles = (await notionFetchAllChildren(weeklyContainerId)).filter(
+    (b) => b.type === 'toggle' && /^week\s+of\b/i.test(blockPlainText(b)),
+  );
+
+  for (const weekToggle of weekToggles) {
+    const weekChildren = await notionFetchAllChildren(weekToggle.id);
+    for (const child of weekChildren) {
+      if (child.type !== 'toggle') continue;
+      const title = blockPlainText(child);
+      if (!/analysis on other/i.test(title)) continue;
+      await ingestPlayerAnalysisBlock(child.id, byPlayer, title);
+    }
+  }
+}
+
 /** Walk entire insights page — all weekly / historical player analysis toggles. */
 async function parseGameCheatNotes(pageId) {
   const byPlayer = new Map();
   const DAILY_REFLECTION_RE = /daily reflection/i;
   const SESSION_TOGGLE_RE =
     /(\d{4}-\d{2}-\d{2})|^(mon|tue|wed|thu|fri|sat|sun)(day)?\b/i;
+
+  await parseWeeklyCheatNotes(pageId, byPlayer);
 
   async function visitToggle(toggleId, title = '') {
     const toggleTitle = title || '';
