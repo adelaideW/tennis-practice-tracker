@@ -2,7 +2,6 @@
  * Vercel serverless: live Notion fetch when NOTION_TOKEN is set.
  * Falls back to notion-data.json snapshot when unset.
  */
-import { extractSessionMinutes, resolveSessionDuration } from './session-time.mjs';
 
 const PAGE_ID = process.env.NOTION_PAGE_ID || '32470a7de7e0803e9f3ad8904cf25efe';
 const NOTION_VERSION = '2022-06-28';
@@ -11,6 +10,111 @@ function normalizeId(id) {
   const raw = id.replace(/-/g, '');
   if (raw.length !== 32) return id;
   return `${raw.slice(0, 8)}-${raw.slice(8, 12)}-${raw.slice(12, 16)}-${raw.slice(16, 20)}-${raw.slice(20)}`;
+}
+
+function parseClockMinutes(token) {
+  const t = String(token || '').trim().toLowerCase().replace(/\./g, '');
+  if (!t) return null;
+  const m12 = t.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/);
+  if (m12) {
+    let h = parseInt(m12[1], 10);
+    const min = m12[2] ? parseInt(m12[2], 10) : 0;
+    if (h === 12) h = 0;
+    if (m12[3] === 'pm') h += 12;
+    return h * 60 + min;
+  }
+  const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
+  if (m24) return parseInt(m24[1], 10) * 60 + parseInt(m24[2], 10);
+  const mHourOnly = t.match(/^(\d{1,2})\s*(am|pm)$/);
+  if (mHourOnly) {
+    let h = parseInt(mHourOnly[1], 10);
+    if (h === 12) h = 0;
+    if (mHourOnly[2] === 'pm') h += 12;
+    return h * 60;
+  }
+  return null;
+}
+
+function parseTimePeriodMinutes(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return null;
+  const rangeRe =
+    /(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s*[-–—to]+\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/gi;
+  let total = 0;
+  let matched = false;
+  for (const m of raw.matchAll(rangeRe)) {
+    let start = parseClockMinutes(m[1]);
+    let end = parseClockMinutes(m[2]);
+    if (start == null || end == null) continue;
+    const startMer = /pm/i.test(m[1]);
+    const endMer = /pm/i.test(m[2]);
+    const startHasMer = /am|pm/i.test(m[1]);
+    if (!startHasMer && endMer && start < 12 * 60) start += 12 * 60;
+    if (!/am|pm/i.test(m[2]) && startMer && end < start) end += 12 * 60;
+    if (end <= start) end += 12 * 60;
+    total += end - start;
+    matched = true;
+  }
+  return matched ? total : null;
+}
+
+function parseDurationMinutes(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return null;
+  const period = parseTimePeriodMinutes(raw);
+  if (period != null) return period;
+  const parts = raw.split(/\s*(?:\+|,|&|and)\s*/i).filter(Boolean);
+  let total = 0;
+  let matched = false;
+  for (const part of parts) {
+    const p = part.trim().toLowerCase();
+    const hrMin = p.match(/^(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\s*(?:(\d+)\s*(?:m|min|mins|minute|minutes)?)?$/);
+    if (hrMin) {
+      total += Math.round(parseFloat(hrMin[1]) * 60) + (hrMin[2] ? parseInt(hrMin[2], 10) : 0);
+      matched = true;
+      continue;
+    }
+    const minOnly = p.match(/^(\d+(?:\.\d+)?)\s*(?:m|min|mins|minute|minutes)$/);
+    if (minOnly) {
+      total += Math.round(parseFloat(minOnly[1]));
+      matched = true;
+      continue;
+    }
+    const bare = p.match(/^(\d+(?:\.\d+)?)(m|min)?$/);
+    if (bare && (bare[2] || parseFloat(bare[1]) <= 300)) {
+      total += Math.round(parseFloat(bare[1]));
+      matched = true;
+    }
+  }
+  return matched ? total : null;
+}
+
+function extractTimeTextFromLines(lines = []) {
+  for (const line of lines) {
+    const m = String(line || '').match(/^(?:time|duration|played)\s*:\s*(.+)$/i);
+    if (m) return m[1].trim();
+  }
+  return '';
+}
+
+function extractSessionMinutes({ timeText, context, lines } = {}) {
+  const fromLines = extractTimeTextFromLines(lines);
+  for (const text of [timeText, fromLines, context].filter(Boolean)) {
+    const mins = parseDurationMinutes(text);
+    if (mins != null && mins > 0) return mins;
+  }
+  return null;
+}
+
+function resolveSessionDuration(daily, fallbackMinutes) {
+  if (typeof daily?.duration === 'number' && daily.duration > 0) return daily.duration;
+  const parsed = extractSessionMinutes({
+    timeText: daily?.timeText,
+    context: daily?.context,
+    lines: daily?.lines,
+  });
+  if (parsed != null && parsed > 0) return parsed;
+  return fallbackMinutes;
 }
 
 async function notionFetch(path) {
