@@ -1482,8 +1482,22 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
 .toolkit-panel-body {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 14px 16px 18px;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-4) transparent;
+}
+.toolkit-panel:not(.is-panel-expanded) .toolkit-panel-body::-webkit-scrollbar {
+  width: 8px;
+}
+.toolkit-panel:not(.is-panel-expanded) .toolkit-panel-body::-webkit-scrollbar-thumb {
+  background: var(--ink-4);
+  border-radius: 4px;
+}
+.toolkit-panel:not(.is-panel-expanded) .toolkit-panel-body::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-3);
 }
 .toolkit-panel-body.is-measuring,
 .toolkit-panel.is-panel-expanded .toolkit-panel-body {
@@ -1491,6 +1505,7 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   flex: none;
   min-height: auto;
   max-height: none;
+  scrollbar-gutter: auto;
 }
 .toolkit-panel-resize {
   position: absolute;
@@ -1643,12 +1658,7 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   display: flex;
   flex-direction: column;
 }
-.toolkit-panel--focus:not(.is-panel-expanded) .toolkit-panel-body {
-  overflow: hidden;
-}
 .toolkit-panel--focus:not(.is-panel-expanded) .today-focus-inner {
-  height: 100%;
-  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -1678,9 +1688,7 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   color: var(--ink-2);
 }
 .toolkit-panel--focus:not(.is-panel-expanded) .focus-body {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 .toolkit-panel--focus.is-panel-expanded .focus-body {
   overflow: visible;
@@ -1709,14 +1717,7 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
 .page-head + .today-dashboard,
 .page-head + .toolkit-grid-wrap { margin-bottom: 28px; }
 .recent-card-scroll {
-  max-height: 240px;
-  overflow-y: auto;
-  padding-right: 4px;
-  margin-right: -4px;
-}
-.toolkit-panel.is-panel-expanded .recent-card-scroll {
-  max-height: none;
-  overflow: visible;
+  padding-right: 2px;
 }
 .recent-card-scroll .recent-row:last-child { border-bottom: 0; padding-bottom: 0; }
 

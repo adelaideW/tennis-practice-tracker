@@ -2569,16 +2569,42 @@ function ToolkitPanel({
 
   useE1(() => {
     const body = bodyRef.current;
-    if (!body) return undefined;
+    if (!body || expanded) return undefined;
+
     const check = () => {
-      if (expanded) return;
       setHasOverflow(body.scrollHeight > body.clientHeight + 2);
     };
+
     check();
-    if (typeof ResizeObserver === 'undefined') return undefined;
-    const ro = new ResizeObserver(check);
-    ro.observe(body);
-    return () => ro.disconnect();
+    const rafId = requestAnimationFrame(check);
+
+    let ro;
+    let mo;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(check);
+      ro.observe(body);
+      body.querySelectorAll('*').forEach((el) => {
+        try { ro.observe(el); } catch (_) { /* skip non-elements */ }
+      });
+    }
+
+    if (typeof MutationObserver !== 'undefined') {
+      mo = new MutationObserver(() => {
+        if (ro) {
+          body.querySelectorAll('*').forEach((el) => {
+            try { ro.observe(el); } catch (_) { /* skip */ }
+          });
+        }
+        check();
+      });
+      mo.observe(body, { childList: true, subtree: true, characterData: true });
+    }
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      ro?.disconnect();
+      mo?.disconnect();
+    };
   }, [expanded, children]);
 
   useE1(() => {
