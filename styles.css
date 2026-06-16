@@ -136,6 +136,22 @@
   background: radial-gradient(circle at 35% 35%, var(--brand-primary-300), var(--brand-primary-500));
   opacity: 0.2;
 }
+[data-theme="light"] .toolkit-panel--focus {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border-color: rgba(21, 128, 61, 0.22);
+  box-shadow: var(--shadow-sm);
+}
+[data-theme="light"] .toolkit-panel--focus .toolkit-panel-header {
+  background: transparent;
+  border-bottom-color: rgba(21, 128, 61, 0.15);
+}
+[data-theme="light"] .toolkit-panel--focus .toolkit-panel-title,
+[data-theme="light"] .toolkit-panel--focus .focus-section-label {
+  color: var(--accent-deep);
+}
+[data-theme="light"] .toolkit-panel--focus .today-focus-inner .ball-deco {
+  opacity: 0.2;
+}
 [data-theme="light"] .modal-header { background: var(--surface-2); }
 [data-theme="light"] .modal-header .deco {
   background: radial-gradient(circle at 35% 35%, var(--brand-primary-200), var(--brand-primary-400));
