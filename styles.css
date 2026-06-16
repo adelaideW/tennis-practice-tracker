@@ -1590,7 +1590,6 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   margin-bottom: auto;
   flex-shrink: 0;
   width: 100%;
-  min-height: 0;
 }
 .toolkit-panel:not(.is-panel-expanded).toolkit-panel--activity .toolkit-panel-body > * {
   margin-top: 0;

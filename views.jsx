@@ -76,13 +76,19 @@ function clampActivityZoom(value, min, max) {
 
 function detectPanelBodyOverflow(body) {
   if (!body) return false;
-  if (body.scrollHeight > body.clientHeight + 2) return true;
+  const tolerance = 2;
+  if (body.scrollHeight > body.clientHeight + tolerance) return true;
+
+  // Flex-centered panel bodies can clip tall content without raising body.scrollHeight.
+  for (const child of body.children) {
+    if (child.scrollHeight > body.clientHeight + tolerance) return true;
+  }
 
   const chartScroll = body.querySelector('.activity-chart-scroll');
   if (chartScroll) {
     const svg = chartScroll.querySelector('svg');
-    if (svg && svg.getBoundingClientRect().height > chartScroll.clientHeight + 2) return true;
-    if (chartScroll.scrollHeight > chartScroll.clientHeight + 2) return true;
+    if (svg && svg.getBoundingClientRect().height > chartScroll.clientHeight + tolerance) return true;
+    if (chartScroll.scrollHeight > chartScroll.clientHeight + tolerance) return true;
   }
 
   return false;
@@ -2889,6 +2895,7 @@ function ToolkitPanel({
 
   useE1(() => {
     const body = bodyRef.current;
+    const panel = panelRef.current;
     if (!body || expanded) return undefined;
 
     const check = () => {
@@ -2897,12 +2904,14 @@ function ToolkitPanel({
 
     check();
     const rafId = requestAnimationFrame(check);
+    const secondPass = requestAnimationFrame(check);
 
     let ro;
     let mo;
     if (typeof ResizeObserver !== 'undefined') {
       ro = new ResizeObserver(check);
       ro.observe(body);
+      if (panel) ro.observe(panel);
       body.querySelectorAll('*').forEach((el) => {
         try { ro.observe(el); } catch (_) { /* skip non-elements */ }
       });
@@ -2922,6 +2931,7 @@ function ToolkitPanel({
 
     return () => {
       cancelAnimationFrame(rafId);
+      cancelAnimationFrame(secondPass);
       ro?.disconnect();
       mo?.disconnect();
     };
@@ -2964,7 +2974,7 @@ function ToolkitPanel({
         width: pixelStyle.width,
         minWidth: pixelStyle.width,
         maxWidth: pixelStyle.width,
-        height: expanded ? (item.measuredPx ?? pixelStyle.height) : pixelStyle.height,
+        height: expanded ? (item.measuredPx ?? 'auto') : pixelStyle.height,
       }
     : expanded
       ? { '--panel-min-h': `${gridHeight}px`, height: 'auto' }
