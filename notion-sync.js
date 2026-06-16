@@ -693,16 +693,229 @@ function tokenizeForMatch(text) {
     .filter((w) => w.length > 2);
 }
 
-function quoteToTipHeading(quote) {
-  const cleaned = String(quote || '').replace(/^\*+/, '').trim();
-  const short = cleaned.split(/[—–\-:;]/)[0].trim();
-  if (short.length <= 56) return short;
-  return `${short.slice(0, 53).trim()}…`;
+function hashString(text) {
+  let h = 0;
+  const s = String(text || '');
+  for (let i = 0; i < s.length; i += 1) {
+    h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
 }
 
-function quoteToTipBody(quote) {
-  const cleaned = String(quote || '').replace(/^\*+/, '').trim();
-  return `Your current Notion focus — build today's reps around this: ${cleaned}`;
+function cleanNotionQuote(quote) {
+  return String(quote || '').replace(/^\*+/, '').trim();
+}
+
+function shortNotionPhrase(quote, maxLen = 48) {
+  const cleaned = cleanNotionQuote(quote);
+  const lead = cleaned.split(/[—–\-:;]/)[0].trim();
+  if (lead.length <= maxLen) return lead;
+  return `${lead.slice(0, maxLen - 1).trim()}…`;
+}
+
+function quoteToTipHeading(quote) {
+  return shortNotionPhrase(quote, 56);
+}
+
+function pickVariant(items, seed, salt = 0) {
+  if (!items.length) return '';
+  return items[(seed + salt) % items.length];
+}
+
+function headingsFromQuote(quote, category, seed) {
+  const q = cleanNotionQuote(quote).toLowerCase();
+  const variants = [];
+
+  if (/form|technique|adjust|mechanic/i.test(q)) {
+    variants.push('Lock in one mechanical cue', 'Slow reps, clean contact', 'Film-free form check today');
+  }
+  if (/consisten|same speed|relax/i.test(q)) {
+    variants.push('Same swing speed every ball', 'Loose shoulders through contact', 'Prioritize clean contact over pace');
+  }
+  if (/corner|aim|direction|margin/i.test(q)) {
+    variants.push('Aim big targets, not lines', 'Margin inside the corners', 'Pick a safe pattern before you attack');
+  }
+  if (/overhead|smash|lob/i.test(q)) {
+    variants.push('Feet first, then the smash', 'Sidestep behind the lob', 'Contact in front, not above you');
+  }
+  if (/volley/i.test(q)) {
+    variants.push('Active feet at the net', 'Short swing, firm wrist', 'First volley deep, not flashy');
+  }
+  if (/serve|second serve|toss/i.test(q)) {
+    variants.push('Spin in before adding pace', 'Same toss, trusted motion', 'Second serve: make eight in a row');
+  }
+  if (/high ball|on the rise|wait till|drops lower/i.test(q)) {
+    variants.push('Prepare higher on rising balls', 'Let the ball drop to your zone', 'Take highs on the rise');
+  }
+  if (/\d+%|speed|pace|power|penetration/i.test(q)) {
+    variants.push('Control tempo in rallies', 'Match speed to your control zone', 'Depth before extra mph');
+  }
+  if (/split.?step|footwork|prepare|recover/i.test(q)) {
+    variants.push('Split-step every ball', 'Feet before hands', 'Recover behind the baseline');
+  }
+  if (/approach|net|no.?man/i.test(q)) {
+    variants.push('Commit past the service line', 'Approach with a plan', 'Hold the net after the first volley');
+  }
+  if (/slice|spin|top/i.test(q)) {
+    variants.push('Shape the ball before you speed it up', 'Spin gives you margin', 'Finish toward your target');
+  }
+
+  if (!variants.length) {
+    const focus = shortNotionPhrase(quote, 32);
+    variants.push(
+      `Turn "${focus}" into reps`,
+      `Today's ${category} focus`,
+      'One cue, fifteen minutes',
+    );
+  }
+
+  return pickVariant(variants, seed, hashString(quote));
+}
+
+function bodyFromQuote(quote, category, seed) {
+  const focus = shortNotionPhrase(quote, 40);
+  const q = cleanNotionQuote(quote).toLowerCase();
+  const bodies = [
+    `Your Notion note flags ${focus.toLowerCase()} — spend the first 15 minutes on that cue with no scorekeeping.`,
+    `This keeps showing up in your ${category} reflections. Test one adjustment in early rallies, then add pace only if contact stays clean.`,
+    `Translate "${focus}" into something measurable today — e.g. eight of ten balls past the service line before you speed up.`,
+    `Coach yourself through this focus: call the cue out loud on every fourth ball until it feels automatic.`,
+    `Build today's session around this note — quality reps beat volume when you're fixing ${focus.toLowerCase()}.`,
+  ];
+
+  if (/\d+%/.test(q)) {
+    bodies.unshift('Hold the speed cap your notes mention until contact is repeatable — then creep up one notch at a time.');
+  }
+  if (/corner|aim/i.test(q)) {
+    bodies.unshift('Aim inside the corner, not the line — your notes say accuracy matters more than hero winners.');
+  }
+  if (/overhead|lob/i.test(q)) {
+    bodies.unshift('Track the lob with sidesteps, set behind the ball, then move forward into contact — do not backpedal.');
+  }
+
+  return pickVariant(bodies, seed, hashString(quote) * 3 + category.length);
+}
+
+function defaultDrillForCategory(category, seed) {
+  const drills = {
+    groundstrokes: [
+      'Cross-court rally — 12 balls past the service line, then 4 down the line',
+      'Cone in each corner — 8 CC then 1 DTL inside the cone',
+      'Change pace every 4th ball for 20 rallies',
+    ],
+    serve: [
+      '20 second serves — count ins before adding mph',
+      '10 tosses without hit — mark landing spot each time',
+      'Serve wide → approach → deep volley to backhand',
+    ],
+    volley: [
+      'Approach → volley to deep middle → hold position',
+      'Feeder speeds up — 10 volleys with audible slice finish',
+      'Ball-machine BH volleys — 30 with no cross-over step',
+    ],
+    overhead: [
+      'Lob feeds — call "around" before every smash',
+      'Tossed overheads — catch the ball if it is behind',
+      '10 smashes — rate contact 1–3 before adding speed',
+    ],
+    mental: [
+      'Write one goal on a wristband — review after 45 min',
+      'Practice match — one cue word per point, all set',
+      'Shadow: approach → service line hold → or full recovery',
+    ],
+  };
+  const list = drills[category] || drills.groundstrokes;
+  return pickVariant(list, seed, 11);
+}
+
+function expandNotionQuoteToTip(quote, area, lib, payload, refreshSeed, index) {
+  const seed = refreshSeed + index * 17 + hashString(quote);
+  return {
+    h: headingsFromQuote(quote, area.category, seed),
+    p: bodyFromQuote(quote, area.category, seed),
+    drill: pickDrillForQuote(quote, area, lib, payload) || defaultDrillForCategory(area.category, seed),
+    priority: index === 0,
+    fromNotion: true,
+    aiGenerated: false,
+  };
+}
+
+function buildNotionTipAiPrompt(area, quotes, refreshSeed) {
+  const quoteList = quotes.map((q, i) => `${i + 1}. ${cleanNotionQuote(q)}`).join('\n');
+  return [
+    'You are a thoughtful tennis coach for an amateur player.',
+    `Focus area: ${area.title} (${area.category}).`,
+    'Below are raw notes copied from their Notion practice journal.',
+    'Turn each note into ONE distinct practice tip — do not copy the note verbatim as the title or body.',
+    'Each tip needs a punchy headline (under 10 words), a practical body (1–2 sentences, under 220 chars), and a concrete drill (under 90 chars).',
+    'Vary the advice: mechanics, footwork, tempo, targets, or mental cues as appropriate.',
+    `Refresh seed ${refreshSeed} — slightly vary phrasing from prior runs.`,
+    'Respond with JSON only (no markdown fence): an array of objects with keys "h", "p", "drill".',
+    `Generate exactly ${quotes.length} tip(s), in the same order as the notes.`,
+    'Notes:',
+    quoteList,
+  ].join('\n');
+}
+
+function parseAiTipsJson(raw, expectedCount) {
+  const cleaned = String(raw || '')
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/i, '')
+    .trim();
+  const parsed = JSON.parse(cleaned);
+  const list = Array.isArray(parsed) ? parsed : parsed?.tips;
+  if (!Array.isArray(list)) return null;
+  const tips = list
+    .map((t) => ({
+      h: String(t.h || '').trim(),
+      p: String(t.p || '').trim(),
+      drill: String(t.drill || '').trim(),
+    }))
+    .filter((t) => t.h && t.p && t.drill)
+    .slice(0, expectedCount);
+  return tips.length ? tips : null;
+}
+
+async function fetchAiTipSuggestions(area, quotes, refreshSeed = 0) {
+  if (!quotes?.length) return null;
+  const prompt = buildNotionTipAiPrompt(area, quotes, refreshSeed);
+
+  if (typeof window !== 'undefined' && window.claude?.complete) {
+    try {
+      const raw = await window.claude.complete(prompt);
+      return parseAiTipsJson(raw, quotes.length);
+    } catch {
+      // fall through to API
+    }
+  }
+
+  if (typeof fetch === 'undefined') return null;
+
+  try {
+    const res = await fetch('/api/generate-tip-suggestions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        areaTitle: area.title,
+        category: area.category,
+        quotes: quotes.map(cleanNotionQuote),
+        seed: refreshSeed,
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data?.tips?.length) return null;
+    return data.tips
+      .map((t) => ({
+        h: String(t.h || '').trim(),
+        p: String(t.p || '').trim(),
+        drill: String(t.drill || '').trim(),
+      }))
+      .filter((t) => t.h && t.p && t.drill)
+      .slice(0, quotes.length);
+  } catch {
+    return null;
+  }
 }
 
 function pickDrillForQuote(quote, area, lib, payload) {
@@ -729,13 +942,9 @@ function pickDrillForQuote(quote, area, lib, payload) {
 }
 
 function buildAreaTips(area, notionQuotes, payload, lib, refreshSeed = 0) {
-  const fromNotion = notionQuotes.slice(0, 3).map((quote, i) => ({
-    h: quoteToTipHeading(quote),
-    p: quoteToTipBody(quote),
-    drill: pickDrillForQuote(quote, area, lib, payload),
-    priority: i === 0,
-    fromNotion: true,
-  }));
+  const fromNotion = notionQuotes.slice(0, 3).map((quote, i) => (
+    expandNotionQuoteToTip(quote, area, lib, payload, refreshSeed, i)
+  ));
 
   if (fromNotion.length >= 3) return fromNotion;
 
@@ -929,6 +1138,7 @@ function buildSharpenFromNotion(payload, tipsLib, refreshSeed = 0) {
         drill: t.drill,
         priority: Boolean(t.priority),
         fromNotion: Boolean(t.fromNotion),
+        aiGenerated: Boolean(t.aiGenerated),
       })),
       resources,
     };
@@ -951,6 +1161,7 @@ window.buildSessionsFromNotion = buildSessionsFromNotion;
 window.buildFocusFromNotion = buildFocusFromNotion;
 window.applyNotionPayload = applyNotionPayload;
 window.buildSharpenFromNotion = buildSharpenFromNotion;
+window.fetchAiTipSuggestions = fetchAiTipSuggestions;
 window.buildCheatNotesFromNotion = buildCheatNotesFromNotion;
 window.getPlayerDisplayName = getPlayerDisplayName;
 window.rankTopImprovementAreas = rankTopImprovementAreas;

@@ -14,6 +14,7 @@ On Vercel, set:
 
 - `NOTION_TOKEN` — integration token with read access to the insights page
 - `NOTION_PAGE_ID` — optional; defaults to `32470a7de7e0803e9f3ad8904cf25efe`
+- `ANTHROPIC_API_KEY` — optional; powers AI tip suggestions on **Sharpen the craft** (without it, tips use smart heuristics from your notes)
 
 Without a token, the app uses `notion-data.json` (update this snapshot after editing Notion).
 

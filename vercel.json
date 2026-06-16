@@ -8,6 +8,9 @@
     "api/notion-insights.js": {
       "includeFiles": "api/notion-data.json",
       "maxDuration": 60
+    },
+    "api/generate-tip-suggestions.js": {
+      "maxDuration": 30
     }
   },
   "headers": [

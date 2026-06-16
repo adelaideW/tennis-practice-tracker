@@ -709,6 +709,8 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
   const [lastSyncedAt, setLastSyncedAt] = useS1(null);
   const [showLibrary, setShowLibrary] = useS1(false);
   const [cat, setCat] = useS1('groundstrokes');
+  const [aiTipsByArea, setAiTipsByArea] = useS1({});
+  const [aiTipsLoading, setAiTipsLoading] = useS1(false);
   const order = ['groundstrokes', 'serve', 'volley', 'overhead', 'mental'];
   const notionPage = window.NOTION_INSIGHTS_PAGE;
   const payloadRevision = window.notionPayloadRevision
@@ -722,6 +724,54 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
     [notionPayload, payloadRevision, notionUpdatedAt, refreshSeed],
   );
 
+  useE1(() => {
+    if (!sharpen.areas.length || !window.fetchAiTipSuggestions) return undefined;
+    let cancelled = false;
+    setAiTipsLoading(true);
+
+    (async () => {
+      const next = {};
+      try {
+        for (const area of sharpen.areas) {
+          if (cancelled) break;
+          const quotes = (area.notionQuotes || []).slice(0, 3);
+          if (!quotes.length) continue;
+          // eslint-disable-next-line no-await-in-loop
+          const aiTips = await window.fetchAiTipSuggestions(
+            { title: area.title, category: area.category },
+            quotes,
+            refreshSeed + area.rank,
+          );
+          if (cancelled || !aiTips?.length) continue;
+          next[area.key] = aiTips;
+        }
+        if (!cancelled) setAiTipsByArea(next);
+      } finally {
+        if (!cancelled) setAiTipsLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [sharpen.areas, refreshSeed, payloadRevision]);
+
+  const mergeAreaTips = (area) => {
+    const aiTips = aiTipsByArea[area.key];
+    if (!aiTips?.length) return area.tips;
+    let aiIdx = 0;
+    return area.tips.map((tip) => {
+      if (!tip.fromNotion || aiIdx >= aiTips.length) return tip;
+      const ai = aiTips[aiIdx];
+      aiIdx += 1;
+      return {
+        ...tip,
+        h: ai.h,
+        p: ai.p,
+        drill: ai.drill,
+        aiGenerated: true,
+      };
+    });
+  };
+
   const refreshedIso = lastSyncedAt || notionUpdatedAt || sharpen.generatedAt || null;
   const refreshedLabel = refreshedIso
     ? new Date(refreshedIso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
@@ -729,6 +779,7 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
 
   const handleRefresh = async () => {
     if (!syncFromNotion) return;
+    setAiTipsByArea({});
     const data = await syncFromNotion({ force: true });
     if (data) {
       setLastSyncedAt(new Date().toISOString());
@@ -762,7 +813,8 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
         <div className="notion-sync-copy">
           <div className="mono-small">Your improvement plan</div>
           <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-            Ranked from weekly priorities and every daily reflection in Notion — with drills and video links.
+            Ranked from weekly priorities and every daily reflection in Notion — with AI-suggested drills and video links.
+            {aiTipsLoading && sharpen.areas.length ? ' · Generating tips…' : ''}
           </p>
           {(notionError || notionPayload?.syncWarning) && (
             <span className="notion-new-badge">{notionError || notionPayload.syncWarning}</span>
@@ -805,13 +857,15 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
               )}
 
               <div className="tip-grid focus-area-tips">
-                {area.tips.map((tip, i) => (
+                {mergeAreaTips(area).map((tip, i) => (
                   <div key={i} className={`tip-card ${tip.priority ? 'priority' : ''}`}>
                     <div className="num">
                       Tip {String(i + 1).padStart(2, '0')}
-                      {tip.fromNotion
-                        ? <span className="match-chip">Notion</span>
-                        : tip.priority && <span className="match-chip">Match</span>}
+                      {tip.aiGenerated
+                        ? <span className="match-chip">AI</span>
+                        : tip.fromNotion
+                          ? <span className="match-chip">Suggested</span>
+                          : tip.priority && <span className="match-chip">Match</span>}
                     </div>
                     <h4>{tip.h}</h4>
                     <p>{tip.p}</p>
