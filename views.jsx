@@ -2732,7 +2732,15 @@ function useDraggableDashboardGrid({ storageKey, loadLayout, makeDefaultLayout, 
 
   const resetLayout = useC1(() => {
     if (!makeDefaultLayout) return;
-    const next = makeDefaultLayout(containerWidth);
+    const fresh = makeDefaultLayout(containerWidth);
+    const next = {
+      mode: 'grid',
+      items: fresh.items.map((item) => stampGridItem({
+        ...item,
+        expanded: false,
+        measuredPx: undefined,
+      })),
+    };
     layoutRef.current = next;
     setLayout(next);
     persistLayout(next);
