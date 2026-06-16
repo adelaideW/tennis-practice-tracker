@@ -1516,6 +1516,82 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
 }
 
 /* Today dashboard panels */
+.today-dashboard-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 20px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.today-dashboard-bar-meta {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.today-dashboard-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.today-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 130ms, border-color 130ms, color 130ms;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.today-bar-btn--primary {
+  background: var(--btn-primary-bg);
+  color: #ffffff;
+  border-color: var(--btn-primary-bg);
+  box-shadow: 0 6px 16px var(--btn-primary-shadow);
+}
+.today-bar-btn--primary:hover:not(:disabled) {
+  background: var(--btn-primary-hover);
+  border-color: var(--btn-primary-hover);
+}
+.today-bar-btn--primary:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+.today-bar-btn--ghost {
+  background: var(--surface);
+  color: var(--ink-2);
+  border-color: var(--border);
+}
+.today-bar-btn--ghost:hover {
+  background: var(--surface-3);
+  border-color: var(--ink-4);
+}
+.today-bar-btn--icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--surface);
+  color: var(--ink-2);
+  border-color: var(--border);
+}
+.today-bar-btn--icon:hover {
+  color: var(--accent-deep);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
 .toolkit-panel--focus {
   background: linear-gradient(135deg, rgba(21, 128, 61, 0.36), #0f1e35);
   border-color: rgba(134, 239, 172, 0.35);
@@ -1534,6 +1610,19 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   font-weight: 600;
 }
 .today-focus-inner { position: relative; }
+.toolkit-panel--focus .toolkit-panel-body {
+  display: flex;
+  flex-direction: column;
+}
+.toolkit-panel--focus:not(.is-panel-expanded) .toolkit-panel-body {
+  overflow: hidden;
+}
+.toolkit-panel--focus:not(.is-panel-expanded) .today-focus-inner {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .today-focus-inner .ball-deco {
   position: absolute;
   right: -40px;
@@ -1559,6 +1648,14 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   line-height: 1.65;
   color: var(--ink-2);
 }
+.toolkit-panel--focus:not(.is-panel-expanded) .focus-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.toolkit-panel--focus.is-panel-expanded .focus-body {
+  overflow: visible;
+}
 .toolkit-panel--focus .focus-section-label {
   font-family: var(--mono);
   font-size: 10px;
@@ -1569,32 +1666,6 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
 }
 .toolkit-panel--focus .focus-body ul { margin: 6px 0 0; padding: 0 0 0 16px; }
 .toolkit-panel--focus .focus-body li { margin-bottom: 4px; }
-.toolkit-panel--focus .focus-body.is-collapsed {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.toolkit-panel--focus .focus-cta {
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-  flex-wrap: wrap;
-}
-.toolkit-panel--focus .btn-primary {
-  background: var(--btn-primary-bg);
-  color: #ffffff;
-  border-color: var(--btn-primary-bg);
-  font-weight: 700;
-}
-.toolkit-panel--focus .btn-ghost {
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--ink-2);
-  border: 1px solid var(--border);
-  padding: 9px 16px;
-  border-radius: var(--r-sm);
-  font-size: 13px;
-}
 .overview-card-inner .overview-week-badge {
   display: inline-block;
   margin-bottom: 12px;

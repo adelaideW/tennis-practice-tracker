@@ -246,10 +246,8 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
   const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const [refreshSeed, setRefreshSeed] = useS1(0);
   const [lastRefreshedAt, setLastRefreshedAt] = useS1(null);
-  const [focusExpanded, setFocusExpanded] = useS1(false);
-  const [focusClampable, setFocusClampable] = useS1(false);
   const [activityRange, setActivityRange] = useS1('7d');
-  const focusBodyRef = useR1(null);
+  const focusInnerRef = useR1(null);
   const todayDashboard = useM1(() => {
     if (notionPayload && window.applyNotionPayload) {
       return window.applyNotionPayload({ ...notionPayload, _refreshSeed: refreshSeed });
@@ -323,41 +321,57 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
 
   const focusContentKey = `${focusBody}|${focusCues.join('¦')}|${focusSections.map((s) => `${s.title}:${s.items.join('¦')}`).join('§')}`;
 
-  useE1(() => {
-    setFocusExpanded(false);
-  }, [focusContentKey]);
-
-  useE1(() => {
-    const el = focusBodyRef.current;
-    if (!el || state.notionLoading) return;
-    const wasCollapsed = el.classList.contains('is-collapsed');
-    el.classList.remove('is-collapsed');
-    const fullHeight = el.scrollHeight;
-    if (wasCollapsed && !focusExpanded) el.classList.add('is-collapsed');
-    const lineHeight = parseFloat(window.getComputedStyle(el).lineHeight) || 22;
-    setFocusClampable(fullHeight > lineHeight * 3 + 2);
-  }, [focusContentKey, focusExpanded, state.notionLoading]);
-
   const todayGrid = useDraggableDashboardGrid({
     storageKey: TODAY_LAYOUT_STORAGE,
     loadLayout: loadTodayLayout,
+    makeDefaultLayout: makeDefaultTodayLayout,
   });
+
+  const focusItem = todayGrid.layout.items.find((it) => it.i === 'focus');
+  const focusExpanded = !!focusItem?.expanded;
+  const focusItemH = focusItem?.h;
+  const { setItemGridHeight, gridConfig } = todayGrid;
+
+  useE1(() => {
+    if (!focusExpanded || !focusInnerRef.current || state.notionLoading) return undefined;
+    let cancelled = false;
+    const measure = () => {
+      if (cancelled || !focusInnerRef.current) return;
+      const panel = focusInnerRef.current.closest('.toolkit-panel');
+      if (!panel) return;
+      const headerH = panel.querySelector('.toolkit-panel-header')?.offsetHeight || 44;
+      const bodyEl = panel.querySelector('.toolkit-panel-body');
+      const bodyStyle = bodyEl ? window.getComputedStyle(bodyEl) : null;
+      const padY = bodyStyle
+        ? parseFloat(bodyStyle.paddingTop) + parseFloat(bodyStyle.paddingBottom)
+        : 32;
+      const contentH = focusInnerRef.current.scrollHeight;
+      const totalPx = headerH + contentH + padY + 6;
+      const rows = gridRowsFromPanelPx(totalPx, gridConfig);
+      const targetRows = Math.max(DEFAULT_GRID_H, rows);
+      if (focusItemH !== targetRows) {
+        setItemGridHeight('focus', targetRows);
+      }
+    };
+    const raf = requestAnimationFrame(measure);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [focusExpanded, focusContentKey, state.notionLoading, focusItemH, gridConfig, setItemGridHeight]);
 
   const renderTodayCard = (id) => {
     switch (id) {
       case 'focus':
         return (
-          <div className="today-focus-inner">
+          <div className={`today-focus-inner${focusExpanded ? ' is-expanded' : ''}`} ref={focusInnerRef}>
             <div className="ball-deco" aria-hidden="true"></div>
             <h2 className="today-focus-headline">
               {state.notionLoading
                 ? 'Syncing your brief…'
                 : `"${focus?.headline || 'Weekly focus from Notion'}"`}
             </h2>
-            <div
-              ref={focusBodyRef}
-              className={`focus-body ${!focusExpanded ? 'is-collapsed' : ''}`}
-            >
+            <div className="focus-body">
               {state.notionError ? (
                 <div>{state.notionError}</div>
               ) : focus ? (
@@ -372,31 +386,6 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
                 </>
               ) : (
                 <div>Your weekly focus loads from Needs improvement and Things to try in last week&apos;s Notion log.</div>
-              )}
-            </div>
-            {focusClampable && (
-              <button
-                type="button"
-                className="focus-show-more"
-                onClick={() => setFocusExpanded((v) => !v)}
-              >
-                {focusExpanded ? 'Show less' : 'Show more'}
-              </button>
-            )}
-            {refreshedLabel && (
-              <div className="mono-small" style={{ marginTop: 8 }}>
-                Last refreshed on {refreshedLabel}
-              </div>
-            )}
-            <div className="focus-cta">
-              <button className="btn-primary" onClick={handleRefresh} disabled={state.notionLoading}>
-                {state.notionLoading && <span className="spinner"></span>}
-                {state.notionLoading ? 'Syncing…' : 'Refresh from Notion'}
-              </button>
-              {notionPage && (
-                <a className="btn-ghost notion-open" href={notionPage} target="_blank" rel="noopener noreferrer">
-                  Open Notion page ↗
-                </a>
               )}
             </div>
           </div>
@@ -521,6 +510,49 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
           )}
           <br />
           Drag to rearrange · Resize panels
+        </div>
+      </div>
+
+      <div className="today-dashboard-bar">
+        <div className="today-dashboard-bar-meta">
+          {refreshedLabel ? (
+            <span className="mono-small">Last refreshed {refreshedLabel}</span>
+          ) : (
+            <span className="mono-small muted">Notion sync</span>
+          )}
+        </div>
+        <div className="today-dashboard-bar-actions">
+          <button
+            type="button"
+            className="today-bar-btn today-bar-btn--primary"
+            onClick={handleRefresh}
+            disabled={state.notionLoading}
+          >
+            {state.notionLoading && <span className="spinner"></span>}
+            {state.notionLoading ? 'Syncing…' : 'Refresh from Notion'}
+          </button>
+          {notionPage && (
+            <a
+              className="today-bar-btn today-bar-btn--ghost"
+              href={notionPage}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open Notion page ↗
+            </a>
+          )}
+          <button
+            type="button"
+            className="today-bar-btn today-bar-btn--icon"
+            onClick={todayGrid.resetLayout}
+            aria-label="Reset card layout to default"
+            title="Reset layout"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -1968,12 +2000,24 @@ const TOOLKIT_CARD_IDS = ['timer', 'gear', 'terms'];
 const TODAY_CARD_IDS = ['focus', 'conditions', 'overview', 'skills', 'activity', 'recent'];
 const DEFAULT_CARD_H = 280;
 const EXPANDED_TERMS_H = 480;
-const EXPANDED_FOCUS_H = 420;
 const EXPANDED_ACTIVITY_H = 360;
 const TERMS_GRID_H = 6;
 const TERMS_GRID_H_EXPANDED = 10;
 const DEFAULT_GRID_H = 6;
 const TGL = typeof window !== 'undefined' ? window.ToolkitGridLayout : null;
+
+function gridRowsFromPanelPx(px, config) {
+  const rowHeight = config?.rowHeight ?? 30;
+  const marginY = config?.margin?.[1] ?? 24;
+  const rowUnit = rowHeight + marginY;
+  return Math.max(1, Math.ceil((px + marginY) / rowUnit));
+}
+
+function gridRowsToPanelPx(rows, config) {
+  const rowHeight = config?.rowHeight ?? 30;
+  const marginY = config?.margin?.[1] ?? 24;
+  return rows * rowHeight + Math.max(0, rows - 1) * marginY;
+}
 
 const TOOLKIT_CARD_TITLES = {
   timer: 'Drill Timer',
@@ -1992,7 +2036,7 @@ const TODAY_CARD_TITLES = {
 
 const EXPANDABLE_CARD_HEIGHTS = {
   terms: { collapsed: TERMS_GRID_H, expanded: TERMS_GRID_H_EXPANDED },
-  focus: { collapsed: 9, expanded: 13 },
+  focus: { collapsed: DEFAULT_GRID_H, expanded: DEFAULT_GRID_H },
   activity: { collapsed: 8, expanded: 11 },
 };
 
@@ -2024,21 +2068,21 @@ function makeDefaultToolkitItems(cols) {
 function makeDefaultTodayItems(cols) {
   if (cols <= 6) {
     return [
-      { i: 'focus', x: 0, y: 0, w: 6, h: 9, expanded: false },
-      { i: 'conditions', x: 0, y: 9, w: 6, h: 6 },
-      { i: 'overview', x: 0, y: 15, w: 6, h: 6 },
-      { i: 'skills', x: 0, y: 21, w: 6, h: 6 },
-      { i: 'activity', x: 0, y: 27, w: 6, h: 8, expanded: false },
-      { i: 'recent', x: 0, y: 35, w: 6, h: 7 },
+      { i: 'focus', x: 0, y: 0, w: 6, h: DEFAULT_GRID_H, expanded: false },
+      { i: 'conditions', x: 0, y: DEFAULT_GRID_H, w: 6, h: DEFAULT_GRID_H },
+      { i: 'overview', x: 0, y: DEFAULT_GRID_H * 2, w: 6, h: DEFAULT_GRID_H },
+      { i: 'skills', x: 0, y: DEFAULT_GRID_H * 3, w: 6, h: DEFAULT_GRID_H },
+      { i: 'activity', x: 0, y: DEFAULT_GRID_H * 4, w: 6, h: 8, expanded: false },
+      { i: 'recent', x: 0, y: DEFAULT_GRID_H * 4 + 8, w: 6, h: 7 },
     ];
   }
   return [
-    { i: 'focus', x: 0, y: 0, w: 12, h: 9, expanded: false },
-    { i: 'conditions', x: 0, y: 9, w: 4, h: 6 },
-    { i: 'overview', x: 4, y: 9, w: 4, h: 6 },
-    { i: 'skills', x: 8, y: 9, w: 4, h: 6 },
-    { i: 'activity', x: 0, y: 15, w: 8, h: 8, expanded: false },
-    { i: 'recent', x: 8, y: 15, w: 4, h: 8 },
+    { i: 'focus', x: 0, y: 0, w: 12, h: DEFAULT_GRID_H, expanded: false },
+    { i: 'conditions', x: 0, y: DEFAULT_GRID_H, w: 4, h: DEFAULT_GRID_H },
+    { i: 'overview', x: 4, y: DEFAULT_GRID_H, w: 4, h: DEFAULT_GRID_H },
+    { i: 'skills', x: 8, y: DEFAULT_GRID_H, w: 4, h: DEFAULT_GRID_H },
+    { i: 'activity', x: 0, y: DEFAULT_GRID_H * 2, w: 8, h: 8, expanded: false },
+    { i: 'recent', x: 8, y: DEFAULT_GRID_H * 2, w: 4, h: 8 },
   ];
 }
 
@@ -2156,18 +2200,19 @@ function getItemById(items, id) {
   return items.find((it) => it.i === id) || { i: id, x: 0, y: 0, w: 6, h: DEFAULT_GRID_H };
 }
 
-function getDashboardPanelHeight(id, item, mode) {
+function getDashboardPanelHeight(id, item, mode, config) {
   if (mode === 'grid') {
     if (id === 'terms' && item.expanded) return EXPANDED_TERMS_H;
-    if (id === 'focus' && item.expanded) return EXPANDED_FOCUS_H;
     if (id === 'activity' && item.expanded) return EXPANDED_ACTIVITY_H;
-    if (id === 'focus') return 300;
+    if (id === 'focus' && item.expanded) {
+      return gridRowsToPanelPx(item.h, config);
+    }
     return DEFAULT_CARD_H;
   }
   return null;
 }
 
-function useDraggableDashboardGrid({ storageKey, loadLayout }) {
+function useDraggableDashboardGrid({ storageKey, loadLayout, makeDefaultLayout }) {
   const [layout, setLayout] = useS1(loadLayout);
   const [draggingId, setDraggingId] = useS1(null);
   const [dropSlot, setDropSlot] = useS1(null);
@@ -2386,13 +2431,35 @@ function useDraggableDashboardGrid({ storageKey, loadLayout }) {
       const items = prev.items.map((item) => {
         if (item.i !== cardId || !expandCfg) return item;
         const expanded = !item.expanded;
-        const h = expanded ? expandCfg.expanded : expandCfg.collapsed;
+        const h = expanded && cardId !== 'focus'
+          ? expandCfg.expanded
+          : expandCfg.collapsed;
         return { ...item, expanded, h };
       });
       const compacted = TGL ? TGL.compactVertical(items, gridConfig.cols) : items;
       return { ...prev, items: compacted };
     });
   }, [gridConfig.cols, updateLayout]);
+
+  const setItemGridHeight = useC1((cardId, h) => {
+    if (!TGL) return;
+    updateLayout((prev) => {
+      const items = prev.items.map((item) => {
+        if (item.i !== cardId) return item;
+        return { ...item, h: TGL.clamp(h, 1, 24) };
+      });
+      const compacted = TGL.compactVertical(items, gridConfig.cols);
+      return { ...prev, items: compacted };
+    });
+  }, [gridConfig.cols, updateLayout]);
+
+  const resetLayout = useC1(() => {
+    if (!makeDefaultLayout) return;
+    const next = makeDefaultLayout(containerWidth);
+    layoutRef.current = next;
+    setLayout(next);
+    persistLayout(next);
+  }, [containerWidth, makeDefaultLayout, persistLayout]);
 
   const placeholderStyle = useM1(() => {
     if (!TGL || !dropSlot || layout.mode !== 'dashboard') return null;
@@ -2410,6 +2477,8 @@ function useDraggableDashboardGrid({ storageKey, loadLayout }) {
     attachDrag,
     attachResize,
     toggleExpand,
+    setItemGridHeight,
+    resetLayout,
     dashboardLayout,
     canvasHeight,
     placeholderStyle,
@@ -2501,7 +2570,7 @@ function ToolkitPanel({
   variant = '',
   children,
 }) {
-  const gridHeight = getDashboardPanelHeight(id, item, mode);
+  const gridHeight = getDashboardPanelHeight(id, item, mode, TGL?.DEFAULT_CONFIG);
   const panelStyle = mode === 'dashboard' && pixelStyle
     ? {
         left: pixelStyle.left,
@@ -2514,7 +2583,7 @@ function ToolkitPanel({
   return (
     <div
       data-toolkit-id={id}
-      className={`toolkit-panel card drag-handle${variant ? ` ${variant}` : ''}${mode === 'dashboard' ? ' is-dashboard' : ''}${isDragging ? ' is-dragging' : ''}`}
+      className={`toolkit-panel card drag-handle${variant ? ` ${variant}` : ''}${mode === 'dashboard' ? ' is-dashboard' : ''}${isDragging ? ' is-dragging' : ''}${expanded ? ' is-panel-expanded' : ''}`}
       style={panelStyle}
       role="region"
       aria-label={title}
