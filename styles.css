@@ -503,6 +503,9 @@ input, textarea, select { font-family: inherit; }
   border-radius: var(--r-lg);
   padding: 26px;
   box-shadow: var(--shadow-sm);
+  overflow: visible;
+  position: relative;
+  z-index: 0;
 }
 .activity-card-head {
   display: flex;
@@ -548,21 +551,26 @@ input, textarea, select { font-family: inherit; }
 }
 .activity-chart-wrap {
   position: relative;
+  overflow: visible;
+  padding-top: 8px;
 }
-.activity-chart-wrap.is-all-time {
+.activity-chart-scroll {
+  overflow: visible;
+}
+.activity-chart-scroll.is-all-time {
   overflow-x: auto;
+  overflow-y: visible;
   padding-bottom: 4px;
 }
-.activity-chart-wrap.is-all-time svg {
+.activity-chart-scroll.is-all-time svg {
   min-width: 360px;
 }
 .activity-chart-wrap svg {
   cursor: crosshair;
 }
 .activity-tooltip {
-  position: absolute;
+  position: fixed;
   pointer-events: none;
-  transform: translate(-50%, calc(-100% - 10px));
   padding: 6px 10px;
   background: var(--surface-3);
   border: 1px solid var(--border);
@@ -571,8 +579,8 @@ input, textarea, select { font-family: inherit; }
   font-family: var(--mono);
   color: var(--ink);
   white-space: nowrap;
-  z-index: 3;
-  box-shadow: var(--shadow-sm);
+  z-index: 1000;
+  box-shadow: var(--shadow-md);
 }
 
 /* ============ Recent sessions card ============ */

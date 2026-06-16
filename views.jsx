@@ -38,7 +38,6 @@ function formatActivityDuration(mins) {
 function formatActivityTooltip(iso, mins, range) {
   const dateStr = iso
     ? new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', {
-        weekday: range === '7d' ? 'short' : undefined,
         month: 'short',
         day: 'numeric',
         year: range === 'all' ? 'numeric' : undefined,
@@ -48,8 +47,41 @@ function formatActivityTooltip(iso, mins, range) {
   return `${dateStr} · ${formatActivityDuration(mins)} played`;
 }
 
+function getActivityTooltipStyle(clientX, clientY) {
+  const margin = 12;
+  const tooltipHalf = 72;
+  let x = clientX;
+  let y = clientY;
+  let transform = 'translate(-50%, calc(-100% - 10px))';
+
+  if (x < margin + tooltipHalf) {
+    x = margin;
+    transform = 'translate(0, calc(-100% - 10px))';
+  } else if (x > window.innerWidth - margin - tooltipHalf) {
+    x = window.innerWidth - margin;
+    transform = 'translate(-100%, calc(-100% - 10px))';
+  }
+
+  return {
+    position: 'fixed',
+    left: x,
+    top: y,
+    transform,
+  };
+}
+
 function ActivityChart({ entries, range = '7d' }) {
   const [hoverIdx, setHoverIdx] = useS1(null);
+  const [tooltipPos, setTooltipPos] = useS1(null);
+
+  const updateTooltipPos = useC1((e) => {
+    setTooltipPos({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const clearHover = useC1(() => {
+    setHoverIdx(null);
+    setTooltipPos(null);
+  }, []);
 
   const days = useM1(() => {
     const minutesOnDate = (iso) => entries
@@ -143,56 +175,63 @@ function ActivityChart({ entries, range = '7d' }) {
   const polyline = pts.map((p) => `${p.x},${p.y}`).join(' ');
   const area = `${pts[0].x},${H} ${polyline} ${pts[pts.length - 1].x},${H}`;
   const gradId = `actGrad-${range}`;
+  const chartHeight = H + 20;
   const hoverPt = hoverIdx != null ? pts[hoverIdx] : null;
 
   return (
     <div
-      className={`activity-chart-wrap${range === 'all' ? ' is-all-time' : ''}`}
-      onMouseLeave={() => setHoverIdx(null)}
+      className="activity-chart-wrap"
+      onMouseLeave={clearHover}
     >
       <div className="activity-total">{totalHrs} hrs played</div>
-      <svg width="100%" viewBox={`0 0 ${W} ${H + 20}`} style={{ overflow: 'visible', display: 'block' }}>
-        <defs>
-          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--chart-1)" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="var(--chart-1)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <polygon points={area} fill={`url(#${gradId})`} />
-        <polyline points={polyline} fill="none" stroke="var(--chart-1)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-        {pts.map((p, i) => (
-          <g key={i}>
-            <circle
-              cx={p.x}
-              cy={p.y}
-              r={range === '30d' ? 10 : 12}
-              fill="transparent"
-              onMouseEnter={() => setHoverIdx(i)}
-              aria-label={p.tooltip}
-            />
-            {(p.mins > 0 || range === '7d') && (
+      <div className={`activity-chart-scroll${range === 'all' ? ' is-all-time' : ''}`}>
+        <svg width="100%" viewBox={`0 0 ${W} ${chartHeight}`} style={{ overflow: 'visible', display: 'block' }}>
+          <defs>
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--chart-1)" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="var(--chart-1)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <polygon points={area} fill={`url(#${gradId})`} />
+          <polyline points={polyline} fill="none" stroke="var(--chart-1)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          {pts.map((p, i) => (
+            <g key={i}>
               <circle
                 cx={p.x}
                 cy={p.y}
-                r={hoverIdx === i ? 4.5 : range === '30d' || range === 'all' ? 2.8 : 3.5}
-                fill={hoverIdx === i ? 'var(--accent)' : 'var(--chart-1)'}
-                stroke="var(--surface)"
-                strokeWidth="1.5"
-                pointerEvents="none"
+                r={range === '30d' ? 10 : 12}
+                fill="transparent"
+                onMouseEnter={(e) => {
+                  setHoverIdx(i);
+                  updateTooltipPos(e);
+                }}
+                onMouseMove={updateTooltipPos}
+                aria-label={p.tooltip}
               />
-            )}
-            {p.label && (
-              <text x={p.x} y={H + 16} textAnchor="middle" fill="var(--ink-3)" fontSize="8" fontFamily="var(--mono)" letterSpacing="0.6" pointerEvents="none">
-                {p.label.toUpperCase()}
-              </text>
-            )}
-          </g>
-        ))}
-      </svg>
-      {hoverPt && (
+              {(p.mins > 0 || range === '7d') && (
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={hoverIdx === i ? 4.5 : range === '30d' || range === 'all' ? 2.8 : 3.5}
+                  fill={hoverIdx === i ? 'var(--accent)' : 'var(--chart-1)'}
+                  stroke="var(--surface)"
+                  strokeWidth="1.5"
+                  pointerEvents="none"
+                />
+              )}
+              {p.label && (
+                <text x={p.x} y={H + 16} textAnchor="middle" fill="var(--ink-3)" fontSize="8" fontFamily="var(--mono)" letterSpacing="0.6" pointerEvents="none">
+                  {p.label.toUpperCase()}
+                </text>
+              )}
+            </g>
+          ))}
+        </svg>
+      </div>
+      {hoverPt && tooltipPos && (
         <div
           className="activity-tooltip"
-          style={{ left: `${(hoverPt.x / W) * 100}%`, top: `${(hoverPt.y / (H + 20)) * 100}%` }}
+          style={getActivityTooltipStyle(tooltipPos.x, tooltipPos.y)}
           role="status"
         >
           {hoverPt.tooltip}
