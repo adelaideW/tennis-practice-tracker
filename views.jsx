@@ -355,11 +355,11 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
       {/* AI Focus Brief */}
       <div className="focus-card mb-28">
         <div className="ball-deco" aria-hidden="true"></div>
-        <div className="kicker">Today&apos;s Focus · From Notion</div>
+        <div className="kicker">Weekly Focus · From Notion</div>
         <h2>
           {state.notionLoading
             ? 'Syncing your brief…'
-            : `"${focus?.headline || focus?.cues?.[0] || 'Stay loose and present'}"`}
+            : `"${focus?.headline || 'Weekly focus from Notion'}"`}
         </h2>
         <div
           ref={focusBodyRef}
@@ -370,12 +370,6 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
           ) : focus ? (
             <>
               <div className="focus-detail-text">{focusBody}</div>
-              {focusCues.length > 0 && (
-                <div className="focus-section">
-                  <div className="focus-section-label">Weekly priorities</div>
-                  <ul>{focusCues.map((c, i) => <li key={i}>{c}</li>)}</ul>
-                </div>
-              )}
               {focusSections.map((section, i) => (
                 <div key={i} className="focus-section">
                   <div className="focus-section-label">{section.title}</div>
@@ -384,7 +378,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
               ))}
             </>
           ) : (
-            <div>Your focus brief loads from weekly priorities and the latest daily reflection in Notion.</div>
+            <div>Your weekly focus loads from Needs improvement and Things to try in last week&apos;s Notion log.</div>
           )}
         </div>
         {focusClampable && (

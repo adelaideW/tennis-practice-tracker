@@ -84,61 +84,48 @@ function buildSessionsFromNotion(payload) {
 
 function buildFocusFromNotion(payload) {
   if (!payload) return null;
+
+  const prev = payload.previousWeekFocus;
+  const needsImprovement = (prev?.needsImprovement || [])
+    .map((line) => String(line).replace(/^\*+/, '').trim())
+    .filter(Boolean);
+  const thingsToTry = (prev?.thingsToTry || [])
+    .map((line) => String(line).replace(/^\*+/, '').trim())
+    .filter(Boolean);
+
+  if (needsImprovement.length || thingsToTry.length) {
+    const headline = thingsToTry[0] || needsImprovement[0] || 'Weekly focus from Notion';
+    const sections = [];
+    if (needsImprovement.length) {
+      sections.push({ title: 'Needs improvement', items: needsImprovement });
+    }
+    if (thingsToTry.length) {
+      sections.push({ title: 'Things to try', items: thingsToTry });
+    }
+    const weekLabel = prev?.weekLabel || 'last week';
+    const body = prev?.isPreviousWeek === false
+      ? `Only one weekly log found in Notion — showing ${weekLabel}.`
+      : `From ${weekLabel} in Notion — carry these into this week's practice.`;
+
+    return {
+      headline: String(headline).replace(/^\*+/, '').trim(),
+      body,
+      cues: [],
+      sections,
+      weekLabel,
+      generated: payload.updatedAt || new Date().toISOString(),
+    };
+  }
+
   if (payload.focus?.cues?.length && !payload.weeklyPriorities?.length) {
     return { ...payload.focus, generated: payload.updatedAt || new Date().toISOString() };
   }
 
-  const priorities = (payload.weeklyPriorities || [])
-    .map((line) => String(line).replace(/^\*+/, '').trim())
-    .filter(Boolean);
-  const overview = payload.weeklyOverview || {};
-  const latest = payload.latestDaily;
-
-  const headline = priorities[0]
-    || overview.focus?.split(/[;,]/).map((s) => s.trim()).find(Boolean)
-    || latest?.context
-    || 'Stay loose and present';
-
-  const cues = [...priorities];
-
-  const sections = [];
-
-  const overviewFocus = overview.focus
-    ? overview.focus.split(/[;,]/).map((s) => s.trim()).filter(Boolean)
-    : [];
-  if (overviewFocus.length) {
-    sections.push({ title: "This week's focus", items: overviewFocus });
-  }
-  if (overview.drill?.trim()) {
-    sections.push({ title: 'Planned drills', items: [overview.drill.trim()] });
-  }
-
-  if (latest) {
-    const sessionItems = [];
-    if (latest.context) sessionItems.push(`Context: ${latest.context}`);
-    if (latest.timeText) sessionItems.push(`Time: ${latest.timeText}`);
-    (latest.good || []).forEach((g) => sessionItems.push(`Good: ${g}`));
-    (latest.bad || []).forEach((b) => sessionItems.push(`Needs work: ${b}`));
-    (latest.learning || []).forEach((l) => sessionItems.push(`Learning: ${l}`));
-    if (sessionItems.length) {
-      sections.push({
-        title: `Latest session (${latest.date || 'recent'})`,
-        items: sessionItems,
-      });
-    }
-  }
-
-  const body = priorities.length
-    ? `${priorities.length} weekly priorit${priorities.length === 1 ? 'y' : 'ies'} synced from Notion — expand for drills and your latest session notes.`
-    : sections.length
-      ? 'Synced from your Notion practice insights — expand for full details.'
-      : 'Open your Notion practice insights page to add a daily reflection — the dashboard updates automatically.';
-
   return {
-    headline: String(headline).replace(/^\*+/, '').trim(),
-    body,
-    cues,
-    sections,
+    headline: 'Weekly focus from Notion',
+    body: 'Add Needs improvement and Things to try under last week\'s log in Notion — the card updates on refresh.',
+    cues: [],
+    sections: [],
     generated: payload.updatedAt || new Date().toISOString(),
   };
 }
@@ -460,6 +447,10 @@ function notionPayloadRevision(payload) {
   if (!payload) return '';
   const priorities = (payload.weeklyPriorities || []).join('\n');
   const overview = `${payload.weeklyOverview?.focus || ''}|${payload.weeklyOverview?.drill || ''}`;
+  const prev = payload.previousWeekFocus;
+  const prevBlob = prev
+    ? [...(prev.needsImprovement || []), ...(prev.thingsToTry || [])].join('\n')
+    : '';
   const latest = payload.latestDaily || payload.sessions?.[0];
   const latestBlob = latest
     ? [
@@ -470,7 +461,7 @@ function notionPayloadRevision(payload) {
         ...(latest.good || []),
       ].join('\n')
     : '';
-  return `${payload.updatedAt || ''}:${priorities}:${overview}:${latestBlob}`;
+  return `${payload.updatedAt || ''}:${priorities}:${overview}:${prevBlob}:${latestBlob}`;
 }
 
 function rankTopImprovementAreas(payload, limit = 5) {

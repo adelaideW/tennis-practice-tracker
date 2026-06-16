@@ -85,6 +85,9 @@ async function main() {
     out.weeklySource = payload.weeklySource || 'notion';
     delete out.focus;
   }
+  if (payload.previousWeekFocus) {
+    out.previousWeekFocus = payload.previousWeekFocus;
+  }
 
   await writeFile(join(root, 'notion-data.json'), `${JSON.stringify(out, null, 2)}\n`, 'utf8');
   await copyFile(join(root, 'notion-data.json'), join(root, 'api', 'notion-data.json'));

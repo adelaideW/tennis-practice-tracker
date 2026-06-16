@@ -333,6 +333,116 @@ async function parseAllDailySessions(pageId, rootBlocks = null) {
 
 const WEEKLY_LINE_BLOCK_TYPES = new Set(['bulleted_list_item', 'numbered_list_item', 'paragraph']);
 
+function parseWeekToggleDate(title) {
+  const t = String(title || '').trim();
+  const iso = t.match(/(\d{4}-\d{2}-\d{2})/);
+  if (iso) return new Date(iso[1]).getTime();
+  const monthDay = t.match(/week\s+of\s+([a-z]+)\s+(\d{1,2})/i);
+  if (monthDay) {
+    const parsed = Date.parse(`${monthDay[1]} ${monthDay[2]}, ${new Date().getFullYear()}`);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return 0;
+}
+
+function sortWeekToggles(weekToggles) {
+  return [...weekToggles].sort(
+    (a, b) => parseWeekToggleDate(blockPlainText(b)) - parseWeekToggleDate(blockPlainText(a)),
+  );
+}
+
+function dedupeStrings(items) {
+  const seen = new Set();
+  return items
+    .map((s) => String(s).replace(/^\*+/, '').trim())
+    .filter((s) => {
+      if (!s || seen.has(s)) return false;
+      seen.add(s);
+      return true;
+    });
+}
+
+function isNeedsImprovementSection(title) {
+  return /^needs?\s*improvement/i.test(String(title || '').trim());
+}
+
+function isThingsToTrySection(title) {
+  const t = String(title || '').trim();
+  if (/priorit/i.test(t)) return false;
+  return /^things to (?:do\/try|try)\b/i.test(t);
+}
+
+async function collectAllBullets(parentId) {
+  const out = [];
+  const children = await notionFetchAllChildren(parentId);
+  for (const item of children) {
+    if (item.type === 'bulleted_list_item' || item.type === 'numbered_list_item') {
+      const text = blockPlainText(item);
+      if (text) out.push(text);
+      if (item.has_children) {
+        out.push(...(await collectAllBullets(item.id)));
+      }
+      continue;
+    }
+    if (item.type === 'paragraph') {
+      const text = blockPlainText(item);
+      if (text) out.push(text);
+      continue;
+    }
+    if (item.type === 'toggle' && item.has_children) {
+      out.push(...(await collectAllBullets(item.id)));
+    }
+  }
+  return out;
+}
+
+async function parseWeekFocusSections(weekToggleId) {
+  const weekChildren = await notionFetchAllChildren(weekToggleId);
+  const needsImprovement = [];
+  const thingsToTry = [];
+
+  for (const child of weekChildren) {
+    const title = blockPlainText(child);
+    const isSection =
+      child.type === 'toggle' || child.type === 'heading_2' || child.type === 'heading_3';
+    if (!isSection) continue;
+
+    if (isNeedsImprovementSection(title)) {
+      needsImprovement.push(...(await collectAllBullets(child.id)));
+      continue;
+    }
+    if (isThingsToTrySection(title)) {
+      thingsToTry.push(...(await collectAllBullets(child.id)));
+    }
+  }
+
+  return {
+    needsImprovement: dedupeStrings(needsImprovement),
+    thingsToTry: dedupeStrings(thingsToTry),
+  };
+}
+
+/** Previous "Week of …" block → Needs improvement + Things to try only. */
+async function parsePreviousWeekFocus(weeklyContainerId) {
+  if (!weeklyContainerId) return null;
+
+  const weekToggles = sortWeekToggles(
+    (await notionFetchAllChildren(weeklyContainerId)).filter(
+      (b) => b.type === 'toggle' && /^week\s+of\b/i.test(blockPlainText(b)),
+    ),
+  );
+  if (!weekToggles.length) return null;
+
+  const previousWeek = weekToggles[1] || weekToggles[0];
+  const sections = await parseWeekFocusSections(previousWeek.id);
+
+  return {
+    weekLabel: blockPlainText(previousWeek),
+    isPreviousWeek: Boolean(weekToggles[1]),
+    ...sections,
+  };
+}
+
 async function findWeeklyInsightsContainer(pageId, rootBlocks = null) {
   const blocks = rootBlocks || (await notionFetchAllChildren(pageId));
   for (const block of blocks) {
@@ -353,22 +463,8 @@ async function parseWeeklyPriorities(pageId, weeklyContainerId = null) {
   );
   if (!weekToggles.length) return null;
 
-  const parseWeekToggleDate = (title) => {
-    const t = String(title || '').trim();
-    const iso = t.match(/(\d{4}-\d{2}-\d{2})/);
-    if (iso) return new Date(iso[1]).getTime();
-    const monthDay = t.match(/week\s+of\s+([a-z]+)\s+(\d{1,2})/i);
-    if (monthDay) {
-      const parsed = Date.parse(`${monthDay[1]} ${monthDay[2]}, ${new Date().getFullYear()}`);
-      if (!Number.isNaN(parsed)) return parsed;
-    }
-    return 0;
-  };
-
-  weekToggles.sort(
-    (a, b) => parseWeekToggleDate(blockPlainText(b)) - parseWeekToggleDate(blockPlainText(a)),
-  );
-  const latestWeek = weekToggles[0];
+  const sortedWeeks = sortWeekToggles(weekToggles);
+  const latestWeek = sortedWeeks[0];
   const weekChildren = await notionFetchAllChildren(latestWeek.id);
   const overview = { focus: '', drill: '' };
   const priorities = [];
@@ -744,23 +840,8 @@ async function parseLatestWeeklyCheatNotes(weeklyContainerId) {
   );
   if (!weekToggles.length) return [];
 
-  const parseWeekToggleDate = (title) => {
-    const t = String(title || '').trim();
-    const iso = t.match(/(\d{4}-\d{2}-\d{2})/);
-    if (iso) return new Date(iso[1]).getTime();
-    const monthDay = t.match(/week\s+of\s+([a-z]+)\s+(\d{1,2})/i);
-    if (monthDay) {
-      const parsed = Date.parse(`${monthDay[1]} ${monthDay[2]}, ${new Date().getFullYear()}`);
-      if (!Number.isNaN(parsed)) return parsed;
-    }
-    return 0;
-  };
-
-  weekToggles.sort(
-    (a, b) => parseWeekToggleDate(blockPlainText(b)) - parseWeekToggleDate(blockPlainText(a)),
-  );
-
-  const latestWeek = weekToggles[0];
+  const sortedWeeks = sortWeekToggles(weekToggles);
+  const latestWeek = sortedWeeks[0];
   const weekChildren = await notionFetchAllChildren(latestWeek.id);
   const analysisToggles = weekChildren.filter(
     (child) => child.type === 'toggle' && /analysis on other/i.test(blockPlainText(child)),
@@ -985,10 +1066,13 @@ export default async function handler(req, res) {
 
     const weeklyContainerId = await findWeeklyInsightsContainer(pageId, rootBlocks);
 
-    const [sessions, weeklyLive, liveCheat] = await Promise.all([
+    const [sessions, weeklyLive, previousWeekLive, liveCheat] = await Promise.all([
       parseAllDailySessions(pageId, rootBlocks),
       weeklyContainerId
         ? parseWeeklyPriorities(pageId, weeklyContainerId)
+        : Promise.resolve(null),
+      weeklyContainerId
+        ? parsePreviousWeekFocus(weeklyContainerId)
         : Promise.resolve(null),
       weeklyContainerId
         ? parseLatestWeeklyCheatNotes(weeklyContainerId)
@@ -1010,6 +1094,7 @@ export default async function handler(req, res) {
 
     let weeklyPriorities = snap.weeklyPriorities || [];
     let weeklyOverview = snap.weeklyOverview || { focus: '', drill: '' };
+    let previousWeekFocus = snap.previousWeekFocus || null;
     let focus = snap.focus;
     let weeklySource = 'snapshot';
     if (weeklyLive?.weeklyPriorities?.length) {
@@ -1021,12 +1106,20 @@ export default async function handler(req, res) {
       weeklyOverview = weeklyLive.weeklyOverview;
       weeklySource = 'notion';
     }
+    if (
+      previousWeekLive &&
+      (previousWeekLive.needsImprovement?.length || previousWeekLive.thingsToTry?.length)
+    ) {
+      previousWeekFocus = previousWeekLive;
+      weeklySource = 'notion';
+    }
 
     const payload = {
       pageUrl: page.url || snap.pageUrl,
       updatedAt: pageUpdatedAt,
       weeklyPriorities,
       weeklyOverview,
+      previousWeekFocus,
       weeklySource,
       focus,
       source: 'notion',
@@ -1034,7 +1127,7 @@ export default async function handler(req, res) {
       latestDaily: sessions[0] || snap.latestDaily,
       cheatNotes,
       cheatNotesSource,
-      parserVersion: 'cheat-filter-v10-fast',
+      parserVersion: 'cheat-filter-v11-weekly-focus',
     };
 
     responseCache = { updatedAt: pageUpdatedAt, at: Date.now(), payload };
