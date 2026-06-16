@@ -139,7 +139,7 @@ function resolveSessionDuration(daily, fallbackMinutes) {
   return fallbackMinutes;
 }
 
-function groupEntriesByDate(entries = [], limit = 3) {
+function groupEntriesByDate(entries = [], limit = 7) {
   const byDate = new Map();
 
   for (const entry of entries) {

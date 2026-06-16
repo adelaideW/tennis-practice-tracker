@@ -275,19 +275,24 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
   }, [todayEntries]);
 
   const topSkills = useM1(() => {
-    const counts = {};
-    todayEntries.forEach((e) => (e.tags || []).forEach((k) => { counts[k] = (counts[k] || 0) + 1; }));
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4);
-    const max = sorted[0]?.[1] || 1;
-    return sorted.map(([k, count]) => ({
-      label: (PRACTICE_TAGS.find((p) => p.k === k) || {}).l || k,
-      pct: Math.round((count / max) * 100),
+    const scored = window.computeTopSkillsFromEntries
+      ? window.computeTopSkillsFromEntries(todayEntries, { limit: 4 })
+      : [];
+    return scored.map((s) => ({
+      label: (PRACTICE_TAGS.find((p) => p.k === s.key) || {}).l || s.key,
+      pct: s.pct,
+      minutes: s.minutes,
     }));
   }, [todayEntries]);
 
-  const recentSessions = window.groupEntriesByDate
-    ? window.groupEntriesByDate(todayEntries, 3)
-    : todayEntries.slice(0, 3);
+  const recentSessions = useM1(() => {
+    const pool = window.filterEntriesLastDays
+      ? window.filterEntriesLastDays(todayEntries, 7)
+      : todayEntries;
+    return window.groupEntriesByDate
+      ? window.groupEntriesByDate(pool, 7)
+      : pool.slice(0, 7);
+  }, [todayEntries]);
   const focus = useM1(() => {
     if (notionPayload && window.buildFocusFromNotion) {
       return window.buildFocusFromNotion({ ...notionPayload, _refreshSeed: refreshSeed });
@@ -463,7 +468,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
             {state.notionLoading ? 'Loading sessions from Notion…' : 'No daily reflections found in Notion yet.'}
           </div>
         ) : (
-          <div className="recent-card-inner">
+          <div className="recent-card-inner recent-card-scroll">
             {recentSessions.map((e) => (
               <div key={e.id} className="recent-row">
                 <div className="recent-dot">

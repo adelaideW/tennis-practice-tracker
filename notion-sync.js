@@ -7,21 +7,109 @@ const NOTION_PAYLOAD_CACHE_KEY = 'tennis-notion-payload-v1';
 let notionFetchInFlight = null;
 
 const TAG_RULES = [
-  { k: 'volley', re: /volley|net play|at the net/i },
-  { k: 'serve', re: /serve|serving|double fault|toss/i },
-  { k: 'overhead', re: /overhead|smash|lob/i },
-  { k: 'ground', re: /ground|baseline|rally|forehand|backhand|stroke|slice/i },
-  { k: 'return', re: /return on serve|return serve/i },
-  { k: 'point', re: /game|match|double|single|usta|tiebreak/i },
+  { k: 'volley', re: /volley|vlley|net play|at the net|approach shot/i },
+  { k: 'serve', re: /\b(serves?|serving|double fault|toss|serve practice)\b/i },
+  { k: 'overhead', re: /\b(overheads?|smash(?:es)?)\b/i },
+  { k: 'ground', re: /groundstroke|rally|forehand|backhand|baseline|stroke|slice|wall/i },
+  { k: 'return', re: /return of serve|return serve|returning/i },
+  { k: 'point', re: /\b(double games?|single games?|usta|tiebreak|game w\/|match\b)/i },
   { k: 'footwork', re: /footwork|movement|split step/i },
   { k: 'mental', re: /mindset|focus|mental/i },
-  { k: 'warmup', re: /wall|warm/i },
+  { k: 'warmup', re: /warm[- ]?up|dynamic stretch/i },
 ];
+
+const SKILL_SCORE_RULES = [
+  { k: 'serve', re: /\b(serves?|serving|serve practice|double fault|toss|kick serve|2nd serve|1st serve)\b/i, weight: 2 },
+  { k: 'volley', re: /\b(volleys?|vlleys?|at the net|approach shot|approach volley)\b/i, weight: 2 },
+  { k: 'overhead', re: /\b(overheads?|smashes?)\b/i, weight: 2 },
+  { k: 'return', re: /\b(return of serve|return serve|returning serve)\b/i, weight: 2 },
+  { k: 'point', re: /\b(double games?|single games?|\busta\b|tiebreak|match\b|game w\/|games?\s+w\/|lost\s*\[|won\s*\[)/i, weight: 2 },
+  { k: 'ground', re: /\b(groundstroke|rally|forehand|backhand|baseline|slice|wall practice|form on wall)\b/i, weight: 1.5 },
+  { k: 'footwork', re: /\b(footwork|split step|ladder)\b/i, weight: 2 },
+  { k: 'mental', re: /\b(mindset|mental reps?|visualization)\b/i, weight: 1 },
+  { k: 'warmup', re: /\b(warm[- ]?up|dynamic stretch)\b/i, weight: 1 },
+];
+
+function scoreSkillMentions(text, scores, multiplier = 1) {
+  if (!text) return;
+  const line = String(text);
+  SKILL_SCORE_RULES.forEach((rule) => {
+    if (rule.re.test(line)) {
+      scores[rule.k] = (scores[rule.k] || 0) + (rule.weight || 1) * multiplier;
+    }
+  });
+}
+
+function inferSkillWeights(daily) {
+  const scores = {};
+  scoreSkillMentions(daily.context, scores, 3);
+  (daily.good || []).forEach((t) => scoreSkillMentions(t, scores, 1));
+  (daily.bad || []).forEach((t) => scoreSkillMentions(t, scores, 1.5));
+  (daily.learning || []).forEach((t) => scoreSkillMentions(t, scores, 1));
+  (daily.tags || []).forEach((tag) => {
+    scores[tag] = (scores[tag] || 0) + 5;
+  });
+  return scores;
+}
 
 function inferTags(...texts) {
   const blob = texts.filter(Boolean).join(' ');
-  const tags = TAG_RULES.filter((r) => r.re.test(blob)).map((r) => r.k);
-  return tags.length ? [...new Set(tags)] : ['ground'];
+  const weights = inferSkillWeights({ context: blob });
+  const tags = Object.entries(weights)
+    .filter(([, w]) => w > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k]) => k);
+  if (tags.length) return tags;
+  const legacy = TAG_RULES.filter((r) => r.re.test(blob)).map((r) => r.k);
+  return legacy.length ? [...new Set(legacy)] : ['ground'];
+}
+
+function filterEntriesLastDays(entries, days = 7) {
+  const cut = new Date();
+  cut.setHours(0, 0, 0, 0);
+  cut.setDate(cut.getDate() - (days - 1));
+  const cutIso = cut.toISOString().slice(0, 10);
+  return entries.filter((e) => (e.date || '').slice(0, 10) >= cutIso);
+}
+
+function computeTopSkillsFromEntries(entries, { limit = 4, windowDays = null } = {}) {
+  const pool = windowDays ? filterEntriesLastDays(entries, windowDays) : entries;
+  const skillMinutes = {};
+  let totalMinutes = 0;
+
+  pool.forEach((entry) => {
+    const duration = entry.duration || 60;
+    const weights = entry.skillWeights && Object.keys(entry.skillWeights).length
+      ? entry.skillWeights
+      : inferSkillWeights({
+        context: entry.context,
+        good: entry.good,
+        bad: entry.bad,
+        learning: entry.learning,
+        tags: entry.tags,
+      });
+
+    const weightEntries = Object.entries(weights).filter(([, w]) => w > 0);
+    if (!weightEntries.length) return;
+
+    const weightSum = weightEntries.reduce((sum, [, w]) => sum + w, 0);
+    totalMinutes += duration;
+
+    weightEntries.forEach(([k, w]) => {
+      skillMinutes[k] = (skillMinutes[k] || 0) + (duration * w) / weightSum;
+    });
+  });
+
+  if (!totalMinutes) return [];
+
+  return Object.entries(skillMinutes)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([k, mins]) => ({
+      key: k,
+      minutes: Math.round(mins),
+      pct: Math.max(1, Math.round((mins / totalMinutes) * 100)),
+    }));
 }
 
 function formatDailyNotes(daily) {
@@ -55,13 +143,18 @@ function dailyToEntry(daily, index) {
     ? daily.date.slice(0, 10)
     : new Date().toISOString().slice(0, 10);
   const blob = [daily.context, ...(daily.good || []), ...(daily.bad || []), ...(daily.learning || [])].join(' ');
+  const skillWeights = inferSkillWeights(daily);
   const isMatch = /game|match|usta/i.test(blob);
   const fallbackDuration = isMatch ? 90 : 75;
   const resolveDuration = window.resolveSessionDuration || ((d, fb) => d?.duration ?? fb);
   return {
     id: daily.id || `notion-${dateStr}-${index}`,
     date: `${dateStr}T17:00:00.000Z`,
-    tags: daily.tags?.length ? daily.tags : inferTags(blob),
+    tags: daily.tags?.length ? daily.tags : Object.keys(skillWeights).filter((k) => skillWeights[k] > 0),
+    skillWeights,
+    good: daily.good || [],
+    bad: daily.bad || [],
+    learning: daily.learning || [],
     intensity: daily.intensity ?? (isMatch ? 3 : 2),
     duration: resolveDuration(daily, fallbackDuration),
     notes: daily.notes || formatDailyNotes(daily),
@@ -809,6 +902,9 @@ window.buildCheatNotesFromNotion = buildCheatNotesFromNotion;
 window.getPlayerDisplayName = getPlayerDisplayName;
 window.rankTopImprovementAreas = rankTopImprovementAreas;
 window.notionPayloadRevision = notionPayloadRevision;
+window.filterEntriesLastDays = filterEntriesLastDays;
+window.computeTopSkillsFromEntries = computeTopSkillsFromEntries;
+window.inferSkillWeights = inferSkillWeights;
 if (typeof window.groupEntriesByDate !== 'function') {
-  window.groupEntriesByDate = (entries, limit = 3) => entries.slice(0, limit);
+  window.groupEntriesByDate = (entries, limit = 7) => entries.slice(0, limit);
 }

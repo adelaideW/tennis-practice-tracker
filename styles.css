@@ -1601,6 +1601,13 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
 }
 .activity-tabs-in-panel { margin-bottom: 12px; }
 .page-head + .toolkit-grid-wrap { margin-bottom: 28px; }
+.recent-card-scroll {
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-right: -4px;
+}
+.recent-card-scroll .recent-row:last-child { border-bottom: 0; padding-bottom: 0; }
 
 .toolkit-terms-lede a {
   color: var(--accent);

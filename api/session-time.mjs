@@ -139,7 +139,7 @@ export function resolveSessionDuration(daily, fallbackMinutes) {
   return fallbackMinutes;
 }
 
-export function groupEntriesByDate(entries = [], limit = 3) {
+export function groupEntriesByDate(entries = [], limit = 7) {
   const byDate = new Map();
 
   for (const entry of entries) {
