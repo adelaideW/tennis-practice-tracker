@@ -28,11 +28,66 @@ function DonutChart({ value, max, centerLabel }) {
   );
 }
 
+function formatActivityDuration(mins) {
+  if (!mins || mins <= 0) return '0 min';
+  if (mins < 60) return `${mins} min`;
+  const hrs = mins / 60;
+  return Number.isInteger(hrs) ? `${hrs} hrs` : `${hrs.toFixed(1)} hrs`;
+}
+
+function formatActivityTooltip(iso, mins, range) {
+  const dateStr = iso
+    ? new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', {
+        weekday: range === '7d' ? 'short' : undefined,
+        month: 'short',
+        day: 'numeric',
+        year: range === 'all' ? 'numeric' : undefined,
+      })
+    : '';
+  if (!mins) return `${dateStr} · No practice logged`;
+  return `${dateStr} · ${formatActivityDuration(mins)} played`;
+}
+
 function ActivityChart({ entries, range = '7d' }) {
+  const [hoverIdx, setHoverIdx] = useS1(null);
+
   const days = useM1(() => {
     const minutesOnDate = (iso) => entries
       .filter((e) => e.date.slice(0, 10) === iso)
       .reduce((a, e) => a + (e.duration || 60), 0);
+
+    if (range === 'all') {
+      const byDay = new Map();
+      entries.forEach((e) => {
+        const iso = e.date?.slice(0, 10);
+        if (!iso || iso.length < 10) return;
+        byDay.set(iso, (byDay.get(iso) || 0) + (e.duration || 60));
+      });
+
+      const sorted = [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+      if (!sorted.length) {
+        return [{
+          iso: '',
+          label: '',
+          mins: 0,
+          tooltip: 'No sessions logged in Notion yet',
+        }];
+      }
+      const labelEvery = sorted.length <= 10 ? 1 : Math.max(1, Math.ceil(sorted.length / 8));
+
+      return sorted.map(([iso, mins], i) => {
+        const d = new Date(`${iso}T12:00:00`);
+        const showLabel = i === 0 || i === sorted.length - 1 || i % labelEvery === 0;
+        return {
+          iso,
+          label: showLabel
+            ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            : '',
+          mins,
+          tooltip: formatActivityTooltip(iso, mins, range),
+        };
+      });
+    }
 
     if (range === '30d') {
       const out = [];
@@ -41,36 +96,18 @@ function ActivityChart({ entries, range = '7d' }) {
         d.setHours(0, 0, 0, 0);
         d.setDate(d.getDate() - i);
         const iso = d.toISOString().slice(0, 10);
+        const mins = minutesOnDate(iso);
         const showLabel = i % 5 === 0 || i === 0 || i === 29;
         out.push({
+          iso,
           label: showLabel
             ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
             : '',
-          mins: minutesOnDate(iso),
+          mins,
+          tooltip: formatActivityTooltip(iso, mins, range),
         });
       }
       return out;
-    }
-
-    if (range === 'all') {
-      const byMonth = new Map();
-      entries.forEach((e) => {
-        const d = new Date(e.date);
-        if (Number.isNaN(d.getTime())) return;
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        byMonth.set(key, (byMonth.get(key) || 0) + (e.duration || 60));
-      });
-      const months = [...byMonth.entries()]
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([key, mins]) => {
-          const [y, m] = key.split('-');
-          const d = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
-          return {
-            label: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-            mins,
-          };
-        });
-      return months.length ? months : [{ label: '', mins: 0 }];
     }
 
     const out = [];
@@ -79,9 +116,12 @@ function ActivityChart({ entries, range = '7d' }) {
       d.setHours(0, 0, 0, 0);
       d.setDate(d.getDate() - i);
       const iso = d.toISOString().slice(0, 10);
+      const mins = minutesOnDate(iso);
       out.push({
+        iso,
         label: d.toLocaleDateString('en-US', { weekday: 'short' }),
-        mins: minutesOnDate(iso),
+        mins,
+        tooltip: formatActivityTooltip(iso, mins, range),
       });
     }
     return out;
@@ -91,21 +131,25 @@ function ActivityChart({ entries, range = '7d' }) {
   const totalHrs = (totalMins / 60).toFixed(1);
   const n = Math.max(days.length, 1);
   const maxMins = Math.max(...days.map((d) => d.mins), 60);
-  const W = range === '30d' ? 520 : range === 'all' ? Math.max(280, n * 32) : 260;
+  const W = range === '30d' ? 520 : range === 'all' ? Math.max(320, n * 14) : 260;
   const H = 72;
   const padX = 12;
   const padY = 8;
   const pts = days.map((d, i) => {
     const x = padX + (n <= 1 ? 0 : i / (n - 1)) * (W - 2 * padX);
     const y = H - padY - (d.mins / maxMins) * (H - 2 * padY);
-    return { x, y, mins: d.mins, label: d.label };
+    return { x, y, mins: d.mins, label: d.label, tooltip: d.tooltip };
   });
   const polyline = pts.map((p) => `${p.x},${p.y}`).join(' ');
   const area = `${pts[0].x},${H} ${polyline} ${pts[pts.length - 1].x},${H}`;
   const gradId = `actGrad-${range}`;
+  const hoverPt = hoverIdx != null ? pts[hoverIdx] : null;
 
   return (
-    <>
+    <div
+      className={`activity-chart-wrap${range === 'all' ? ' is-all-time' : ''}`}
+      onMouseLeave={() => setHoverIdx(null)}
+    >
       <div className="activity-total">{totalHrs} hrs played</div>
       <svg width="100%" viewBox={`0 0 ${W} ${H + 20}`} style={{ overflow: 'visible', display: 'block' }}>
         <defs>
@@ -118,16 +162,43 @@ function ActivityChart({ entries, range = '7d' }) {
         <polyline points={polyline} fill="none" stroke="var(--chart-1)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
         {pts.map((p, i) => (
           <g key={i}>
-            {p.mins > 0 && <circle cx={p.x} cy={p.y} r={range === '30d' ? 2.5 : 3.5} fill="var(--chart-1)" stroke="var(--surface)" strokeWidth="1.5" />}
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r={range === '30d' ? 10 : 12}
+              fill="transparent"
+              onMouseEnter={() => setHoverIdx(i)}
+              aria-label={p.tooltip}
+            />
+            {(p.mins > 0 || range === '7d') && (
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={hoverIdx === i ? 4.5 : range === '30d' || range === 'all' ? 2.8 : 3.5}
+                fill={hoverIdx === i ? 'var(--accent)' : 'var(--chart-1)'}
+                stroke="var(--surface)"
+                strokeWidth="1.5"
+                pointerEvents="none"
+              />
+            )}
             {p.label && (
-              <text x={p.x} y={H + 16} textAnchor="middle" fill="var(--ink-3)" fontSize="8" fontFamily="var(--mono)" letterSpacing="0.6">
+              <text x={p.x} y={H + 16} textAnchor="middle" fill="var(--ink-3)" fontSize="8" fontFamily="var(--mono)" letterSpacing="0.6" pointerEvents="none">
                 {p.label.toUpperCase()}
               </text>
             )}
           </g>
         ))}
       </svg>
-    </>
+      {hoverPt && (
+        <div
+          className="activity-tooltip"
+          style={{ left: `${(hoverPt.x / W) * 100}%`, top: `${(hoverPt.y / (H + 20)) * 100}%` }}
+          role="status"
+        >
+          {hoverPt.tooltip}
+        </div>
+      )}
+    </div>
   );
 }
 
