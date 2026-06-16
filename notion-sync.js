@@ -311,20 +311,20 @@ function useNotionInsights() {
 
 /** Skill areas ranked from all Notion notes (priorities + session reflections). */
 const IMPROVEMENT_AREA_RULES = [
-  { key: 'volley', title: 'Volley', category: 'volley', re: /volley|volleys|net play|at the net/i },
-  { key: 'serve', title: 'Serve', category: 'serve', re: /serve|serving|double fault|2nd serve|second serve|toss|kick serve/i },
+  { key: 'volley', title: 'Volley', category: 'volley', re: /volley|vlley|volleys|net play|at the net|approach shot/i },
+  { key: 'serve', title: 'Serve', category: 'serve', re: /serve|serving|double fault|1st serve|first serve|2nd serve|second serve|toss|kick serve|top.?spin|side.?spin/i },
   { key: 'overhead', title: 'Overhead', category: 'overhead', re: /overhead|smash|smashes/i },
   {
     key: 'groundstrokes',
     title: 'Ground Strokes',
     category: 'groundstrokes',
-    re: /ground|baseline|rally|forehand|backhand|stroke|slice|corner|lob|high ball|pace|topspin|down the line|crosscourt/i,
+    re: /ground|groundstroke|baseline|rally|forehand|backhand|stroke|slice|corner|lob|high ball|pace|topspin|down the line|crosscourt|form on wall/i,
   },
   {
     key: 'mental',
     title: 'Court IQ & Patterns',
     category: 'mental',
-    re: /approach|no.?man|anticipat|confidence|focus|recovery|game point|hesitat|commit|mental|pattern|dictate/i,
+    re: /approach|no.?man|anticipat|confidence|focus|recovery|game point|hesitat|commit|mental|pattern|dictate|success rate/i,
   },
   { key: 'return', title: 'Return of Serve', category: 'serve', re: /return on serve|return serve|returning/i },
 ];
@@ -366,7 +366,7 @@ function collectNotionImprovementLines(payload) {
   const lines = [];
 
   (payload.weeklyPriorities || []).forEach((text, i) => {
-    lines.push({ text, kind: 'priority', weight: 6, recency: 1 - i * 0.05 });
+    lines.push({ text, kind: 'priority', weight: 20, recency: 1 - i * 0.02 });
   });
 
   if (payload.weeklyOverview?.focus) {
@@ -431,6 +431,7 @@ function mergeAreaNotionQuotes(area, rankedQuotes, payload) {
 
   const latest = payload.latestDaily || payload.sessions?.[0];
   if (latest) {
+    if (latest.context && areaMatchesLine(area, latest.context)) push(latest.context);
     [...(latest.bad || []), ...(latest.learning || []), ...(latest.good || [])].forEach((text) => {
       if (areaMatchesLine(area, text)) push(text);
     });
@@ -487,21 +488,133 @@ function rankTopImprovementAreas(payload, limit = 5) {
     .slice(0, limit);
 }
 
+function rankSharpenAreas(payload, limit = 5) {
+  const byKey = new Map();
+  const order = [];
+
+  const addArea = (rule, scoreBoost = 0) => {
+    if (!rule || byKey.has(rule.key)) return;
+    byKey.set(rule.key, { ...rule, score: scoreBoost, notionQuotes: [] });
+    order.push(rule.key);
+  };
+
+  (payload.weeklyPriorities || []).forEach((text, i) => {
+    const matched = matchImprovementAreas(text);
+    const rules = matched.length
+      ? matched
+      : [IMPROVEMENT_AREA_RULES.find((r) => r.key === 'groundstrokes')];
+    rules.forEach((rule) => addArea(rule, 200 - i * 10));
+  });
+
+  if (payload.weeklyOverview?.focus) {
+    payload.weeklyOverview.focus.split(/[;,]/).forEach((part, i) => {
+      const text = part.trim();
+      if (!text) return;
+      matchImprovementAreas(text).forEach((rule) => addArea(rule, 150 - i * 5));
+    });
+  }
+
+  const historical = rankTopImprovementAreas(payload, limit * 2);
+  for (const area of historical) {
+    if (byKey.has(area.key)) {
+      const existing = byKey.get(area.key);
+      existing.score += area.score;
+      existing.notionQuotes = area.notionQuotes;
+    } else {
+      byKey.set(area.key, { ...area });
+      order.push(area.key);
+    }
+  }
+
+  return order
+    .map((key) => byKey.get(key))
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
+function tokenizeForMatch(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 2);
+}
+
+function quoteToTipHeading(quote) {
+  const cleaned = String(quote || '').replace(/^\*+/, '').trim();
+  const short = cleaned.split(/[—–\-:;]/)[0].trim();
+  if (short.length <= 56) return short;
+  return `${short.slice(0, 53).trim()}…`;
+}
+
+function quoteToTipBody(quote) {
+  const cleaned = String(quote || '').replace(/^\*+/, '').trim();
+  return `Your current Notion focus — build today's reps around this: ${cleaned}`;
+}
+
+function pickDrillForQuote(quote, area, lib, payload) {
+  const libTips = lib?.[area.category]?.items || [];
+  const tokens = tokenizeForMatch(quote);
+  let bestDrill = null;
+  let bestScore = 0;
+
+  for (const tip of libTips) {
+    const hay = `${tip.h} ${tip.p} ${tip.drill}`.toLowerCase();
+    let score = 0;
+    tokens.forEach((w) => {
+      if (hay.includes(w)) score += 2;
+    });
+    if (score > bestScore) {
+      bestScore = score;
+      bestDrill = tip.drill;
+    }
+  }
+
+  if (bestDrill) return bestDrill;
+  if (payload?.weeklyOverview?.drill) return payload.weeklyOverview.drill;
+  return '15 min of deliberate reps — quality over volume';
+}
+
+function buildAreaTips(area, notionQuotes, payload, lib, refreshSeed = 0) {
+  const fromNotion = notionQuotes.slice(0, 3).map((quote, i) => ({
+    h: quoteToTipHeading(quote),
+    p: quoteToTipBody(quote),
+    drill: pickDrillForQuote(quote, area, lib, payload),
+    priority: i === 0,
+    fromNotion: true,
+  }));
+
+  if (fromNotion.length >= 3) return fromNotion;
+
+  const usedHeadings = new Set(fromNotion.map((t) => t.h.toLowerCase()));
+  const libraryPicks = pickTipsForArea(area, notionQuotes, lib, refreshSeed)
+    .filter((t) => !usedHeadings.has(t.h.toLowerCase()))
+    .map((t) => ({
+      h: t.h,
+      p: t.p,
+      drill: t.drill,
+      priority: Boolean(t.priority),
+      fromNotion: false,
+    }));
+
+  return [...fromNotion, ...libraryPicks].slice(0, 3);
+}
+
 function pickTipsForArea(area, notionQuotes, tipsLib, refreshSeed = 0) {
   const items = tipsLib?.[area.category]?.items || [];
   if (!items.length) return [];
   const blob = notionQuotes.join(' ').toLowerCase();
+  const hasNotionFocus = notionQuotes.length > 0;
 
   const scored = items.map((tip, idx) => {
-    let score = tip.priority ? 3 : 0;
+    let score = hasNotionFocus ? 0 : (tip.priority ? 3 : 0);
     const hay = `${tip.h} ${tip.p} ${tip.drill}`.toLowerCase();
     notionQuotes.forEach((q) => {
-      q.toLowerCase()
-        .split(/\W+/)
-        .filter((w) => w.length > 4)
-        .forEach((w) => {
-          if (hay.includes(w) || blob.includes(w)) score += 2;
-        });
+      tokenizeForMatch(q).forEach((w) => {
+        if (hay.includes(w)) score += 3;
+        if (blob.includes(w)) score += 1;
+      });
     });
     return { tip, idx, score };
   });
@@ -631,10 +744,10 @@ function buildSharpenFromNotion(payload, tipsLib, refreshSeed = 0) {
     return { areas: [], generatedAt: null, source: null };
   }
 
-  const ranked = rankTopImprovementAreas(payload, 5);
+  const ranked = rankSharpenAreas(payload, 5);
   const areas = ranked.map((area, index) => {
     const notionQuotes = mergeAreaNotionQuotes(area, area.notionQuotes, payload);
-    const tips = pickTipsForArea(area, notionQuotes, lib, refreshSeed + index);
+    const tips = buildAreaTips(area, notionQuotes, payload, lib, refreshSeed + index);
     const resources = [
       ...(TIP_RESOURCES[area.key] || TIP_RESOURCES[area.category] || []),
     ].slice(0, 4);
@@ -652,6 +765,7 @@ function buildSharpenFromNotion(payload, tipsLib, refreshSeed = 0) {
         p: t.p,
         drill: t.drill,
         priority: Boolean(t.priority),
+        fromNotion: Boolean(t.fromNotion),
       })),
       resources,
     };

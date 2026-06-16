@@ -509,7 +509,9 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
                   <div key={i} className={`tip-card ${tip.priority ? 'priority' : ''}`}>
                     <div className="num">
                       Tip {String(i + 1).padStart(2, '0')}
-                      {tip.priority && <span className="match-chip">Match</span>}
+                      {tip.fromNotion
+                        ? <span className="match-chip">Notion</span>
+                        : tip.priority && <span className="match-chip">Match</span>}
                     </div>
                     <h4>{tip.h}</h4>
                     <p>{tip.p}</p>
