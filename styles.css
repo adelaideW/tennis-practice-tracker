@@ -610,6 +610,7 @@ input, textarea, select { font-family: inherit; }
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  height: 100%;
 }
 .toolkit-panel--activity .toolkit-panel-body {
   display: flex;
@@ -1587,17 +1588,28 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   width: 100%;
   min-height: 0;
 }
-.toolkit-panel:not(.is-panel-expanded) .activity-card-inner {
-  flex: 1;
+.toolkit-panel:not(.is-panel-expanded).toolkit-panel--activity .toolkit-panel-body > * {
   margin-top: 0;
   margin-bottom: 0;
+  flex: 1;
+  min-height: 0;
+}
+.toolkit-panel:not(.is-panel-expanded) .activity-card-inner {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  height: auto;
+  justify-content: flex-start;
+  height: 100%;
+  min-height: 0;
 }
 .toolkit-panel:not(.is-panel-expanded) .activity-chart-wrap {
-  flex: none;
+  flex: 1;
+  min-height: 0;
+}
+.toolkit-panel:not(.is-panel-expanded) .activity-tabs-in-panel {
+  flex-shrink: 0;
+}
+.toolkit-panel:not(.is-panel-expanded) .activity-chart-head {
+  flex-shrink: 0;
 }
 .toolkit-panel-body.is-measuring,
 .toolkit-panel.is-panel-expanded .toolkit-panel-body {
