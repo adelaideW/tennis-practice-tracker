@@ -1538,8 +1538,12 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
 .today-dashboard {
   width: 100%;
 }
-.today-dashboard .toolkit-grid {
-  grid-template-columns: 1fr;
+.today-dashboard .toolkit-grid .toolkit-panel[data-toolkit-id="focus"] {
+  grid-column: 1 / -1;
+}
+.today-dashboard--positioned .today-dashboard-bar {
+  margin-left: 24px;
+  margin-right: 24px;
 }
 .today-dashboard-bar {
   display: flex;

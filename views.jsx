@@ -325,7 +325,6 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
     storageKey: TODAY_LAYOUT_STORAGE,
     loadLayout: loadTodayLayout,
     makeDefaultLayout: makeDefaultTodayLayout,
-    getGridConfig: getTodayGridConfig,
   });
 
   const renderTodayCard = (id) => {
@@ -481,7 +480,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
         </div>
       </div>
 
-      <div className="today-dashboard">
+      <div className={`today-dashboard${todayGrid.layout.mode === 'dashboard' ? ' today-dashboard--positioned' : ''}`}>
         <div className="today-dashboard-bar">
           <div className="today-dashboard-bar-meta">
             {refreshedLabel ? (
@@ -2025,16 +2024,6 @@ function getToolkitGridConfig(containerWidth) {
     cols: isMobile ? 6 : 12,
     rowHeight: 30,
     margin: [24, 24],
-    containerPadding: [0, 0],
-  };
-}
-
-function getTodayGridConfig(containerWidth) {
-  const isMobile = containerWidth <= 920;
-  return {
-    cols: isMobile ? 6 : 12,
-    rowHeight: 30,
-    margin: [0, 24],
     containerPadding: [0, 0],
   };
 }
