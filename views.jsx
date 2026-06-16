@@ -1104,20 +1104,53 @@ const ROME_2026 = {
   },
 };
 
-const TOUR_DAILY_KEY = 'tennis-tour-daily-v1';
-const TOUR_RESULTS_CACHE_KEY = 'tennis-tour-results-v3';
+const TOUR_DAILY_KEY = 'tennis-tour-news-v2';
+const TOUR_RESULTS_CACHE_KEY = 'tennis-tour-results-v4';
 const TOUR_RESULTS_REFRESH_MS = 6 * 60 * 60 * 1000;
 const TOUR_RESULTS_PREVIEW = 5;
 const TOUR_RESULTS_WINDOW_DAYS = 7;
-const ROLAND_GARROS_GOOGLE_URL =
-  'https://www.google.com/search?q=roland+garros+scores';
+const TOUR_SCORES_GOOGLE_URL =
+  'https://www.google.com/search?q=atp+wta+tennis+scores';
 
 const TOURNAMENT_NAME_ALIASES = {
   'Roland-Garros': [/roland[\s-]*garros/i, /french\s*open/i],
+  "Queen's Club / Halle": [/queen'?s/i, /halle/i, /hsbc championships/i, /terra wortmann/i, /wortmann open/i],
+  'Wimbledon': [/wimbledon/i, /all england/i],
 };
 
-function getActiveTournament() {
-  return CALENDAR_2026.find((t) => t.state === 'live') || null;
+function deriveCalendarState(entry, today = new Date()) {
+  if (!entry.start || !entry.end) return entry.state || 'up';
+  const day = today.toISOString().slice(0, 10);
+  if (day < entry.start) return 'up';
+  if (day > entry.end) return 'done';
+  return 'live';
+}
+
+function getCalendarWithStates(today = new Date()) {
+  return CALENDAR_2026.map((entry) => ({
+    ...entry,
+    state: deriveCalendarState(entry, today),
+  }));
+}
+
+function getActiveTournaments(today = new Date()) {
+  return getCalendarWithStates(today).filter((t) => t.state === 'live');
+}
+
+function getActiveTournament(today = new Date()) {
+  return getActiveTournaments(today)[0] || null;
+}
+
+function getTourSeasonContext(today = new Date()) {
+  const cal = getCalendarWithStates(today);
+  const live = cal.filter((t) => t.state === 'live');
+  const next = cal.find((t) => t.state === 'up');
+  const recentDone = [...cal].reverse().find((t) => t.state === 'done');
+  const liveNames = live.map((t) => t.name).join(' and ') || 'the tour';
+  const summary = live.length
+    ? `${liveNames} ${live.length > 1 ? 'are' : 'is'} on court. ${recentDone ? `${recentDone.name} has concluded.` : ''} Next major: ${next?.name || 'on the calendar'}.`
+    : `${recentDone ? `${recentDone.name} just concluded.` : 'Between events.'} Next up: ${next?.name || 'the next stop on tour'}.`;
+  return { live, next, recentDone, summary };
 }
 
 function matchesTournamentName(tournament, calendarName) {
@@ -1129,9 +1162,12 @@ function matchesTournamentName(tournament, calendarName) {
 }
 
 function filterActiveTournamentResults(results) {
-  const active = getActiveTournament();
-  if (!active) return getResultsInPastDays(results, TOUR_RESULTS_WINDOW_DAYS);
-  const filtered = results.filter((r) => matchesTournamentName(r.tournament, active.name));
+  const active = getActiveTournaments();
+  if (!active.length) return getResultsInPastDays(results, TOUR_RESULTS_WINDOW_DAYS);
+  const filtered = results.filter((r) =>
+    active.some((t) => matchesTournamentName(r.tournament, t.name)),
+  );
+  if (!filtered.length) return getResultsInPastDays(results, TOUR_RESULTS_WINDOW_DAYS);
   return filtered.sort(
     (a, b) => b.date.localeCompare(a.date) || String(b.id).localeCompare(String(a.id)),
   );
@@ -1179,17 +1215,68 @@ function sanitizeTourResults(list) {
 }
 
 function getFallbackTourResults() {
-  const rgOnly = TOUR_RESULTS_WEEK.filter((r) =>
-    matchesTournamentName(r.tournament, 'Roland-Garros'),
-  );
   const today = new Date();
   return sanitizeTourResults(
-    rgOnly.map((r, i) => {
+    TOUR_RESULTS_WEEK.map((r, i) => {
       const d = new Date(today);
       d.setDate(today.getDate() - Math.min(i, TOUR_RESULTS_WINDOW_DAYS - 1));
       return { ...r, date: d.toISOString().slice(0, 10) };
     }),
   );
+}
+
+function loadStoredTourNews() {
+  try {
+    const raw = localStorage.getItem(TOUR_DAILY_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.news) ? parsed.news : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function saveTourNews(news) {
+  const payload = { news, refreshedAt: new Date().toISOString() };
+  try {
+    localStorage.setItem(TOUR_DAILY_KEY, JSON.stringify(payload));
+  } catch (_) { /* ignore quota */ }
+  window.dispatchEvent(new CustomEvent('tour-news-updated', { detail: payload }));
+  return news;
+}
+
+function buildTourNewsPrompt() {
+  const ctx = getTourSeasonContext();
+  return `You are a tennis news writer. Generate 4 current tennis world headlines for an amateur player to follow.
+
+Today's date: ${new Date().toDateString()}.
+Tour context: ${ctx.summary}
+Do NOT write about Roland-Garros as if it is still in progress — it has concluded. Focus on the grass-court swing, Queen's/Halle, and Wimbledon prep as appropriate.
+
+Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when (e.g. "Jun 15"), t (headline, 8-14 words), d (1 sentence description, 15-25 words). Stay general — no fabricated exact scores or player names unless widely known public facts.`;
+}
+
+let tourNewsInFlight = null;
+
+async function fetchTourNews() {
+  if (tourNewsInFlight) return tourNewsInFlight;
+
+  tourNewsInFlight = (async () => {
+    if (window.claude?.complete) {
+      try {
+        const txt = await window.claude.complete(buildTourNewsPrompt());
+        const parsed = JSON.parse(txt.replace(/```json|```/g, '').trim());
+        if (Array.isArray(parsed) && parsed.length) return saveTourNews(parsed);
+      } catch (_) { /* fall through to seed */ }
+    }
+    return saveTourNews(SEED_NEWS);
+  })();
+
+  try {
+    return await tourNewsInFlight;
+  } finally {
+    tourNewsInFlight = null;
+  }
 }
 
 function loadTourResultsCache() {
@@ -1262,30 +1349,19 @@ function formatResultsRefreshedLabel(iso) {
 }
 
 function applyDailyTourRefresh(setNews, setDailyLabel) {
-  const today = new Date().toISOString().slice(0, 10);
-  let stored = {};
-  try {
-    stored = JSON.parse(localStorage.getItem(TOUR_DAILY_KEY) || '{}');
-  } catch (_) { /* keep defaults */ }
-
-  if (stored.date === today && Array.isArray(stored.news)) {
-    setNews(stored.news);
-    setDailyLabel(stored.label || formatDailyLabel(stored.refreshedAt));
+  const stored = loadStoredTourNews();
+  if (stored?.length) {
+    setNews(stored);
+    try {
+      const meta = JSON.parse(localStorage.getItem(TOUR_DAILY_KEY) || '{}');
+      setDailyLabel(formatDailyLabel(meta.refreshedAt));
+    } catch (_) {
+      setDailyLabel(formatDailyLabel());
+    }
     return;
   }
-
-  const dayNum = Math.floor(Date.now() / 86400000);
-  const rotated = [...SEED_NEWS];
-  const shift = dayNum % rotated.length;
-  const news = [...rotated.slice(shift), ...rotated.slice(0, shift)];
-  const refreshedAt = new Date().toISOString();
-  const label = formatDailyLabel(refreshedAt);
-  localStorage.setItem(
-    TOUR_DAILY_KEY,
-    JSON.stringify({ date: today, news, refreshedAt, label }),
-  );
-  setNews(news);
-  setDailyLabel(label);
+  setNews(SEED_NEWS);
+  setDailyLabel(formatDailyLabel());
 }
 
 function TourResultSnippet({ match, onOpen }) {
@@ -1536,7 +1612,7 @@ function RomeModal({ onClose }) {
 }
 
 function Calendar() {
-  const [news, setNews] = useS1(SEED_NEWS);
+  const [news, setNews] = useS1(() => loadStoredTourNews() || SEED_NEWS);
   const [loading, setLoading] = useS1(false);
   const [resultsLoading, setResultsLoading] = useS1(false);
   const [modal, setModal] = useS1(null);
@@ -1546,6 +1622,7 @@ function Calendar() {
   const [tourResults, setTourResults] = useS1(() => getFallbackTourResults());
   const [resultsRefreshedAt, setResultsRefreshedAt] = useS1(null);
 
+  const calendar = useM1(() => getCalendarWithStates(), []);
   const activeTournament = useM1(() => getActiveTournament(), []);
   const weekResults = useM1(
     () => filterActiveTournamentResults(tourResults),
@@ -1581,12 +1658,23 @@ function Calendar() {
 
   useE1(() => {
     applyDailyTourRefresh(setNews, setDailyLabel);
+
+    const onNewsUpdated = (e) => {
+      if (e.detail?.news?.length) {
+        setNews(e.detail.news);
+        setDailyLabel(formatDailyLabel(e.detail.refreshedAt));
+      }
+    };
+    window.addEventListener('tour-news-updated', onNewsUpdated);
+
     const cached = loadTourResultsCache();
     if (cached && !isTourResultsStale(cached)) {
       applyTourResultsCache(cached);
     } else {
       runResultsRefresh(false);
     }
+
+    return () => window.removeEventListener('tour-news-updated', onNewsUpdated);
   }, [applyTourResultsCache, runResultsRefresh]);
 
   useE1(() => {
@@ -1611,14 +1699,10 @@ function Calendar() {
   const refreshNews = async () => {
     setLoading(true);
     try {
-      const prompt = `You are a tennis news writer. Generate 4 plausible, evergreen tennis world headlines for an amateur player to follow — covering: (1) the current tour swing storyline (clay → grass transition), (2) a Roland-Garros draw or seeding angle, (3) a Wimbledon prep / grass-court swing fact, (4) a calendar reminder. Today's date: ${new Date().toDateString()}.
-
-Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when (e.g. "May 17"), t (headline, 8-14 words), d (1 sentence description, 15-25 words). No real player names — stay general.`;
-      const txt = await window.claude.complete(prompt);
-      const parsed = JSON.parse(txt.replace(/```json|```/g, '').trim());
-      if (Array.isArray(parsed)) setNews(parsed);
-    } catch (e) { /* keep seed */ }
-    finally { setLoading(false); }
+      await fetchTourNews();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -1651,7 +1735,7 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
             <span className="mono-small">Slams · Masters 1000</span>
           </div>
           <div>
-            {CALENDAR_2026.map((t, i) => {
+            {calendar.map((t, i) => {
               const url = TOURNEY_URLS[t.name];
               const ytUrl = TOURNEY_YOUTUBE[t.name];
               const isRome = t.name === 'Italian Open · Rome';
@@ -1744,7 +1828,7 @@ Return ONLY a JSON array — no markdown fence — of 4 objects with keys: when 
                   {' · '}
                   <a
                     className="tourney-link"
-                    href={ROLAND_GARROS_GOOGLE_URL}
+                    href={TOUR_SCORES_GOOGLE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -2506,3 +2590,5 @@ window.Tips = Tips;
 window.GameCheatNotes = GameCheatNotes;
 window.Calendar = Calendar;
 window.Toolkit = Toolkit;
+window.fetchTourNewsOnLoad = fetchTourNews;
+window.getCalendarWithStates = getCalendarWithStates;

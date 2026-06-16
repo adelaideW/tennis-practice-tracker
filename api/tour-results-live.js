@@ -1,9 +1,9 @@
 /**
- * Live Roland Garros results from ESPN tennis scoreboards (ATP + WTA).
+ * Live tour results from ESPN tennis scoreboards (ATP + WTA).
+ * Collects matches from every event on the current scoreboard.
  */
 const ESPN_ATP = 'https://site.api.espn.com/apis/site/v2/sports/tennis/atp/scoreboard';
 const ESPN_WTA = 'https://site.api.espn.com/apis/site/v2/sports/tennis/wta/scoreboard';
-const RG_RE = /roland\s*garros|french\s*open/i;
 const QUALIFYING_RE = /qualifying/i;
 
 function abbreviateRound(displayName) {
@@ -120,12 +120,12 @@ function mapCompetition(competition, tour, tournamentName) {
 }
 
 function collectCompetitions(event, tour) {
-  const tournamentName = 'Roland-Garros';
+  const tournamentName = event.name || event.shortName || 'Tournament';
   const out = [];
 
-  const addList = (list) => {
+  const addList = (list, tourLabel = tour) => {
     for (const comp of list || []) {
-      const row = mapCompetition(comp, tour, tournamentName);
+      const row = mapCompetition(comp, tourLabel, tournamentName);
       if (row) out.push(row);
     }
   };
@@ -136,10 +136,7 @@ function collectCompetitions(event, tour) {
         /women/i.test(g.grouping?.displayName || '')
         ? 'WTA'
         : tour;
-      for (const comp of g.competitions || []) {
-        const row = mapCompetition(comp, tourLabel, tournamentName);
-        if (row) out.push(row);
-      }
+      addList(g.competitions, tourLabel);
     }
   } else {
     addList(event.competitions);
@@ -148,9 +145,13 @@ function collectCompetitions(event, tour) {
   return out;
 }
 
-function findRolandGarrosEvent(data) {
+function collectAllEvents(data, tour) {
   const events = data?.events || [];
-  return events.find((e) => RG_RE.test(e.name || '') || RG_RE.test(e.shortName || ''));
+  let results = [];
+  for (const event of events) {
+    results.push(...collectCompetitions(event, tour));
+  }
+  return results;
 }
 
 async function fetchScoreboard(url, tour) {
@@ -181,12 +182,9 @@ export default async function handler(req, res) {
       fetchScoreboard(ESPN_WTA, 'WTA'),
     ]);
 
-    const atpEvent = findRolandGarrosEvent(atpData);
-    const wtaEvent = findRolandGarrosEvent(wtaData);
-
     let results = [
-      ...(atpEvent ? collectCompetitions(atpEvent, 'ATP') : []),
-      ...(wtaEvent ? collectCompetitions(wtaEvent, 'WTA') : []),
+      ...collectAllEvents(atpData, 'ATP'),
+      ...collectAllEvents(wtaData, 'WTA'),
     ];
 
     results = results.filter((r) => r.status === 'post' || r.status === 'in');
@@ -207,9 +205,10 @@ export default async function handler(req, res) {
 
     results = results.slice(0, 80);
 
+    const tournaments = [...new Set(results.map((r) => r.tournament))];
+
     return res.status(200).json({
-      tournament: 'Roland-Garros',
-      tournamentAliases: ['Roland-Garros', 'Roland Garros', 'French Open'],
+      tournaments,
       results,
       refreshedAt: new Date().toISOString(),
       source: 'espn',
@@ -217,7 +216,7 @@ export default async function handler(req, res) {
   } catch (e) {
     return res.status(502).json({
       error: e.message,
-      tournament: 'Roland-Garros',
+      tournaments: [],
       results: [],
       refreshedAt: new Date().toISOString(),
       source: 'espn',

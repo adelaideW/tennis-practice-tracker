@@ -83,44 +83,41 @@ const PRACTICE_TAGS = [
 
 const INTENSITY = ['Easy', 'Light', 'Moderate', 'Hard', 'All-out'];
 
-// 2026 calendar — Grand Slams + Masters 1000 (stable annual fixtures)
+// 2026 calendar — Grand Slams + Masters 1000 (stable annual fixtures; state derived at runtime)
 const CALENDAR_2026 = [
-  { m: 'Jan', d: '19—Feb 1', name: 'Australian Open', meta: 'Melbourne · Hard · Grand Slam', state: 'done' },
-  { m: 'Feb', d: '24—Mar 1', name: 'Dubai / Acapulco / Santiago', meta: 'ATP 500 swing', state: 'done' },
-  { m: 'Mar', d: '04—15', name: 'Indian Wells Masters', meta: 'BNP Paribas · Hard · 1000', state: 'done' },
-  { m: 'Mar', d: '18—29', name: 'Miami Open', meta: 'Hard · Masters 1000', state: 'done' },
-  { m: 'Apr', d: '11—19', name: 'Monte-Carlo Masters', meta: 'Clay · Masters 1000', state: 'done' },
-  { m: 'Apr', d: '25—May 3', name: 'Madrid Open', meta: 'Clay · Masters 1000', state: 'done' },
-  { m: 'May', d: '06—17', name: 'Italian Open · Rome', meta: 'Foro Italico · Clay · 1000', state: 'done', highlight: true },
-  { m: 'May', d: '24—Jun 7', name: 'Roland-Garros', meta: 'Paris · Clay · Grand Slam', state: 'live' },
-  { m: 'Jun', d: '15—21', name: 'Queen\'s Club / Halle', meta: 'Grass · ATP 500', state: 'up' },
-  { m: 'Jun', d: '29—Jul 12', name: 'Wimbledon', meta: 'London · Grass · Grand Slam', state: 'up' },
-  { m: 'Aug', d: '02—09', name: 'Canadian Open · Toronto', meta: 'Hard · Masters 1000', state: 'up' },
-  { m: 'Aug', d: '10—16', name: 'Cincinnati Open', meta: 'Hard · Masters 1000', state: 'up' },
-  { m: 'Aug', d: '31—Sep 13', name: 'US Open', meta: 'New York · Hard · Grand Slam', state: 'up' },
-  { m: 'Oct', d: '07—13', name: 'Shanghai Masters', meta: 'Hard · Masters 1000', state: 'up' },
-  { m: 'Oct', d: '26—Nov 1', name: 'Paris Masters', meta: 'Indoor Hard · 1000', state: 'up' },
-  { m: 'Nov', d: '08—15', name: 'ATP Finals · Turin', meta: 'Year-end · Indoor', state: 'up' },
+  { m: 'Jan', d: '19—Feb 1', name: 'Australian Open', meta: 'Melbourne · Hard · Grand Slam', start: '2026-01-19', end: '2026-02-01' },
+  { m: 'Feb', d: '24—Mar 1', name: 'Dubai / Acapulco / Santiago', meta: 'ATP 500 swing', start: '2026-02-24', end: '2026-03-01' },
+  { m: 'Mar', d: '04—15', name: 'Indian Wells Masters', meta: 'BNP Paribas · Hard · 1000', start: '2026-03-04', end: '2026-03-15' },
+  { m: 'Mar', d: '18—29', name: 'Miami Open', meta: 'Hard · Masters 1000', start: '2026-03-18', end: '2026-03-29' },
+  { m: 'Apr', d: '11—19', name: 'Monte-Carlo Masters', meta: 'Clay · Masters 1000', start: '2026-04-11', end: '2026-04-19' },
+  { m: 'Apr', d: '25—May 3', name: 'Madrid Open', meta: 'Clay · Masters 1000', start: '2026-04-25', end: '2026-05-03' },
+  { m: 'May', d: '06—17', name: 'Italian Open · Rome', meta: 'Foro Italico · Clay · 1000', start: '2026-05-06', end: '2026-05-17', highlight: true },
+  { m: 'May', d: '24—Jun 7', name: 'Roland-Garros', meta: 'Paris · Clay · Grand Slam', start: '2026-05-24', end: '2026-06-07' },
+  { m: 'Jun', d: '15—21', name: "Queen's Club / Halle", meta: 'Grass · ATP 500', start: '2026-06-15', end: '2026-06-21' },
+  { m: 'Jun', d: '29—Jul 12', name: 'Wimbledon', meta: 'London · Grass · Grand Slam', start: '2026-06-29', end: '2026-07-12' },
+  { m: 'Aug', d: '02—09', name: 'Canadian Open · Toronto', meta: 'Hard · Masters 1000', start: '2026-08-02', end: '2026-08-09' },
+  { m: 'Aug', d: '10—16', name: 'Cincinnati Open', meta: 'Hard · Masters 1000', start: '2026-08-10', end: '2026-08-16' },
+  { m: 'Aug', d: '31—Sep 13', name: 'US Open', meta: 'New York · Hard · Grand Slam', start: '2026-08-31', end: '2026-09-13' },
+  { m: 'Oct', d: '07—13', name: 'Shanghai Masters', meta: 'Hard · Masters 1000', start: '2026-10-07', end: '2026-10-13' },
+  { m: 'Oct', d: '26—Nov 1', name: 'Paris Masters', meta: 'Indoor Hard · 1000', start: '2026-10-26', end: '2026-11-01' },
+  { m: 'Nov', d: '08—15', name: 'ATP Finals · Turin', meta: 'Year-end · Indoor', start: '2026-11-08', end: '2026-11-15' },
 ];
 
-/** Rolling tour results — dates within the past 7 days (May 2026 clay swing). */
+/** Rolling tour results — fallback when live ESPN feed is unavailable. */
 const TOUR_RESULTS_WEEK = [
-  { id: 'rg-m-1', date: '2026-05-24', tournament: 'Roland-Garros', round: 'R128', tour: 'ATP', winner: 'C. Alcaraz', winnerSub: 'ESP · #2', loser: 'J. Halys', loserSub: 'FRA', score: '6—1  6—2  6—2' },
-  { id: 'rg-w-1', date: '2026-05-24', tournament: 'Roland-Garros', round: 'R128', tour: 'WTA', winner: 'I. Świątek', winnerSub: 'POL · #1', loser: 'C. Gauff', loserSub: 'USA · #3', score: '6—4  6—2' },
-  { id: 'rg-m-2', date: '2026-05-23', tournament: 'Roland-Garros', round: 'R128', tour: 'ATP', winner: 'J. Sinner', winnerSub: 'ITA · #1', loser: 'R. Bautista Agut', loserSub: 'ESP', score: '6—3  6—4  6—2' },
-  { id: 'rg-w-2', date: '2026-05-23', tournament: 'Roland-Garros', round: 'R128', tour: 'WTA', winner: 'A. Sabalenka', winnerSub: 'BLR · #2', loser: 'B. Krejcikova', loserSub: 'CZE', score: '7—5  6—3' },
-  { id: 'rg-m-3', date: '2026-05-22', tournament: 'Roland-Garros', round: 'R128', tour: 'ATP', winner: 'A. Zverev', winnerSub: 'GER · #4', loser: 'D. Medvedev', loserSub: 'RUS', score: '6—4  6—7(5)  6—3' },
-  { id: 'rg-w-3', date: '2026-05-22', tournament: 'Roland-Garros', round: 'R128', tour: 'WTA', winner: 'E. Rybakina', winnerSub: 'KAZ · #4', loser: 'M. Sakkari', loserSub: 'GRE', score: '6—2  6—4' },
-  { id: 'rg-m-4', date: '2026-05-21', tournament: 'Roland-Garros', round: 'R64', tour: 'ATP', winner: 'C. Ruud', winnerSub: 'NOR · #8', loser: 'F. Cerundolo', loserSub: 'ARG', score: '6—3  6—4  6—2' },
-  { id: 'rg-w-4', date: '2026-05-21', tournament: 'Roland-Garros', round: 'R64', tour: 'WTA', winner: 'J. Pegula', winnerSub: 'USA · #5', loser: 'S. Stephens', loserSub: 'USA', score: '6—1  6—4' },
+  { id: 'grass-m-1', date: '2026-06-15', tournament: 'HSBC Championships', round: 'R32', tour: 'ATP', winner: 'J. Sinner', winnerSub: 'ITA · #1', loser: 'A. de Minaur', loserSub: 'AUS', score: '7—5  6—4' },
+  { id: 'grass-m-2', date: '2026-06-15', tournament: 'Terra Wortmann Open', round: 'R32', tour: 'ATP', winner: 'C. Alcaraz', winnerSub: 'ESP · #2', loser: 'T. Paul', loserSub: 'USA', score: '6—3  6—4' },
+  { id: 'grass-w-1', date: '2026-06-14', tournament: 'Libéma Open', round: 'SF', tour: 'WTA', winner: 'I. Świątek', winnerSub: 'POL · #1', loser: 'M. Keys', loserSub: 'USA', score: '6—2  6—3' },
+  { id: 'grass-w-2', date: '2026-06-14', tournament: 'Berlin Open', round: 'SF', tour: 'WTA', winner: 'A. Sabalenka', winnerSub: 'BLR · #2', loser: 'E. Rybakina', loserSub: 'KAZ', score: '7—6(4)  6—4' },
+  { id: 'grass-m-3', date: '2026-06-13', tournament: 'Stuttgart Open', round: 'QF', tour: 'ATP', winner: 'A. Zverev', winnerSub: 'GER · #4', loser: 'H. Hurkacz', loserSub: 'POL', score: '6—4  6—7(5)  6—3' },
+  { id: 'grass-m-4', date: '2026-06-12', tournament: 'Stuttgart Open', round: 'R16', tour: 'ATP', winner: 'C. Ruud', winnerSub: 'NOR · #8', loser: 'F. Auger-Aliassime', loserSub: 'CAN', score: '6—3  6—4' },
 ];
 
-// Sample recent stories — clearly framed as "feed" to make the refresh button feel earned
 const SEED_NEWS = [
-  { when: 'May 17', t: 'Rome Open wraps on the Foro Italico clay', d: 'Final-weekend storylines closed out a packed two weeks of high-quality clay-court tennis heading into Roland-Garros.' },
-  { when: 'May 16', t: 'Roland-Garros draw ceremony approaches', d: 'Seedings for the year\'s second Grand Slam will be confirmed this week; main draw begins Sun May 24.' },
-  { when: 'May 15', t: 'Clay swing form guide', d: 'Players who reached the late rounds in Monte-Carlo, Madrid, and Rome historically convert at a higher rate in Paris.' },
-  { when: 'May 12', t: 'Wimbledon qualifying schedule released', d: 'Roehampton qualifying will run Jun 22—26 ahead of the Championships starting Jun 29.' },
+  { when: 'Jun 14', t: 'Roland-Garros 2026 concludes on clay', d: 'The second Grand Slam wrapped at Porte d\'Auteuil; the tour now pivots to the grass-court swing and Wimbledon prep.' },
+  { when: 'Jun 15', t: "Queen's and Halle kick off the grass season", d: 'ATP 500 events in London and Germany open the fortnight that traditionally shapes form heading into Wimbledon.' },
+  { when: 'Jun 12', t: 'Grass specialists sharpen serve-and-volley patterns', d: 'Players who excel on lawn often use Queen\'s and Halle to dial in first-serve percentage and net approaches.' },
+  { when: 'Jun 10', t: 'Wimbledon main draw begins Jun 29', d: 'Qualifying at Roehampton runs Jun 22–26 before the Championships get underway at the All England Club.' },
 ];
 
 // ============== STATE ==============
@@ -214,6 +211,16 @@ function App() {
   useEffect(() => {
     syncFromNotion({ background: Boolean(cachedBootstrap) });
   }, [syncFromNotion, cachedBootstrap]);
+
+  useEffect(() => {
+    const run = () => window.fetchTourNewsOnLoad?.();
+    if (window.fetchTourNewsOnLoad) {
+      run();
+      return undefined;
+    }
+    const retry = setTimeout(run, 150);
+    return () => clearTimeout(retry);
+  }, []);
 
   useEffect(() => {
     if (!state.notionLoading) saveState(state);

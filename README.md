@@ -28,7 +28,7 @@ NOTION_TOKEN=secret_… node scripts/sync-notion-snapshot.mjs
 
 ### Live tour results
 
-Recent Results on the Calendar tab loads **Roland-Garros** matches from ESPN via `/api/tour-results-live` (refreshes every 6 hours).
+Recent Results on the Calendar tab loads live matches from ESPN via `/api/tour-results-live` (refreshes every 6 hours).
 
 ## Local preview
 
