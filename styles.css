@@ -149,9 +149,6 @@
 [data-theme="light"] .toolkit-panel--focus .focus-section-label {
   color: var(--accent-deep);
 }
-[data-theme="light"] .toolkit-panel--focus .today-focus-inner .ball-deco {
-  opacity: 0.2;
-}
 [data-theme="light"] .modal-header { background: var(--surface-2); }
 [data-theme="light"] .modal-header .deco {
   background: radial-gradient(circle at 35% 35%, var(--brand-primary-200), var(--brand-primary-400));
@@ -1677,17 +1674,6 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
 .toolkit-panel--focus:not(.is-panel-expanded) .today-focus-inner {
   display: flex;
   flex-direction: column;
-}
-.today-focus-inner .ball-deco {
-  position: absolute;
-  right: -40px;
-  top: -40px;
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, var(--brand-primary-300), var(--brand-primary-500));
-  opacity: 0.14;
-  pointer-events: none;
 }
 .today-focus-headline {
   font-family: var(--serif);

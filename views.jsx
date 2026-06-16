@@ -332,7 +332,6 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
       case 'focus':
         return (
           <div className="today-focus-inner" key={focusContentKey}>
-            <div className="ball-deco" aria-hidden="true"></div>
             <h2 className="today-focus-headline">
               {state.notionLoading
                 ? 'Syncing your brief…'
