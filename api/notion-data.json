@@ -16,23 +16,12 @@
     "drill": "Rally, double games; switching between ground stroke and slices; Combination feed → Forehand high, backhand high, approach shot, volley; volley feed from baseline; overhead feed from baseline"
   },
   "previousWeekFocus": {
-    "weekLabel": "Week of June 1",
-    "isPreviousWeek": true,
-    "needsImprovement": [
-      "High volley → late and out",
-      "Forehand not enough of unit turn → late for fast balls",
-      "Not confident enough for 1st serve",
-      "Backhand on high balls returns short",
-      "Overhead still not getting into the right position",
-      "Not enough variety in games"
-    ],
-    "thingsToTry": [
-      "Lean forward and prepare racket higher for mid court high balls",
-      "Aim more safe in the box when windy",
-      "Practice short balls starting from mid court, then move back to baseline",
-      "Think ahead at least 1 step before game mode on",
-      "Need to practice more hitting to opponent's backhand"
-    ]
+    "weekLabel": "Week of Jun 8 – Jun 14, 2026",
+    "weekStart": "2026-06-08",
+    "weekEnd": "2026-06-14",
+    "matchedNotionWeek": false,
+    "needsImprovement": [],
+    "thingsToTry": []
   },
   "weeklySource": "notion",
   "source": "snapshot",

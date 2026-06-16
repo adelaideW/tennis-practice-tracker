@@ -333,16 +333,143 @@ async function parseAllDailySessions(pageId, rootBlocks = null) {
 
 const WEEKLY_LINE_BLOCK_TYPES = new Set(['bulleted_list_item', 'numbered_list_item', 'paragraph']);
 
+function toIsoDateLocal(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Previous completed Mon–Sun week immediately before the current ISO week. */
+function getLastCompletedWeekRange(today = new Date()) {
+  const d = new Date(today);
+  d.setHours(12, 0, 0, 0);
+  const day = d.getDay();
+  const daysFromMonday = day === 0 ? 6 : day - 1;
+  const thisMonday = new Date(d);
+  thisMonday.setDate(d.getDate() - daysFromMonday);
+
+  const lastSunday = new Date(thisMonday);
+  lastSunday.setDate(thisMonday.getDate() - 1);
+
+  const lastMonday = new Date(lastSunday);
+  lastMonday.setDate(lastSunday.getDate() - 6);
+
+  return {
+    start: toIsoDateLocal(lastMonday),
+    end: toIsoDateLocal(lastSunday),
+    startDate: lastMonday,
+    endDate: lastSunday,
+  };
+}
+
+function formatWeekRangeLabel(startDate, endDate) {
+  const startStr = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const endStr = endDate.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  return `Week of ${startStr} – ${endStr}`;
+}
+
 function parseWeekToggleDate(title) {
+  const range = parseWeekToggleRange(title);
+  if (range?.startDate) return range.startDate.getTime();
   const t = String(title || '').trim();
   const iso = t.match(/(\d{4}-\d{2}-\d{2})/);
-  if (iso) return new Date(iso[1]).getTime();
+  if (iso) return new Date(`${iso[1]}T12:00:00`).getTime();
   const monthDay = t.match(/week\s+of\s+([a-z]+)\s+(\d{1,2})/i);
   if (monthDay) {
     const parsed = Date.parse(`${monthDay[1]} ${monthDay[2]}, ${new Date().getFullYear()}`);
     if (!Number.isNaN(parsed)) return parsed;
   }
   return 0;
+}
+
+function parseWeekToggleRange(title) {
+  const t = String(title || '').trim();
+  const rangeIso = t.match(
+    /(\d{4}-\d{2}-\d{2})\s*[-–—]\s*(\d{4}-\d{2}-\d{2})/,
+  );
+  if (rangeIso) {
+    const startDate = new Date(`${rangeIso[1]}T12:00:00`);
+    const endDate = new Date(`${rangeIso[2]}T12:00:00`);
+    return {
+      start: rangeIso[1],
+      end: rangeIso[2],
+      startDate,
+      endDate,
+    };
+  }
+
+  const rangeMonth = t.match(
+    /week\s+of\s+([a-z]+)\s+(\d{1,2})(?:,?\s*(\d{4}))?\s*[-–—]\s*([a-z]+)\s+(\d{1,2})(?:,?\s*(\d{4}))?/i,
+  );
+  if (rangeMonth) {
+    const startYear = rangeMonth[3] ? parseInt(rangeMonth[3], 10) : new Date().getFullYear();
+    const endYear = rangeMonth[6] ? parseInt(rangeMonth[6], 10) : startYear;
+    const startDate = new Date(Date.parse(`${rangeMonth[1]} ${rangeMonth[2]}, ${startYear}`));
+    const endDate = new Date(Date.parse(`${rangeMonth[4]} ${rangeMonth[5]}, ${endYear}`));
+    startDate.setHours(12, 0, 0, 0);
+    endDate.setHours(12, 0, 0, 0);
+    return {
+      start: toIsoDateLocal(startDate),
+      end: toIsoDateLocal(endDate),
+      startDate,
+      endDate,
+    };
+  }
+
+  const single = t.match(/week\s+of\s+([a-z]+)\s+(\d{1,2})(?:,?\s*(\d{4}))?/i);
+  if (single) {
+    const year = single[3] ? parseInt(single[3], 10) : new Date().getFullYear();
+    const startDate = new Date(Date.parse(`${single[1]} ${single[2]}, ${year}`));
+    startDate.setHours(12, 0, 0, 0);
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + 6);
+    return {
+      start: toIsoDateLocal(startDate),
+      end: toIsoDateLocal(endDate),
+      startDate,
+      endDate,
+    };
+  }
+
+  const iso = t.match(/(\d{4}-\d{2}-\d{2})/);
+  if (iso) {
+    const startDate = new Date(`${iso[1]}T12:00:00`);
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + 6);
+    return {
+      start: iso[1],
+      end: toIsoDateLocal(endDate),
+      startDate,
+      endDate,
+    };
+  }
+
+  return null;
+}
+
+function findWeekToggleForRange(weekToggles, targetRange) {
+  let best = null;
+  let bestDiff = Infinity;
+
+  for (const toggle of weekToggles) {
+    const title = blockPlainText(toggle);
+    const parsed = parseWeekToggleRange(title);
+    if (!parsed?.start) continue;
+    if (parsed.start === targetRange.start) return toggle;
+    const diff = Math.abs(parsed.startDate.getTime() - targetRange.startDate.getTime());
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = toggle;
+    }
+  }
+
+  if (best && bestDiff <= 3 * 86400000) return best;
+  return null;
 }
 
 function sortWeekToggles(weekToggles) {
@@ -422,23 +549,51 @@ async function parseWeekFocusSections(weekToggleId) {
   };
 }
 
-/** Previous "Week of …" block → Needs improvement + Things to try only. */
-async function parsePreviousWeekFocus(weeklyContainerId) {
+/** Last completed Mon–Sun week → Needs improvement + Things to try from matching Notion toggle. */
+async function parsePreviousWeekFocus(weeklyContainerId, today = new Date()) {
   if (!weeklyContainerId) return null;
+
+  const targetRange = getLastCompletedWeekRange(today);
+  const weekLabel = formatWeekRangeLabel(targetRange.startDate, targetRange.endDate);
 
   const weekToggles = sortWeekToggles(
     (await notionFetchAllChildren(weeklyContainerId)).filter(
       (b) => b.type === 'toggle' && /^week\s+of\b/i.test(blockPlainText(b)),
     ),
   );
-  if (!weekToggles.length) return null;
+  if (!weekToggles.length) {
+    return {
+      weekLabel,
+      weekStart: targetRange.start,
+      weekEnd: targetRange.end,
+      notionWeekTitle: null,
+      matchedNotionWeek: false,
+      needsImprovement: [],
+      thingsToTry: [],
+    };
+  }
 
-  const previousWeek = weekToggles[1] || weekToggles[0];
-  const sections = await parseWeekFocusSections(previousWeek.id);
+  const matched = findWeekToggleForRange(weekToggles, targetRange);
+  if (!matched) {
+    return {
+      weekLabel,
+      weekStart: targetRange.start,
+      weekEnd: targetRange.end,
+      notionWeekTitle: null,
+      matchedNotionWeek: false,
+      needsImprovement: [],
+      thingsToTry: [],
+    };
+  }
+
+  const sections = await parseWeekFocusSections(matched.id);
 
   return {
-    weekLabel: blockPlainText(previousWeek),
-    isPreviousWeek: Boolean(weekToggles[1]),
+    weekLabel,
+    weekStart: targetRange.start,
+    weekEnd: targetRange.end,
+    notionWeekTitle: blockPlainText(matched),
+    matchedNotionWeek: true,
     ...sections,
   };
 }
@@ -1106,12 +1261,11 @@ export default async function handler(req, res) {
       weeklyOverview = weeklyLive.weeklyOverview;
       weeklySource = 'notion';
     }
-    if (
-      previousWeekLive &&
-      (previousWeekLive.needsImprovement?.length || previousWeekLive.thingsToTry?.length)
-    ) {
+    if (previousWeekLive) {
       previousWeekFocus = previousWeekLive;
-      weeklySource = 'notion';
+      if (previousWeekLive.needsImprovement?.length || previousWeekLive.thingsToTry?.length) {
+        weeklySource = 'notion';
+      }
     }
 
     const payload = {
@@ -1127,7 +1281,7 @@ export default async function handler(req, res) {
       latestDaily: sessions[0] || snap.latestDaily,
       cheatNotes,
       cheatNotesSource,
-      parserVersion: 'cheat-filter-v11-weekly-focus',
+      parserVersion: 'cheat-filter-v12-calendar-week-focus',
     };
 
     responseCache = { updatedAt: pageUpdatedAt, at: Date.now(), payload };

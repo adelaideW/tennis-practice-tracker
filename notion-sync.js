@@ -175,16 +175,66 @@ function buildSessionsFromNotion(payload) {
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
+function toIsoDateLocal(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Previous completed Mon–Sun week immediately before the current ISO week. */
+function getLastCompletedWeekRange(today = new Date()) {
+  const d = new Date(today);
+  d.setHours(12, 0, 0, 0);
+  const day = d.getDay();
+  const daysFromMonday = day === 0 ? 6 : day - 1;
+  const thisMonday = new Date(d);
+  thisMonday.setDate(d.getDate() - daysFromMonday);
+
+  const lastSunday = new Date(thisMonday);
+  lastSunday.setDate(thisMonday.getDate() - 1);
+
+  const lastMonday = new Date(lastSunday);
+  lastMonday.setDate(lastSunday.getDate() - 6);
+
+  return {
+    start: toIsoDateLocal(lastMonday),
+    end: toIsoDateLocal(lastSunday),
+    startDate: lastMonday,
+    endDate: lastSunday,
+  };
+}
+
+function formatWeekRangeLabel(startDate, endDate) {
+  const startStr = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const endStr = endDate.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  return `Week of ${startStr} – ${endStr}`;
+}
+
 function buildFocusFromNotion(payload) {
   if (!payload) return null;
 
+  const expectedRange = getLastCompletedWeekRange();
+  const expectedLabel = formatWeekRangeLabel(expectedRange.startDate, expectedRange.endDate);
+
   const prev = payload.previousWeekFocus;
-  const needsImprovement = (prev?.needsImprovement || [])
-    .map((line) => String(line).replace(/^\*+/, '').trim())
-    .filter(Boolean);
-  const thingsToTry = (prev?.thingsToTry || [])
-    .map((line) => String(line).replace(/^\*+/, '').trim())
-    .filter(Boolean);
+  const weekMatches = !prev?.weekStart || prev.weekStart === expectedRange.start;
+  const weekLabel = weekMatches && prev?.weekLabel ? prev.weekLabel : expectedLabel;
+
+  const needsImprovement = weekMatches
+    ? (prev?.needsImprovement || [])
+        .map((line) => String(line).replace(/^\*+/, '').trim())
+        .filter(Boolean)
+    : [];
+  const thingsToTry = weekMatches
+    ? (prev?.thingsToTry || [])
+        .map((line) => String(line).replace(/^\*+/, '').trim())
+        .filter(Boolean)
+    : [];
 
   if (needsImprovement.length || thingsToTry.length) {
     const headline = thingsToTry[0] || needsImprovement[0] || 'Weekly focus from Notion';
@@ -195,10 +245,7 @@ function buildFocusFromNotion(payload) {
     if (thingsToTry.length) {
       sections.push({ title: 'Things to try', items: thingsToTry });
     }
-    const weekLabel = prev?.weekLabel || 'last week';
-    const body = prev?.isPreviousWeek === false
-      ? `Only one weekly log found in Notion — showing ${weekLabel}.`
-      : `From ${weekLabel} in Notion — carry these into this week's practice.`;
+    const body = `From ${weekLabel} — carry these into this week's practice.`;
 
     return {
       headline: String(headline).replace(/^\*+/, '').trim(),
@@ -206,6 +253,8 @@ function buildFocusFromNotion(payload) {
       cues: [],
       sections,
       weekLabel,
+      weekStart: expectedRange.start,
+      weekEnd: expectedRange.end,
       generated: payload.updatedAt || new Date().toISOString(),
     };
   }
@@ -216,9 +265,14 @@ function buildFocusFromNotion(payload) {
 
   return {
     headline: 'Weekly focus from Notion',
-    body: 'Add Needs improvement and Things to try under last week\'s log in Notion — the card updates on refresh.',
+    body: prev?.matchedNotionWeek === false || !weekMatches
+      ? `No Notion log found for ${weekLabel}. Add Needs improvement and Things to try under that week in Notion.`
+      : `Add Needs improvement and Things to try under ${weekLabel} in Notion — the card updates on refresh.`,
     cues: [],
     sections: [],
+    weekLabel,
+    weekStart: expectedRange.start,
+    weekEnd: expectedRange.end,
     generated: payload.updatedAt || new Date().toISOString(),
   };
 }
@@ -542,7 +596,7 @@ function notionPayloadRevision(payload) {
   const overview = `${payload.weeklyOverview?.focus || ''}|${payload.weeklyOverview?.drill || ''}`;
   const prev = payload.previousWeekFocus;
   const prevBlob = prev
-    ? [...(prev.needsImprovement || []), ...(prev.thingsToTry || [])].join('\n')
+    ? `${prev.weekStart || ''}|${prev.weekEnd || ''}|${[...(prev.needsImprovement || []), ...(prev.thingsToTry || [])].join('\n')}`
     : '';
   const latest = payload.latestDaily || payload.sessions?.[0];
   const latestBlob = latest
