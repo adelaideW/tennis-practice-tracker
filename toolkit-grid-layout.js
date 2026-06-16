@@ -48,6 +48,61 @@
     return containerPadding[1] * 2 + margin[1] + maxRow * rowHeight + Math.max(0, maxRow - 1) * margin[1] + margin[1];
   }
 
+  function getItemHeightPx(item, config) {
+    if (item.expanded && typeof item.measuredPx === 'number' && item.measuredPx > 0) {
+      return item.measuredPx;
+    }
+    var rowHeight = config.rowHeight;
+    var marginY = config.margin[1];
+    return rowHeight * item.h + Math.max(0, item.h - 1) * marginY;
+  }
+
+  function calcDashboardPositions(items, config, containerWidth) {
+    if (!items || !items.length) return [];
+    var margin = config.margin;
+    var marginY = margin[1];
+    var containerPadding = config.containerPadding || [0, 0];
+    var colWidth = calcColWidth(containerWidth, config.cols, margin, containerPadding);
+    var rowHeights = {};
+    var maxY = 0;
+
+    items.forEach(function (item) {
+      var h = getItemHeightPx(item, config);
+      rowHeights[item.y] = Math.max(rowHeights[item.y] || 0, h);
+      maxY = Math.max(maxY, item.y);
+    });
+
+    var rowTops = {};
+    var currentTop = containerPadding[1] + marginY;
+    for (var y = 0; y <= maxY; y++) {
+      rowTops[y] = currentTop;
+      if (rowHeights[y]) {
+        currentTop += rowHeights[y] + marginY;
+      }
+    }
+
+    return items.map(function (item) {
+      var width = colWidth * item.w + Math.max(0, item.w - 1) * margin[0];
+      var height = getItemHeightPx(item, config);
+      var left = containerPadding[0] + margin[0] + item.x * (colWidth + margin[0]);
+      var top = rowTops[item.y] != null ? rowTops[item.y] : currentTop;
+      return { i: item.i, left: left, top: top, width: width, height: height };
+    });
+  }
+
+  function calcContainerHeightFromPositions(positions, config) {
+    if (!positions || !positions.length) {
+      return config.rowHeight + config.margin[1] * 2;
+    }
+    var maxBottom = 0;
+    positions.forEach(function (p) {
+      maxBottom = Math.max(maxBottom, p.top + p.height);
+    });
+    var marginY = config.margin[1];
+    var containerPadding = config.containerPadding || [0, 0];
+    return maxBottom + marginY + containerPadding[1];
+  }
+
   function compactVertical(items, cols) {
     var sorted = items.slice().sort(function (a, b) {
       return a.y - b.y || a.x - b.x;
@@ -162,7 +217,10 @@
     collides: collides,
     calcColWidth: calcColWidth,
     calcPosition: calcPosition,
+    calcDashboardPositions: calcDashboardPositions,
     calcContainerHeight: calcContainerHeight,
+    calcContainerHeightFromPositions: calcContainerHeightFromPositions,
+    getItemHeightPx: getItemHeightPx,
     compactVertical: compactVertical,
     reflowPreserveLayout: reflowPreserveLayout,
     getDropSlot: getDropSlot,

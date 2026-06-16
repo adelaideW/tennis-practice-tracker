@@ -2384,8 +2384,9 @@ function useDraggableDashboardGrid({ storageKey, loadLayout, makeDefaultLayout, 
     const preview = draggingId && dropSlot
       ? TGL.applyDropSlot(layout.items, draggingId, dropSlot)
       : layout.items;
-    return TGL.calcContainerHeight(preview, gridConfig);
-  }, [layout.mode, layout.items, draggingId, dropSlot, gridConfig]);
+    const positions = TGL.calcDashboardPositions(preview, gridConfig, containerWidth);
+    return TGL.calcContainerHeightFromPositions(positions, gridConfig);
+  }, [layout.mode, layout.items, draggingId, dropSlot, gridConfig, containerWidth]);
 
   const attachDrag = useC1((cardId, ev) => {
     if (!TGL) return;
@@ -2537,19 +2538,23 @@ function useDraggableDashboardGrid({ storageKey, loadLayout, makeDefaultLayout, 
           return { ...item, expanded: true };
         }
         const defaultH = item.defaultH ?? item.h;
-        return { ...item, expanded: false, h: defaultH };
+        return { ...item, expanded: false, h: defaultH, measuredPx: undefined };
       });
       const reflowed = TGL ? TGL.reflowPreserveLayout(items, gridConfig.cols) : items;
       return { ...prev, items: reflowed };
     });
   }, [gridConfig.cols, updateLayout]);
 
-  const setItemGridHeight = useC1((cardId, h) => {
+  const setItemGridHeight = useC1((cardId, h, measuredPx) => {
     if (!TGL) return;
     updateLayout((prev) => {
       const items = prev.items.map((item) => {
         if (item.i !== cardId) return item;
-        return { ...item, h: TGL.clamp(h, 1, 24) };
+        return {
+          ...item,
+          h: TGL.clamp(h, 1, 24),
+          measuredPx: typeof measuredPx === 'number' ? measuredPx : item.measuredPx,
+        };
       });
       const reflowed = TGL.reflowPreserveLayout(items, gridConfig.cols);
       return { ...prev, items: reflowed };
@@ -2610,11 +2615,23 @@ function DashboardGrid({
   const handleMeasureExpanded = useC1((cardId, panelEl) => {
     const item = layout.items.find((it) => it.i === cardId);
     const minRows = item?.defaultH ?? item?.h ?? DEFAULT_GRID_H;
+    const measuredPx = panelEl.offsetHeight;
     const rows = measurePanelGridRows(panelEl, gridConfig, minRows);
-    if (item && item.h !== rows) {
-      setItemGridHeight(cardId, rows);
+    if (item && (item.h !== rows || item.measuredPx !== measuredPx)) {
+      setItemGridHeight(cardId, rows, measuredPx);
     }
   }, [layout.items, gridConfig, setItemGridHeight]);
+
+  const dashboardPositions = useM1(() => {
+    if (!TGL || layout.mode !== 'dashboard') return null;
+    const items = layout.mode === 'dashboard' ? dashboardLayout : layout.items;
+    return TGL.calcDashboardPositions(items, gridConfig, containerWidth);
+  }, [layout.mode, dashboardLayout, layout.items, gridConfig, containerWidth]);
+
+  const positionById = useM1(() => {
+    if (!dashboardPositions) return {};
+    return Object.fromEntries(dashboardPositions.map((p) => [p.i, p]));
+  }, [dashboardPositions]);
 
   return (
     <div
@@ -2640,7 +2657,7 @@ function DashboardGrid({
         )}
         {(layout.mode === 'dashboard' ? dashboardLayout : layout.items).map((item) => {
           const pixelStyle = layout.mode === 'dashboard' && TGL
-            ? TGL.calcPosition(item, gridConfig, containerWidth)
+            ? (positionById[item.i] || TGL.calcPosition(item, gridConfig, containerWidth))
             : null;
           return (
             <ToolkitPanel
@@ -2763,7 +2780,7 @@ function ToolkitPanel({
         left: pixelStyle.left,
         top: pixelStyle.top,
         width: pixelStyle.width,
-        height: expanded ? 'auto' : pixelStyle.height,
+        height: expanded && item.measuredPx ? item.measuredPx : pixelStyle.height,
       }
     : expanded
       ? { '--panel-min-h': `${gridHeight}px`, height: 'auto' }

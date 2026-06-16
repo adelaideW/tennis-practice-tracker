@@ -1466,7 +1466,7 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   transition: left 200ms ease, top 200ms ease, width 200ms ease, height 200ms ease;
 }
 .toolkit-panel.is-panel-expanded {
-  overflow: visible;
+  overflow: hidden;
 }
 .toolkit-panel.is-panel-expanded:not(.is-dashboard) {
   height: auto;
@@ -1580,9 +1580,13 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   min-height: auto;
   max-height: none;
   scrollbar-gutter: auto;
-  padding-bottom: 16px;
+  padding: 14px 16px 16px;
+  box-sizing: border-box;
 }
 .toolkit-panel.is-panel-expanded .toolkit-panel-body > :last-child {
+  margin-bottom: 0;
+}
+.toolkit-panel.is-panel-expanded .focus-body ul {
   margin-bottom: 0;
 }
 .toolkit-panel.is-panel-expanded .focus-body li:last-child,
