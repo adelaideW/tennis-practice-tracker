@@ -70,9 +70,17 @@ function getActivityTooltipStyle(clientX, clientY) {
   };
 }
 
+function clampActivityZoom(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function ActivityChart({ entries, range = '7d' }) {
   const [hoverIdx, setHoverIdx] = useS1(null);
   const [tooltipPos, setTooltipPos] = useS1(null);
+  const [zoom, setZoom] = useS1(1);
+  const [scrollMaxH, setScrollMaxH] = useS1(0);
+  const wrapRef = useR1(null);
+  const scrollRef = useR1(null);
 
   const updateTooltipPos = useC1((e) => {
     setTooltipPos({ x: e.clientX, y: e.clientY });
@@ -82,6 +90,59 @@ function ActivityChart({ entries, range = '7d' }) {
     setHoverIdx(null);
     setTooltipPos(null);
   }, []);
+
+  useE1(() => {
+    setZoom(1);
+    setHoverIdx(null);
+    setTooltipPos(null);
+  }, [range]);
+
+  useE1(() => {
+    if (range === '7d') return undefined;
+    const wrap = wrapRef.current;
+    if (!wrap || typeof ResizeObserver === 'undefined') return undefined;
+
+    const measure = () => {
+      const head = wrap.querySelector('.activity-chart-head');
+      const headH = head ? head.offsetHeight : 0;
+      setScrollMaxH(Math.max(52, wrap.clientHeight - headH));
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(wrap);
+    return () => ro.disconnect();
+  }, [range]);
+
+  const getMaxZoom = useC1(() => {
+    if (range === '7d') return 1;
+    const chartFootprint = 36 + 14 + 4;
+    return scrollMaxH > 0 ? Math.max(1, scrollMaxH / chartFootprint) : 2.4;
+  }, [range, scrollMaxH]);
+
+  useE1(() => {
+    if (range === '7d') return;
+    const mz = getMaxZoom();
+    setZoom((prev) => clampActivityZoom(prev, 1, mz));
+  }, [range, getMaxZoom]);
+
+  const bumpZoom = useC1((delta) => {
+    setZoom((prev) => clampActivityZoom(prev + delta, 1, getMaxZoom()));
+  }, [getMaxZoom]);
+
+  const handleWheel = useC1((e) => {
+    if (range === '7d') return;
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    bumpZoom(e.deltaY > 0 ? -0.12 : 0.12);
+  }, [range, bumpZoom]);
+
+  useE1(() => {
+    const el = scrollRef.current;
+    if (!el || range === '7d') return undefined;
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [range, handleWheel]);
 
   const days = useM1(() => {
     const minutesOnDate = (iso) => entries
@@ -163,10 +224,18 @@ function ActivityChart({ entries, range = '7d' }) {
   const totalHrs = (totalMins / 60).toFixed(1);
   const n = Math.max(days.length, 1);
   const maxMins = Math.max(...days.map((d) => d.mins), 60);
-  const W = range === '30d' ? 520 : range === 'all' ? Math.max(320, n * 14) : 260;
-  const H = 72;
-  const padX = 12;
-  const padY = 8;
+
+  const isZoomable = range === '30d' || range === 'all';
+  const basePlotH = range === '7d' ? 40 : 36;
+  const labelH = 14;
+  const maxZoom = isZoomable ? getMaxZoom() : 1;
+  const zoomLevel = isZoomable ? clampActivityZoom(zoom, 1, maxZoom) : 1;
+
+  const baseW = range === '7d' ? 220 : range === '30d' ? 440 : Math.max(260, n * 11);
+  const W = isZoomable ? baseW * zoomLevel : baseW;
+  const H = basePlotH * zoomLevel;
+  const padX = range === '7d' ? 10 : 12;
+  const padY = range === '7d' ? 6 : 8;
   const pts = days.map((d, i) => {
     const x = padX + (n <= 1 ? 0 : i / (n - 1)) * (W - 2 * padX);
     const y = H - padY - (d.mins / maxMins) * (H - 2 * padY);
@@ -175,17 +244,57 @@ function ActivityChart({ entries, range = '7d' }) {
   const polyline = pts.map((p) => `${p.x},${p.y}`).join(' ');
   const area = `${pts[0].x},${H} ${polyline} ${pts[pts.length - 1].x},${H}`;
   const gradId = `actGrad-${range}`;
-  const chartHeight = H + 20;
+  const chartHeight = H + labelH + 4;
   const hoverPt = hoverIdx != null ? pts[hoverIdx] : null;
+  const hitR = range === '7d' ? 9 : range === '30d' ? 10 : 12;
+  const dotR = hoverIdx != null ? 4.5 : range === '7d' ? 3 : range === '30d' || range === 'all' ? 2.8 : 3.5;
+  const labelSize = range === '7d' ? 7 : 8;
+  const strokeW = range === '7d' ? 1.9 : 2.2;
 
   return (
     <div
-      className="activity-chart-wrap"
+      ref={wrapRef}
+      className={`activity-chart-wrap${isZoomable ? ' is-zoomable' : ' is-7d'}`}
       onMouseLeave={clearHover}
     >
-      <div className="activity-total">{totalHrs} hrs played</div>
-      <div className={`activity-chart-scroll${range === 'all' ? ' is-all-time' : ''}`}>
-        <svg width="100%" viewBox={`0 0 ${W} ${chartHeight}`} style={{ overflow: 'visible', display: 'block' }}>
+      <div className="activity-chart-head">
+        <div className="activity-total">{totalHrs} hrs played</div>
+        {isZoomable && (
+          <div className="activity-chart-zoom" role="group" aria-label="Chart zoom">
+            <button
+              type="button"
+              className="activity-zoom-btn"
+              aria-label="Zoom out"
+              disabled={zoomLevel <= 1}
+              onClick={() => bumpZoom(-0.2)}
+            >
+              −
+            </button>
+            <span className="activity-zoom-label">{Math.round(zoomLevel * 100)}%</span>
+            <button
+              type="button"
+              className="activity-zoom-btn"
+              aria-label="Zoom in"
+              disabled={zoomLevel >= maxZoom - 0.01}
+              onClick={() => bumpZoom(0.2)}
+            >
+              +
+            </button>
+          </div>
+        )}
+      </div>
+      <div
+        ref={scrollRef}
+        className={`activity-chart-scroll${range === '7d' ? ' is-7d' : ' is-wide'}`}
+        style={isZoomable && scrollMaxH > 0 ? { maxHeight: scrollMaxH } : undefined}
+      >
+        <svg
+          width={isZoomable ? W : '100%'}
+          height={chartHeight}
+          viewBox={`0 0 ${W} ${chartHeight}`}
+          preserveAspectRatio="xMinYMid meet"
+          style={isZoomable ? { minWidth: W, display: 'block' } : { overflow: 'visible', display: 'block' }}
+        >
           <defs>
             <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--chart-1)" stopOpacity="0.25" />
@@ -193,13 +302,13 @@ function ActivityChart({ entries, range = '7d' }) {
             </linearGradient>
           </defs>
           <polygon points={area} fill={`url(#${gradId})`} />
-          <polyline points={polyline} fill="none" stroke="var(--chart-1)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          <polyline points={polyline} fill="none" stroke="var(--chart-1)" strokeWidth={strokeW} strokeLinecap="round" strokeLinejoin="round" />
           {pts.map((p, i) => (
             <g key={i}>
               <circle
                 cx={p.x}
                 cy={p.y}
-                r={range === '30d' ? 10 : 12}
+                r={hitR}
                 fill="transparent"
                 onMouseEnter={(e) => {
                   setHoverIdx(i);
@@ -212,7 +321,7 @@ function ActivityChart({ entries, range = '7d' }) {
                 <circle
                   cx={p.x}
                   cy={p.y}
-                  r={hoverIdx === i ? 4.5 : range === '30d' || range === 'all' ? 2.8 : 3.5}
+                  r={dotR}
                   fill={hoverIdx === i ? 'var(--accent)' : 'var(--chart-1)'}
                   stroke="var(--surface)"
                   strokeWidth="1.5"
@@ -220,7 +329,7 @@ function ActivityChart({ entries, range = '7d' }) {
                 />
               )}
               {p.label && (
-                <text x={p.x} y={H + 16} textAnchor="middle" fill="var(--ink-3)" fontSize="8" fontFamily="var(--mono)" letterSpacing="0.6" pointerEvents="none">
+                <text x={p.x} y={H + labelH} textAnchor="middle" fill="var(--ink-3)" fontSize={labelSize} fontFamily="var(--mono)" letterSpacing="0.6" pointerEvents="none">
                   {p.label.toUpperCase()}
                 </text>
               )}
@@ -395,7 +504,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
         );
       case 'activity':
         return (
-          <>
+          <div className="activity-card-inner">
             <div className="activity-tabs activity-tabs-in-panel" role="tablist" aria-label="Activity range">
               {[
                 { k: '7d', l: '7 days' },
@@ -415,7 +524,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
               ))}
             </div>
             <ActivityChart entries={todayEntries} range={activityRange} />
-          </>
+          </div>
         );
       case 'recent':
         return recentSessions.length === 0 ? (
@@ -527,7 +636,11 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
           {...todayGrid}
           cardTitles={TODAY_CARD_TITLES}
           renderCardContent={renderTodayCard}
-          getPanelVariant={(id) => (id === 'focus' ? 'toolkit-panel--focus' : '')}
+          getPanelVariant={(id) => {
+            if (id === 'focus') return 'toolkit-panel--focus';
+            if (id === 'activity') return 'toolkit-panel--activity';
+            return '';
+          }}
         />
       </div>
     </>

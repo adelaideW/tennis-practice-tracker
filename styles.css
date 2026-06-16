@@ -560,23 +560,93 @@ input, textarea, select { font-family: inherit; }
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-3);
-  margin-bottom: 10px;
+  margin: 0;
+}
+.activity-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+.activity-chart-zoom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.activity-zoom-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--r-xs);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 600;
+  cursor: pointer;
+}
+.activity-zoom-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-deep);
+}
+.activity-zoom-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.activity-zoom-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  min-width: 36px;
+  text-align: center;
+}
+.activity-card-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+.toolkit-panel--activity .toolkit-panel-body {
+  display: flex;
+  flex-direction: column;
 }
 .activity-chart-wrap {
   position: relative;
   overflow: visible;
-  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.activity-chart-wrap.is-7d {
+  flex: none;
 }
 .activity-chart-scroll {
   overflow: visible;
 }
-.activity-chart-scroll.is-all-time {
-  overflow-x: auto;
-  overflow-y: visible;
-  padding-bottom: 4px;
+.activity-chart-scroll.is-7d {
+  overflow: visible;
 }
-.activity-chart-scroll.is-all-time svg {
-  min-width: 360px;
+.activity-chart-scroll.is-wide {
+  flex: 1;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-4) transparent;
+}
+.activity-chart-scroll.is-wide::-webkit-scrollbar {
+  height: 6px;
+}
+.activity-chart-scroll.is-wide::-webkit-scrollbar-thumb {
+  background: var(--ink-4);
+  border-radius: 4px;
 }
 .activity-chart-wrap svg {
   cursor: crosshair;
