@@ -222,19 +222,14 @@ function buildFocusFromNotion(payload) {
   const expectedLabel = formatWeekRangeLabel(expectedRange.startDate, expectedRange.endDate);
 
   const prev = payload.previousWeekFocus;
-  const weekMatches = !prev?.weekStart || prev.weekStart === expectedRange.start;
-  const weekLabel = weekMatches && prev?.weekLabel ? prev.weekLabel : expectedLabel;
+  const weekLabel = prev?.weekLabel || expectedLabel;
 
-  const needsImprovement = weekMatches
-    ? (prev?.needsImprovement || [])
-        .map((line) => String(line).replace(/^\*+/, '').trim())
-        .filter(Boolean)
-    : [];
-  const thingsToTry = weekMatches
-    ? (prev?.thingsToTry || [])
-        .map((line) => String(line).replace(/^\*+/, '').trim())
-        .filter(Boolean)
-    : [];
+  const needsImprovement = (prev?.needsImprovement || [])
+    .map((line) => String(line).replace(/^\*+/, '').trim())
+    .filter(Boolean);
+  const thingsToTry = (prev?.thingsToTry || [])
+    .map((line) => String(line).replace(/^\*+/, '').trim())
+    .filter(Boolean);
 
   if (needsImprovement.length || thingsToTry.length) {
     const headline = thingsToTry[0] || needsImprovement[0] || 'Weekly focus from Notion';
@@ -245,7 +240,9 @@ function buildFocusFromNotion(payload) {
     if (thingsToTry.length) {
       sections.push({ title: 'Things to try', items: thingsToTry });
     }
-    const body = `From ${weekLabel} — carry these into this week's practice.`;
+    const body = prev?.usedFallbackWeek
+      ? `From ${weekLabel} — latest Notion weekly log with focus notes. Carry these into this week's practice.`
+      : `From ${weekLabel} — carry these into this week's practice.`;
 
     return {
       headline: String(headline).replace(/^\*+/, '').trim(),
@@ -253,8 +250,8 @@ function buildFocusFromNotion(payload) {
       cues: [],
       sections,
       weekLabel,
-      weekStart: expectedRange.start,
-      weekEnd: expectedRange.end,
+      weekStart: prev?.weekStart || expectedRange.start,
+      weekEnd: prev?.weekEnd || expectedRange.end,
       generated: payload.updatedAt || new Date().toISOString(),
     };
   }
@@ -263,16 +260,18 @@ function buildFocusFromNotion(payload) {
     return { ...payload.focus, generated: payload.updatedAt || new Date().toISOString() };
   }
 
+  const targetLabel = prev?.targetWeekLabel || expectedLabel;
+
   return {
     headline: 'Weekly focus from Notion',
-    body: prev?.matchedNotionWeek === false || !weekMatches
-      ? `No Notion log found for ${weekLabel}. Add Needs improvement and Things to try under that week in Notion.`
-      : `Add Needs improvement and Things to try under ${weekLabel} in Notion — the card updates on refresh.`,
+    body: prev?.matchedNotionWeek === false
+      ? `No Notion log found for ${targetLabel}. Add Needs improvement and Things to try under that week in Notion.`
+      : `Add Needs improvement and Things to try under ${targetLabel} in Notion — the card updates on refresh.`,
     cues: [],
     sections: [],
-    weekLabel,
-    weekStart: expectedRange.start,
-    weekEnd: expectedRange.end,
+    weekLabel: targetLabel,
+    weekStart: prev?.targetWeekStart || expectedRange.start,
+    weekEnd: prev?.targetWeekEnd || expectedRange.end,
     generated: payload.updatedAt || new Date().toISOString(),
   };
 }

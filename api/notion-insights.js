@@ -489,14 +489,41 @@ function dedupeStrings(items) {
     });
 }
 
+function normalizeSectionTitle(title) {
+  return String(title || '').trim().replace(/\s*[:*]+\s*$/g, '').trim();
+}
+
 function isNeedsImprovementSection(title) {
-  return /^needs?\s*improvement/i.test(String(title || '').trim());
+  const t = normalizeSectionTitle(title);
+  return /^(?:needs?\s*improvement|areas?\s*to\s*improve|weakness(?:es)?)\b/i.test(t);
 }
 
 function isThingsToTrySection(title) {
-  const t = String(title || '').trim();
+  const t = normalizeSectionTitle(title);
   if (/priorit/i.test(t)) return false;
-  return /^things to (?:do\/try|try)\b/i.test(t);
+  return /^things to (?:do\/try|try|do)\b/i.test(t);
+}
+
+function isHeadingBlock(type) {
+  return type === 'heading_1' || type === 'heading_2' || type === 'heading_3';
+}
+
+function collectFollowingBullets(siblings, startIndex) {
+  const out = [];
+  for (let i = startIndex; i < siblings.length; i += 1) {
+    const item = siblings[i];
+    if (isHeadingBlock(item.type) || item.type === 'toggle') break;
+    if (item.type === 'bulleted_list_item' || item.type === 'numbered_list_item') {
+      const line = blockPlainText(item);
+      if (line) out.push(line);
+    } else if (item.type === 'paragraph') {
+      const line = blockPlainText(item);
+      if (line && !/^(focus|drill)\s*:/i.test(line)) out.push(line);
+    } else if (item.type !== 'divider') {
+      break;
+    }
+  }
+  return out;
 }
 
 async function collectAllBullets(parentId) {
@@ -524,29 +551,61 @@ async function collectAllBullets(parentId) {
 }
 
 async function parseWeekFocusSections(weekToggleId) {
-  const weekChildren = await notionFetchAllChildren(weekToggleId);
   const needsImprovement = [];
   const thingsToTry = [];
 
-  for (const child of weekChildren) {
-    const title = blockPlainText(child);
-    const isSection =
-      child.type === 'toggle' || child.type === 'heading_2' || child.type === 'heading_3';
-    if (!isSection) continue;
-
-    if (isNeedsImprovementSection(title)) {
-      needsImprovement.push(...(await collectAllBullets(child.id)));
-      continue;
+  async function absorbSection(block, siblings, index, bucket) {
+    if (block.type === 'toggle' && block.has_children) {
+      bucket.push(...(await collectAllBullets(block.id)));
+      return;
     }
-    if (isThingsToTrySection(title)) {
-      thingsToTry.push(...(await collectAllBullets(child.id)));
+    if (isHeadingBlock(block.type)) {
+      bucket.push(...collectFollowingBullets(siblings, index + 1));
+      return;
+    }
+    if (block.type === 'bulleted_list_item' || block.type === 'numbered_list_item') {
+      bucket.push(...(await collectAllBullets(block.id)));
     }
   }
+
+  async function walk(parentId) {
+    const children = await notionFetchAllChildren(parentId);
+    for (let i = 0; i < children.length; i += 1) {
+      const child = children[i];
+      const title = blockPlainText(child);
+      const isSection =
+        child.type === 'toggle'
+        || isHeadingBlock(child.type)
+        || child.type === 'bulleted_list_item'
+        || child.type === 'numbered_list_item';
+
+      if (isSection && isNeedsImprovementSection(title)) {
+        await absorbSection(child, children, i, needsImprovement);
+        continue;
+      }
+      if (isSection && isThingsToTrySection(title)) {
+        await absorbSection(child, children, i, thingsToTry);
+        continue;
+      }
+
+      if (child.type === 'toggle' && child.has_children) {
+        await walk(child.id);
+      }
+    }
+  }
+
+  await walk(weekToggleId);
 
   return {
     needsImprovement: dedupeStrings(needsImprovement),
     thingsToTry: dedupeStrings(thingsToTry),
   };
+}
+
+async function tryWeekFocusSections(weekToggle) {
+  const sections = await parseWeekFocusSections(weekToggle.id);
+  const range = parseWeekToggleRange(blockPlainText(weekToggle));
+  return { weekToggle, sections, range };
 }
 
 /** Last completed Mon–Sun week → Needs improvement + Things to try from matching Notion toggle. */
@@ -574,26 +633,55 @@ async function parsePreviousWeekFocus(weeklyContainerId, today = new Date()) {
   }
 
   const matched = findWeekToggleForRange(weekToggles, targetRange);
-  if (!matched) {
+  let chosen = matched ? await tryWeekFocusSections(matched) : null;
+
+  const hasContent = (entry) =>
+    entry?.sections?.needsImprovement?.length || entry?.sections?.thingsToTry?.length;
+
+  if (!hasContent(chosen)) {
+    for (const weekToggle of sortWeekToggles(weekToggles)) {
+      const range = parseWeekToggleRange(blockPlainText(weekToggle));
+      if (range?.start && range.start > targetRange.start) continue;
+      const attempt = await tryWeekFocusSections(weekToggle);
+      if (hasContent(attempt)) {
+        chosen = attempt;
+        break;
+      }
+    }
+  }
+
+  if (!chosen || !hasContent(chosen)) {
     return {
       weekLabel,
       weekStart: targetRange.start,
       weekEnd: targetRange.end,
-      notionWeekTitle: null,
-      matchedNotionWeek: false,
+      targetWeekLabel: weekLabel,
+      targetWeekStart: targetRange.start,
+      targetWeekEnd: targetRange.end,
+      notionWeekTitle: matched ? blockPlainText(matched) : null,
+      matchedNotionWeek: Boolean(matched),
+      usedFallbackWeek: false,
       needsImprovement: [],
       thingsToTry: [],
     };
   }
 
-  const sections = await parseWeekFocusSections(matched.id);
+  const { weekToggle, sections, range } = chosen;
+  const usedFallback = !range?.start || range.start !== targetRange.start;
+  const weekLabelOut = usedFallback && range?.startDate && range?.endDate
+    ? formatWeekRangeLabel(range.startDate, range.endDate)
+    : weekLabel;
 
   return {
-    weekLabel,
-    weekStart: targetRange.start,
-    weekEnd: targetRange.end,
-    notionWeekTitle: blockPlainText(matched),
-    matchedNotionWeek: true,
+    weekLabel: weekLabelOut,
+    weekStart: usedFallback ? range.start : targetRange.start,
+    weekEnd: usedFallback ? range.end : targetRange.end,
+    targetWeekLabel: weekLabel,
+    targetWeekStart: targetRange.start,
+    targetWeekEnd: targetRange.end,
+    notionWeekTitle: blockPlainText(weekToggle),
+    matchedNotionWeek: !usedFallback && Boolean(matched),
+    usedFallbackWeek: usedFallback,
     ...sections,
   };
 }
@@ -1265,6 +1353,20 @@ export default async function handler(req, res) {
       previousWeekFocus = previousWeekLive;
       if (previousWeekLive.needsImprovement?.length || previousWeekLive.thingsToTry?.length) {
         weeklySource = 'notion';
+      } else {
+        const snapPrev = snap.previousWeekFocus;
+        if (snapPrev?.needsImprovement?.length || snapPrev?.thingsToTry?.length) {
+          previousWeekFocus = {
+            ...snapPrev,
+            ...previousWeekLive,
+            needsImprovement: snapPrev.needsImprovement,
+            thingsToTry: snapPrev.thingsToTry,
+            weekLabel: snapPrev.weekLabel || previousWeekLive.weekLabel,
+            weekStart: snapPrev.weekStart || previousWeekLive.weekStart,
+            weekEnd: snapPrev.weekEnd || previousWeekLive.weekEnd,
+            usedFallbackWeek: snapPrev.usedFallbackWeek ?? previousWeekLive.usedFallbackWeek,
+          };
+        }
       }
     }
 
@@ -1281,7 +1383,7 @@ export default async function handler(req, res) {
       latestDaily: sessions[0] || snap.latestDaily,
       cheatNotes,
       cheatNotesSource,
-      parserVersion: 'cheat-filter-v12-calendar-week-focus',
+      parserVersion: 'cheat-filter-v13-week-focus-fallback',
     };
 
     responseCache = { updatedAt: pageUpdatedAt, at: Date.now(), payload };
