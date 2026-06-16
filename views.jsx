@@ -247,7 +247,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
   const [refreshSeed, setRefreshSeed] = useS1(0);
   const [lastRefreshedAt, setLastRefreshedAt] = useS1(null);
   const [activityRange, setActivityRange] = useS1('7d');
-  const focusInnerRef = useR1(null);
+
   const todayDashboard = useM1(() => {
     if (notionPayload && window.applyNotionPayload) {
       return window.applyNotionPayload({ ...notionPayload, _refreshSeed: refreshSeed });
@@ -327,44 +327,11 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
     makeDefaultLayout: makeDefaultTodayLayout,
   });
 
-  const focusItem = todayGrid.layout.items.find((it) => it.i === 'focus');
-  const focusExpanded = !!focusItem?.expanded;
-  const focusItemH = focusItem?.h;
-  const { setItemGridHeight, gridConfig } = todayGrid;
-
-  useE1(() => {
-    if (!focusExpanded || !focusInnerRef.current || state.notionLoading) return undefined;
-    let cancelled = false;
-    const measure = () => {
-      if (cancelled || !focusInnerRef.current) return;
-      const panel = focusInnerRef.current.closest('.toolkit-panel');
-      if (!panel) return;
-      const headerH = panel.querySelector('.toolkit-panel-header')?.offsetHeight || 44;
-      const bodyEl = panel.querySelector('.toolkit-panel-body');
-      const bodyStyle = bodyEl ? window.getComputedStyle(bodyEl) : null;
-      const padY = bodyStyle
-        ? parseFloat(bodyStyle.paddingTop) + parseFloat(bodyStyle.paddingBottom)
-        : 32;
-      const contentH = focusInnerRef.current.scrollHeight;
-      const totalPx = headerH + contentH + padY + 6;
-      const rows = gridRowsFromPanelPx(totalPx, gridConfig);
-      const targetRows = Math.max(DEFAULT_GRID_H, rows);
-      if (focusItemH !== targetRows) {
-        setItemGridHeight('focus', targetRows);
-      }
-    };
-    const raf = requestAnimationFrame(measure);
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(raf);
-    };
-  }, [focusExpanded, focusContentKey, state.notionLoading, focusItemH, gridConfig, setItemGridHeight]);
-
   const renderTodayCard = (id) => {
     switch (id) {
       case 'focus':
         return (
-          <div className={`today-focus-inner${focusExpanded ? ' is-expanded' : ''}`} ref={focusInnerRef}>
+          <div className="today-focus-inner" key={focusContentKey}>
             <div className="ball-deco" aria-hidden="true"></div>
             <h2 className="today-focus-headline">
               {state.notionLoading
@@ -561,7 +528,6 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
         cardTitles={TODAY_CARD_TITLES}
         renderCardContent={renderTodayCard}
         getPanelVariant={(id) => (id === 'focus' ? 'toolkit-panel--focus' : '')}
-        isExpandable={(id) => id === 'focus' || id === 'activity'}
       />
     </>
   );
@@ -1998,13 +1964,15 @@ const TODAY_LAYOUT_STORAGE = 'ace-today-layout';
 const TERMS_LAYOUT_STORAGE = 'ace-toolkit-terms-layout';
 const TOOLKIT_CARD_IDS = ['timer', 'gear', 'terms'];
 const TODAY_CARD_IDS = ['focus', 'conditions', 'overview', 'skills', 'activity', 'recent'];
-const DEFAULT_CARD_H = 280;
-const EXPANDED_TERMS_H = 480;
-const EXPANDED_ACTIVITY_H = 360;
 const TERMS_GRID_H = 6;
 const TERMS_GRID_H_EXPANDED = 10;
 const DEFAULT_GRID_H = 6;
 const TGL = typeof window !== 'undefined' ? window.ToolkitGridLayout : null;
+
+function stampGridItem(item) {
+  const base = { expanded: false, ...item };
+  return { ...base, defaultH: base.defaultH ?? base.h };
+}
 
 function gridRowsFromPanelPx(px, config) {
   const rowHeight = config?.rowHeight ?? 30;
@@ -2017,6 +1985,17 @@ function gridRowsToPanelPx(rows, config) {
   const rowHeight = config?.rowHeight ?? 30;
   const marginY = config?.margin?.[1] ?? 24;
   return rows * rowHeight + Math.max(0, rows - 1) * marginY;
+}
+
+function measurePanelGridRows(panelEl, gridConfig, minRows) {
+  const headerH = panelEl.querySelector('.toolkit-panel-header')?.offsetHeight || 44;
+  const bodyEl = panelEl.querySelector('.toolkit-panel-body');
+  if (!bodyEl) return minRows;
+  const bodyStyle = window.getComputedStyle(bodyEl);
+  const padY = parseFloat(bodyStyle.paddingTop) + parseFloat(bodyStyle.paddingBottom);
+  const contentH = bodyEl.scrollHeight;
+  const totalPx = headerH + contentH + padY + 6;
+  return Math.max(minRows, gridRowsFromPanelPx(totalPx, gridConfig));
 }
 
 const TOOLKIT_CARD_TITLES = {
@@ -2034,12 +2013,6 @@ const TODAY_CARD_TITLES = {
   recent: 'Recent Sessions',
 };
 
-const EXPANDABLE_CARD_HEIGHTS = {
-  terms: { collapsed: TERMS_GRID_H, expanded: TERMS_GRID_H_EXPANDED },
-  focus: { collapsed: DEFAULT_GRID_H, expanded: DEFAULT_GRID_H },
-  activity: { collapsed: 8, expanded: 11 },
-};
-
 function getToolkitGridConfig(containerWidth) {
   const isMobile = containerWidth <= 920;
   return {
@@ -2053,63 +2026,63 @@ function getToolkitGridConfig(containerWidth) {
 function makeDefaultToolkitItems(cols) {
   if (cols <= 6) {
     return [
-      { i: 'timer', x: 0, y: 0, w: 6, h: DEFAULT_GRID_H },
-      { i: 'gear', x: 0, y: DEFAULT_GRID_H, w: 6, h: DEFAULT_GRID_H },
-      { i: 'terms', x: 0, y: DEFAULT_GRID_H * 2, w: 6, h: TERMS_GRID_H, expanded: false },
+      stampGridItem({ i: 'timer', x: 0, y: 0, w: 6, h: DEFAULT_GRID_H }),
+      stampGridItem({ i: 'gear', x: 0, y: DEFAULT_GRID_H, w: 6, h: DEFAULT_GRID_H }),
+      stampGridItem({ i: 'terms', x: 0, y: DEFAULT_GRID_H * 2, w: 6, h: TERMS_GRID_H }),
     ];
   }
   return [
-    { i: 'timer', x: 0, y: 0, w: 6, h: DEFAULT_GRID_H },
-    { i: 'gear', x: 6, y: 0, w: 6, h: DEFAULT_GRID_H },
-    { i: 'terms', x: 0, y: DEFAULT_GRID_H, w: 12, h: TERMS_GRID_H, expanded: false },
+    stampGridItem({ i: 'timer', x: 0, y: 0, w: 6, h: DEFAULT_GRID_H }),
+    stampGridItem({ i: 'gear', x: 6, y: 0, w: 6, h: DEFAULT_GRID_H }),
+    stampGridItem({ i: 'terms', x: 0, y: DEFAULT_GRID_H, w: 12, h: TERMS_GRID_H }),
   ];
 }
 
 function makeDefaultTodayItems(cols) {
   if (cols <= 6) {
     return [
-      { i: 'focus', x: 0, y: 0, w: 6, h: DEFAULT_GRID_H, expanded: false },
-      { i: 'conditions', x: 0, y: DEFAULT_GRID_H, w: 6, h: DEFAULT_GRID_H },
-      { i: 'overview', x: 0, y: DEFAULT_GRID_H * 2, w: 6, h: DEFAULT_GRID_H },
-      { i: 'skills', x: 0, y: DEFAULT_GRID_H * 3, w: 6, h: DEFAULT_GRID_H },
-      { i: 'activity', x: 0, y: DEFAULT_GRID_H * 4, w: 6, h: 8, expanded: false },
-      { i: 'recent', x: 0, y: DEFAULT_GRID_H * 4 + 8, w: 6, h: 7 },
+      stampGridItem({ i: 'focus', x: 0, y: 0, w: 6, h: DEFAULT_GRID_H }),
+      stampGridItem({ i: 'conditions', x: 0, y: DEFAULT_GRID_H, w: 6, h: DEFAULT_GRID_H }),
+      stampGridItem({ i: 'overview', x: 0, y: DEFAULT_GRID_H * 2, w: 6, h: DEFAULT_GRID_H }),
+      stampGridItem({ i: 'skills', x: 0, y: DEFAULT_GRID_H * 3, w: 6, h: DEFAULT_GRID_H }),
+      stampGridItem({ i: 'activity', x: 0, y: DEFAULT_GRID_H * 4, w: 6, h: 8 }),
+      stampGridItem({ i: 'recent', x: 0, y: DEFAULT_GRID_H * 4 + 8, w: 6, h: 7 }),
     ];
   }
   return [
-    { i: 'focus', x: 0, y: 0, w: 12, h: DEFAULT_GRID_H, expanded: false },
-    { i: 'conditions', x: 0, y: DEFAULT_GRID_H, w: 4, h: DEFAULT_GRID_H },
-    { i: 'overview', x: 4, y: DEFAULT_GRID_H, w: 4, h: DEFAULT_GRID_H },
-    { i: 'skills', x: 8, y: DEFAULT_GRID_H, w: 4, h: DEFAULT_GRID_H },
-    { i: 'activity', x: 0, y: DEFAULT_GRID_H * 2, w: 8, h: 8, expanded: false },
-    { i: 'recent', x: 8, y: DEFAULT_GRID_H * 2, w: 4, h: 8 },
+    stampGridItem({ i: 'focus', x: 0, y: 0, w: 12, h: DEFAULT_GRID_H }),
+    stampGridItem({ i: 'conditions', x: 0, y: DEFAULT_GRID_H, w: 4, h: DEFAULT_GRID_H }),
+    stampGridItem({ i: 'overview', x: 4, y: DEFAULT_GRID_H, w: 4, h: DEFAULT_GRID_H }),
+    stampGridItem({ i: 'skills', x: 8, y: DEFAULT_GRID_H, w: 4, h: DEFAULT_GRID_H }),
+    stampGridItem({ i: 'activity', x: 0, y: DEFAULT_GRID_H * 2, w: 8, h: 8 }),
+    stampGridItem({ i: 'recent', x: 8, y: DEFAULT_GRID_H * 2, w: 4, h: 8 }),
   ];
 }
 
-function normalizeGridItem(raw, cols, cardIds) {
+function normalizeGridItem(raw, cols, def) {
+  const defaultH = typeof raw.defaultH === 'number' ? raw.defaultH : (def?.defaultH ?? def?.h ?? DEFAULT_GRID_H);
   const item = {
     i: raw.i,
-    x: typeof raw.x === 'number' ? raw.x : 0,
-    y: typeof raw.y === 'number' ? raw.y : 0,
-    w: TGL ? TGL.clamp(typeof raw.w === 'number' ? raw.w : 6, 1, cols) : 6,
-    h: TGL ? TGL.clamp(typeof raw.h === 'number' ? raw.h : DEFAULT_GRID_H, 1, 24) : DEFAULT_GRID_H,
+    x: typeof raw.x === 'number' ? raw.x : (def?.x ?? 0),
+    y: typeof raw.y === 'number' ? raw.y : (def?.y ?? 0),
+    w: TGL ? TGL.clamp(typeof raw.w === 'number' ? raw.w : (def?.w ?? 6), 1, cols) : 6,
+    h: TGL ? TGL.clamp(typeof raw.h === 'number' ? raw.h : defaultH, 1, 24) : defaultH,
+    defaultH,
+    expanded: !!raw.expanded,
   };
-  const expandCfg = EXPANDABLE_CARD_HEIGHTS[item.i];
-  if (expandCfg) {
-    item.expanded = !!raw.expanded;
-    if (item.expanded && item.h <= expandCfg.collapsed) item.h = expandCfg.expanded;
-  }
   item.x = TGL ? TGL.clamp(item.x, 0, Math.max(0, cols - item.w)) : item.x;
   item.y = Math.max(0, item.y);
   return item;
 }
 
 function normalizeToolkitItem(raw, cols) {
-  return normalizeGridItem(raw, cols, TOOLKIT_CARD_IDS);
+  const def = makeDefaultToolkitItems(cols).find((it) => it.i === raw.i);
+  return normalizeGridItem(raw, cols, def);
 }
 
 function normalizeTodayItem(raw, cols) {
-  return normalizeGridItem(raw, cols, TODAY_CARD_IDS);
+  const def = makeDefaultTodayItems(cols).find((it) => it.i === raw.i);
+  return normalizeGridItem(raw, cols, def);
 }
 
 function makeDefaultToolkitLayout(containerWidth) {
@@ -2155,6 +2128,7 @@ function loadGridLayout({ storageKey, cardIds, makeDefaultItems, normalizeItem }
           if (termsItem && old.h > 300) {
             termsItem.expanded = true;
             termsItem.h = TERMS_GRID_H_EXPANDED;
+            termsItem.defaultH = TERMS_GRID_H;
           }
           return layout;
         }
@@ -2200,14 +2174,9 @@ function getItemById(items, id) {
   return items.find((it) => it.i === id) || { i: id, x: 0, y: 0, w: 6, h: DEFAULT_GRID_H };
 }
 
-function getDashboardPanelHeight(id, item, mode, config) {
+function getDashboardPanelHeight(item, mode, config) {
   if (mode === 'grid') {
-    if (id === 'terms' && item.expanded) return EXPANDED_TERMS_H;
-    if (id === 'activity' && item.expanded) return EXPANDED_ACTIVITY_H;
-    if (id === 'focus' && item.expanded) {
-      return gridRowsToPanelPx(item.h, config);
-    }
-    return DEFAULT_CARD_H;
+    return gridRowsToPanelPx(item.h, config);
   }
   return null;
 }
@@ -2427,14 +2396,14 @@ function useDraggableDashboardGrid({ storageKey, loadLayout, makeDefaultLayout }
 
   const toggleExpand = useC1((cardId) => {
     updateLayout((prev) => {
-      const expandCfg = EXPANDABLE_CARD_HEIGHTS[cardId];
       const items = prev.items.map((item) => {
-        if (item.i !== cardId || !expandCfg) return item;
+        if (item.i !== cardId) return item;
         const expanded = !item.expanded;
-        const h = expanded && cardId !== 'focus'
-          ? expandCfg.expanded
-          : expandCfg.collapsed;
-        return { ...item, expanded, h };
+        if (expanded) {
+          return { ...item, expanded: true };
+        }
+        const defaultH = item.defaultH ?? item.h;
+        return { ...item, expanded: false, h: defaultH };
       });
       const compacted = TGL ? TGL.compactVertical(items, gridConfig.cols) : items;
       return { ...prev, items: compacted };
@@ -2496,14 +2465,23 @@ function DashboardGrid({
   attachDrag,
   attachResize,
   toggleExpand,
+  setItemGridHeight,
   dashboardLayout,
   canvasHeight,
   placeholderStyle,
   cardTitles,
   renderCardContent,
   getPanelVariant,
-  isExpandable,
 }) {
+  const handleMeasureExpanded = useC1((cardId, panelEl) => {
+    const item = layout.items.find((it) => it.i === cardId);
+    const minRows = item?.defaultH ?? item?.h ?? DEFAULT_GRID_H;
+    const rows = measurePanelGridRows(panelEl, gridConfig, minRows);
+    if (item && item.h !== rows) {
+      setItemGridHeight(cardId, rows);
+    }
+  }, [layout.items, gridConfig, setItemGridHeight]);
+
   return (
     <div
       ref={wrapRef}
@@ -2539,11 +2517,12 @@ function DashboardGrid({
               item={item}
               pixelStyle={pixelStyle}
               isDragging={draggingId === item.i}
-              showExpand={isExpandable ? isExpandable(item.i) : false}
               expanded={!!item.expanded}
+              gridConfig={gridConfig}
               onDragStart={attachDrag}
               onResizeStart={attachResize}
               onToggleExpand={toggleExpand}
+              onMeasureExpanded={handleMeasureExpanded}
               variant={getPanelVariant ? getPanelVariant(item.i) : ''}
             >
               {renderCardContent(item.i)}
@@ -2562,15 +2541,50 @@ function ToolkitPanel({
   item,
   pixelStyle,
   isDragging,
-  showExpand,
   expanded,
+  gridConfig,
   onDragStart,
   onResizeStart,
   onToggleExpand,
+  onMeasureExpanded,
   variant = '',
   children,
 }) {
-  const gridHeight = getDashboardPanelHeight(id, item, mode, TGL?.DEFAULT_CONFIG);
+  const panelRef = useR1(null);
+  const bodyRef = useR1(null);
+  const [hasOverflow, setHasOverflow] = useS1(false);
+
+  useE1(() => {
+    const body = bodyRef.current;
+    if (!body) return undefined;
+    const check = () => {
+      if (expanded) return;
+      setHasOverflow(body.scrollHeight > body.clientHeight + 2);
+    };
+    check();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(check);
+    ro.observe(body);
+    return () => ro.disconnect();
+  }, [expanded, children]);
+
+  useE1(() => {
+    if (!expanded || !panelRef.current || !onMeasureExpanded) return undefined;
+    let cancelled = false;
+    const run = () => {
+      if (!cancelled && panelRef.current) {
+        onMeasureExpanded(id, panelRef.current);
+      }
+    };
+    const raf = requestAnimationFrame(run);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [expanded, children, id, onMeasureExpanded]);
+
+  const showExpand = hasOverflow || expanded;
+  const gridHeight = getDashboardPanelHeight(item, mode, gridConfig || TGL?.DEFAULT_CONFIG);
   const panelStyle = mode === 'dashboard' && pixelStyle
     ? {
         left: pixelStyle.left,
@@ -2582,6 +2596,7 @@ function ToolkitPanel({
 
   return (
     <div
+      ref={panelRef}
       data-toolkit-id={id}
       className={`toolkit-panel card drag-handle${variant ? ` ${variant}` : ''}${mode === 'dashboard' ? ' is-dashboard' : ''}${isDragging ? ' is-dragging' : ''}${expanded ? ' is-panel-expanded' : ''}`}
       style={panelStyle}
@@ -2609,7 +2624,7 @@ function ToolkitPanel({
           <span className="toolkit-panel-grip" aria-hidden="true">⠿</span>
         </div>
       </div>
-      <div className="toolkit-panel-body">{children}</div>
+      <div className="toolkit-panel-body" ref={bodyRef}>{children}</div>
       <button
         type="button"
         className="toolkit-panel-resize"
@@ -2772,7 +2787,6 @@ function Toolkit() {
         {...toolkitGrid}
         cardTitles={TOOLKIT_CARD_TITLES}
         renderCardContent={renderToolkitCard}
-        isExpandable={(id) => id === 'terms'}
       />
     </>
   );

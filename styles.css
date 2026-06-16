@@ -1470,8 +1470,11 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
 .toolkit-panel-body {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   padding: 14px 16px 18px;
+}
+.toolkit-panel.is-panel-expanded .toolkit-panel-body {
+  overflow: visible;
 }
 .toolkit-panel-resize {
   position: absolute;
