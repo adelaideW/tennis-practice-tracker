@@ -238,7 +238,7 @@ function buildFocusFromNotion(payload) {
       sections.push({ title: 'Needs improvement', items: needsImprovement });
     }
     if (thingsToTry.length) {
-      sections.push({ title: 'Things to try', items: thingsToTry });
+      sections.push({ title: 'Things to do/try (based on priority)', items: thingsToTry });
     }
     const body = prev?.usedFallbackWeek
       ? `From ${weekLabel} — latest Notion weekly log with focus notes. Carry these into this week's practice.`
@@ -266,7 +266,7 @@ function buildFocusFromNotion(payload) {
     headline: 'Weekly focus from Notion',
     body: prev?.matchedNotionWeek === false
       ? `No Notion log found for ${targetLabel}. Add Needs improvement and Things to try under that week in Notion.`
-      : `Add Needs improvement and Things to try under ${targetLabel} in Notion — the card updates on refresh.`,
+      : `Add Needs improvement and Things to do/try under ${targetLabel} in Notion — the card updates on refresh.`,
     cues: [],
     sections: [],
     weekLabel: targetLabel,

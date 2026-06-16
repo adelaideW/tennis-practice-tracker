@@ -498,9 +498,14 @@ function isNeedsImprovementSection(title) {
   return /^(?:needs?\s*improvement|areas?\s*to\s*improve|weakness(?:es)?)\b/i.test(t);
 }
 
+function isThingsToTryPrioritySection(title) {
+  const t = normalizeSectionTitle(title);
+  return /^things to (?:do\/try|try|do)\b/i.test(t) && /priorit/i.test(t);
+}
+
 function isThingsToTrySection(title) {
   const t = normalizeSectionTitle(title);
-  if (/priorit/i.test(t)) return false;
+  if (isThingsToTryPrioritySection(t)) return false;
   return /^things to (?:do\/try|try|do)\b/i.test(t);
 }
 
@@ -581,6 +586,10 @@ async function parseWeekFocusSections(weekToggleId) {
 
       if (isSection && isNeedsImprovementSection(title)) {
         await absorbSection(child, children, i, needsImprovement);
+        continue;
+      }
+      if (isSection && isThingsToTryPrioritySection(title)) {
+        await absorbSection(child, children, i, thingsToTry);
         continue;
       }
       if (isSection && isThingsToTrySection(title)) {
@@ -1383,7 +1392,7 @@ export default async function handler(req, res) {
       latestDaily: sessions[0] || snap.latestDaily,
       cheatNotes,
       cheatNotesSource,
-      parserVersion: 'cheat-filter-v13-week-focus-fallback',
+      parserVersion: 'cheat-filter-v14-week-focus-priority',
     };
 
     responseCache = { updatedAt: pageUpdatedAt, at: Date.now(), payload };

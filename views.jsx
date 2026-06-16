@@ -325,6 +325,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
     storageKey: TODAY_LAYOUT_STORAGE,
     loadLayout: loadTodayLayout,
     makeDefaultLayout: makeDefaultTodayLayout,
+    getGridConfig: getTodayGridConfig,
   });
 
   const renderTodayCard = (id) => {
@@ -352,7 +353,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
                   ))}
                 </>
               ) : (
-                <div>Your weekly focus loads from Needs improvement and Things to try in last week&apos;s Notion log.</div>
+                <div>Your weekly focus loads from Needs improvement and Things to do/try in last week&apos;s Notion log.</div>
               )}
             </div>
           </div>
@@ -480,7 +481,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
         </div>
       </div>
 
-      <div className={`today-dashboard${todayGrid.layout.mode === 'dashboard' ? ' today-dashboard--positioned' : ''}`}>
+      <div className="today-dashboard">
         <div className="today-dashboard-bar">
           <div className="today-dashboard-bar-meta">
             {refreshedLabel ? (
@@ -2028,6 +2029,16 @@ function getToolkitGridConfig(containerWidth) {
   };
 }
 
+function getTodayGridConfig(containerWidth) {
+  const isMobile = containerWidth <= 920;
+  return {
+    cols: isMobile ? 6 : 12,
+    rowHeight: 30,
+    margin: [0, 24],
+    containerPadding: [0, 0],
+  };
+}
+
 function makeDefaultToolkitItems(cols) {
   if (cols <= 6) {
     return [
@@ -2087,7 +2098,12 @@ function normalizeToolkitItem(raw, cols) {
 
 function normalizeTodayItem(raw, cols) {
   const def = makeDefaultTodayItems(cols).find((it) => it.i === raw.i);
-  return normalizeGridItem(raw, cols, def);
+  const item = normalizeGridItem(raw, cols, def);
+  if (item.i === 'focus') {
+    item.w = cols;
+    item.x = 0;
+  }
+  return item;
 }
 
 function makeDefaultToolkitLayout(containerWidth) {
@@ -2186,7 +2202,7 @@ function getDashboardPanelHeight(item, mode, config) {
   return null;
 }
 
-function useDraggableDashboardGrid({ storageKey, loadLayout, makeDefaultLayout }) {
+function useDraggableDashboardGrid({ storageKey, loadLayout, makeDefaultLayout, getGridConfig }) {
   const [layout, setLayout] = useS1(loadLayout);
   const [draggingId, setDraggingId] = useS1(null);
   const [dropSlot, setDropSlot] = useS1(null);
@@ -2207,7 +2223,10 @@ function useDraggableDashboardGrid({ storageKey, loadLayout, makeDefaultLayout }
     return el ? el.getBoundingClientRect() : null;
   }, []);
 
-  const gridConfig = useM1(() => getToolkitGridConfig(containerWidth), [containerWidth]);
+  const gridConfig = useM1(
+    () => (getGridConfig || getToolkitGridConfig)(containerWidth),
+    [containerWidth, getGridConfig],
+  );
 
   useE1(() => {
     const el = wrapRef.current;

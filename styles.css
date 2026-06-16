@@ -1541,10 +1541,6 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
 .today-dashboard .toolkit-grid {
   grid-template-columns: 1fr;
 }
-.today-dashboard--positioned .today-dashboard-bar {
-  margin-left: 24px;
-  margin-right: 24px;
-}
 .today-dashboard-bar {
   display: flex;
   flex-wrap: wrap;
