@@ -74,7 +74,21 @@ function clampActivityZoom(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function ActivityChart({ entries, range = '7d' }) {
+function detectPanelBodyOverflow(body) {
+  if (!body) return false;
+  if (body.scrollHeight > body.clientHeight + 2) return true;
+
+  const chartScroll = body.querySelector('.activity-chart-scroll');
+  if (chartScroll) {
+    const svg = chartScroll.querySelector('svg');
+    if (svg && svg.getBoundingClientRect().height > chartScroll.clientHeight + 2) return true;
+    if (chartScroll.scrollHeight > chartScroll.clientHeight + 2) return true;
+  }
+
+  return false;
+}
+
+function ActivityChart({ entries, range = '7d', panelExpanded = false }) {
   const [hoverIdx, setHoverIdx] = useS1(null);
   const [tooltipPos, setTooltipPos] = useS1(null);
   const [zoom, setZoom] = useS1(1);
@@ -106,7 +120,9 @@ function ActivityChart({ entries, range = '7d' }) {
     const measure = () => {
       const head = wrap.querySelector('.activity-chart-head');
       const headH = head ? head.offsetHeight : 0;
-      setScrollMaxH(Math.max(52, wrap.clientHeight - headH));
+      if (!panelExpanded) {
+        setScrollMaxH(Math.max(52, wrap.clientHeight - headH));
+      }
       setContainerW(scroll.clientWidth);
     };
 
@@ -114,8 +130,10 @@ function ActivityChart({ entries, range = '7d' }) {
     const ro = new ResizeObserver(measure);
     ro.observe(wrap);
     ro.observe(scroll);
+    const svg = scroll.querySelector('svg');
+    if (svg) ro.observe(svg);
     return () => ro.disconnect();
-  }, [range]);
+  }, [range, panelExpanded]);
 
   const getBasePlotH = useC1(() => (range === '7d' ? 40 : 36), [range]);
 
@@ -296,8 +314,8 @@ function ActivityChart({ entries, range = '7d' }) {
       </div>
       <div
         ref={scrollRef}
-        className="activity-chart-scroll"
-        style={scrollMaxH > 0 ? { maxHeight: scrollMaxH } : undefined}
+        className={`activity-chart-scroll${panelExpanded ? ' is-expanded' : ''}`}
+        style={!panelExpanded && scrollMaxH > 0 ? { maxHeight: scrollMaxH } : undefined}
       >
         <svg
           width={W}
@@ -447,7 +465,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
     makeDefaultLayout: makeDefaultTodayLayout,
   });
 
-  const renderTodayCard = (id) => {
+  const renderTodayCard = (id, item) => {
     switch (id) {
       case 'focus':
         return (
@@ -534,7 +552,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
                 </button>
               ))}
             </div>
-            <ActivityChart entries={todayEntries} range={activityRange} />
+            <ActivityChart entries={todayEntries} range={activityRange} panelExpanded={!!item?.expanded} />
           </div>
         );
       case 'recent':
@@ -2686,7 +2704,7 @@ function DashboardGrid({
               onMeasureExpanded={handleMeasureExpanded}
               variant={getPanelVariant ? getPanelVariant(item.i) : ''}
             >
-              {renderCardContent(item.i)}
+              {renderCardContent(item.i, item)}
             </ToolkitPanel>
           );
         })}
@@ -2720,7 +2738,7 @@ function ToolkitPanel({
     if (!body || expanded) return undefined;
 
     const check = () => {
-      setHasOverflow(body.scrollHeight > body.clientHeight + 2);
+      setHasOverflow(detectPanelBodyOverflow(body));
     };
 
     check();
@@ -2790,7 +2808,7 @@ function ToolkitPanel({
         left: pixelStyle.left,
         top: pixelStyle.top,
         width: pixelStyle.width,
-        height: expanded && item.measuredPx ? item.measuredPx : pixelStyle.height,
+        height: expanded ? (item.measuredPx ?? 'auto') : pixelStyle.height,
       }
     : expanded
       ? { '--panel-min-h': `${gridHeight}px`, height: 'auto' }

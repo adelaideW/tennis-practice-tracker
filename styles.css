@@ -1598,10 +1598,25 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   margin-bottom: 0;
   padding-bottom: 0;
 }
-.toolkit-panel.is-panel-expanded .activity-card-inner,
 .toolkit-panel.is-panel-expanded .today-focus-inner {
   height: auto;
   flex: none;
+}
+.toolkit-panel--activity.is-panel-expanded .activity-card-inner,
+.toolkit-panel--activity.is-panel-expanded .activity-chart-wrap,
+.toolkit-panel--activity.is-panel-expanded .activity-chart-scroll {
+  flex: none;
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  overflow: visible;
+}
+.activity-chart-scroll.is-expanded {
+  flex: none;
+  height: auto;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 .toolkit-panel-resize {
   position: absolute;
