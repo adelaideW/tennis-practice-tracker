@@ -1969,6 +1969,10 @@ const TODAY_CARD_IDS = ['focus', 'conditions', 'overview', 'skills', 'activity',
 const TERMS_GRID_H = 6;
 const TERMS_GRID_H_EXPANDED = 10;
 const DEFAULT_GRID_H = 6;
+/** ~300px at default row height + margin */
+const TODAY_CARD_H_TALL = 6;
+/** ~246px — closest grid fit to 240px */
+const TODAY_CARD_H_SHORT = 5;
 const TGL = typeof window !== 'undefined' ? window.ToolkitGridLayout : null;
 
 function stampGridItem(item) {
@@ -2044,23 +2048,27 @@ function makeDefaultToolkitItems(cols) {
 }
 
 function makeDefaultTodayItems(cols) {
+  const focusH = DEFAULT_GRID_H;
   if (cols <= 6) {
     return [
-      stampGridItem({ i: 'focus', x: 0, y: 0, w: 6, h: DEFAULT_GRID_H }),
-      stampGridItem({ i: 'conditions', x: 0, y: DEFAULT_GRID_H, w: 6, h: DEFAULT_GRID_H }),
-      stampGridItem({ i: 'overview', x: 0, y: DEFAULT_GRID_H * 2, w: 6, h: DEFAULT_GRID_H }),
-      stampGridItem({ i: 'skills', x: 0, y: DEFAULT_GRID_H * 3, w: 6, h: DEFAULT_GRID_H }),
-      stampGridItem({ i: 'activity', x: 0, y: DEFAULT_GRID_H * 4, w: 6, h: 8 }),
-      stampGridItem({ i: 'recent', x: 0, y: DEFAULT_GRID_H * 4 + 8, w: 6, h: 7 }),
+      stampGridItem({ i: 'focus', x: 0, y: 0, w: 6, h: focusH }),
+      stampGridItem({ i: 'overview', x: 0, y: focusH, w: 6, h: TODAY_CARD_H_SHORT }),
+      stampGridItem({ i: 'skills', x: 0, y: focusH + TODAY_CARD_H_SHORT, w: 6, h: TODAY_CARD_H_SHORT }),
+      stampGridItem({ i: 'activity', x: 0, y: focusH + TODAY_CARD_H_SHORT * 2, w: 6, h: TODAY_CARD_H_TALL }),
+      stampGridItem({ i: 'recent', x: 0, y: focusH + TODAY_CARD_H_SHORT * 2 + TODAY_CARD_H_TALL, w: 6, h: TODAY_CARD_H_TALL }),
+      stampGridItem({ i: 'conditions', x: 0, y: focusH + TODAY_CARD_H_SHORT * 2 + TODAY_CARD_H_TALL * 2, w: 6, h: TODAY_CARD_H_TALL }),
     ];
   }
+  const row2Y = focusH;
+  const row3Y = focusH + TODAY_CARD_H_SHORT;
+  const row4Y = row3Y + TODAY_CARD_H_TALL;
   return [
-    stampGridItem({ i: 'focus', x: 0, y: 0, w: 12, h: DEFAULT_GRID_H }),
-    stampGridItem({ i: 'conditions', x: 0, y: DEFAULT_GRID_H, w: 4, h: DEFAULT_GRID_H }),
-    stampGridItem({ i: 'overview', x: 4, y: DEFAULT_GRID_H, w: 4, h: DEFAULT_GRID_H }),
-    stampGridItem({ i: 'skills', x: 8, y: DEFAULT_GRID_H, w: 4, h: DEFAULT_GRID_H }),
-    stampGridItem({ i: 'activity', x: 0, y: DEFAULT_GRID_H * 2, w: 8, h: 8 }),
-    stampGridItem({ i: 'recent', x: 8, y: DEFAULT_GRID_H * 2, w: 4, h: 8 }),
+    stampGridItem({ i: 'focus', x: 0, y: 0, w: 12, h: focusH }),
+    stampGridItem({ i: 'overview', x: 0, y: row2Y, w: 4, h: TODAY_CARD_H_SHORT }),
+    stampGridItem({ i: 'skills', x: 4, y: row2Y, w: 4, h: TODAY_CARD_H_SHORT }),
+    stampGridItem({ i: 'activity', x: 0, y: row3Y, w: 8, h: TODAY_CARD_H_TALL }),
+    stampGridItem({ i: 'recent', x: 8, y: row3Y, w: 4, h: TODAY_CARD_H_TALL }),
+    stampGridItem({ i: 'conditions', x: 0, y: row4Y, w: 4, h: TODAY_CARD_H_TALL }),
   ];
 }
 
