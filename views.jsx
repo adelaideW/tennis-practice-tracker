@@ -254,6 +254,16 @@ function ActivityChart({ entries, range = '7d' }) {
   const labelSize = range === '7d' ? 7 : 8;
   const strokeW = range === '7d' ? 1.9 : 2.2;
 
+  useE1(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (W > el.clientWidth + 2) {
+      el.scrollLeft = Math.max(0, (el.scrollWidth - el.clientWidth) / 2);
+    } else {
+      el.scrollLeft = 0;
+    }
+  }, [W, containerW, range, zoomLevel]);
+
   return (
     <div
       ref={wrapRef}
@@ -293,8 +303,8 @@ function ActivityChart({ entries, range = '7d' }) {
           width={W}
           height={chartHeight}
           viewBox={`0 0 ${W} ${chartHeight}`}
-          preserveAspectRatio="xMinYMid meet"
-          style={{ minWidth: W, display: 'block' }}
+          preserveAspectRatio="xMidYMid meet"
+          style={{ minWidth: W, display: 'block', marginInline: 'auto' }}
         >
           <defs>
             <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">

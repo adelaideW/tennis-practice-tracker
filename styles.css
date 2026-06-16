@@ -631,6 +631,8 @@ input, textarea, select { font-family: inherit; }
   overflow-y: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--ink-4) transparent;
+  display: flex;
+  justify-content: center;
 }
 .activity-chart-scroll::-webkit-scrollbar {
   height: 6px;
@@ -641,6 +643,7 @@ input, textarea, select { font-family: inherit; }
 }
 .activity-chart-wrap svg {
   cursor: crosshair;
+  flex-shrink: 0;
 }
 .activity-tooltip {
   position: fixed;
