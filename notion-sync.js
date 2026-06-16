@@ -181,7 +181,7 @@ async function fetchNotionInsights() {
     apiFailure = e.message || 'Could not reach Notion API';
   }
 
-  const fallback = await fetch('notion-data.json', { cache: 'no-store' });
+  const fallback = await fetch(`notion-data.json?t=${Date.now()}`, { cache: 'no-store' });
   if (!fallback.ok) throw new Error(apiFailure || 'Could not load Notion insights');
   const data = await fallback.json();
   return {
@@ -331,6 +331,62 @@ function collectNotionImprovementLines(payload) {
 
 function matchImprovementAreas(text) {
   return IMPROVEMENT_AREA_RULES.filter((rule) => rule.re.test(text));
+}
+
+function areaMatchesLine(area, text) {
+  const matched = matchImprovementAreas(text);
+  if (!matched.length) return area.key === 'groundstrokes';
+  return matched.some((rule) => rule.key === area.key);
+}
+
+/** Weekly priorities and latest session notes first — so new Notion edits surface immediately. */
+function mergeAreaNotionQuotes(area, rankedQuotes, payload) {
+  const out = [];
+  const seen = new Set();
+  const push = (text) => {
+    const t = String(text || '').trim();
+    if (!t || seen.has(t)) return;
+    seen.add(t);
+    out.push(t);
+  };
+
+  (payload.weeklyPriorities || []).forEach((text) => {
+    if (areaMatchesLine(area, text)) push(text);
+  });
+
+  if (payload.weeklyOverview?.focus) {
+    payload.weeklyOverview.focus.split(/[;,]/).forEach((part) => {
+      const text = part.trim();
+      if (text && areaMatchesLine(area, text)) push(text);
+    });
+  }
+
+  const latest = payload.latestDaily || payload.sessions?.[0];
+  if (latest) {
+    [...(latest.bad || []), ...(latest.learning || []), ...(latest.good || [])].forEach((text) => {
+      if (areaMatchesLine(area, text)) push(text);
+    });
+  }
+
+  (rankedQuotes || []).forEach(push);
+  return out.slice(0, 4);
+}
+
+function notionPayloadRevision(payload) {
+  if (!payload) return '';
+  const priorities = (payload.weeklyPriorities || []).join('\n');
+  const overview = `${payload.weeklyOverview?.focus || ''}|${payload.weeklyOverview?.drill || ''}`;
+  const latest = payload.latestDaily || payload.sessions?.[0];
+  const latestBlob = latest
+    ? [
+        latest.date || '',
+        latest.context || '',
+        ...(latest.bad || []),
+        ...(latest.learning || []),
+        ...(latest.good || []),
+      ].join('\n')
+    : '';
+  return `${payload.updatedAt || ''}:${priorities}:${overview}:${latestBlob}`;
 }
 
 function rankTopImprovementAreas(payload, limit = 5) {
@@ -509,7 +565,7 @@ function buildSharpenFromNotion(payload, tipsLib, refreshSeed = 0) {
 
   const ranked = rankTopImprovementAreas(payload, 5);
   const areas = ranked.map((area, index) => {
-    const notionQuotes = area.notionQuotes.slice(0, 3);
+    const notionQuotes = mergeAreaNotionQuotes(area, area.notionQuotes, payload);
     const tips = pickTipsForArea(area, notionQuotes, lib, refreshSeed + index);
     const resources = [
       ...(TIP_RESOURCES[area.key] || TIP_RESOURCES[area.category] || []),
@@ -550,6 +606,7 @@ window.applyNotionPayload = applyNotionPayload;
 window.buildSharpenFromNotion = buildSharpenFromNotion;
 window.buildCheatNotesFromNotion = buildCheatNotesFromNotion;
 window.rankTopImprovementAreas = rankTopImprovementAreas;
+window.notionPayloadRevision = notionPayloadRevision;
 if (typeof window.groupEntriesByDate !== 'function') {
   window.groupEntriesByDate = (entries, limit = 3) => entries.slice(0, limit);
 }

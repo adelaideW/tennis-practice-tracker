@@ -288,25 +288,38 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
 // ============== TIPS ==============
 function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, notionError }) {
   const [refreshSeed, setRefreshSeed] = useS1(0);
+  const [lastSyncedAt, setLastSyncedAt] = useS1(null);
   const [showLibrary, setShowLibrary] = useS1(false);
   const [cat, setCat] = useS1('groundstrokes');
   const order = ['groundstrokes', 'serve', 'volley', 'overhead', 'mental'];
   const notionPage = window.NOTION_INSIGHTS_PAGE;
+  const payloadRevision = window.notionPayloadRevision
+    ? window.notionPayloadRevision(notionPayload)
+    : notionPayload?.updatedAt;
+
+  useE1(() => {
+    if (syncFromNotion) syncFromNotion();
+  }, [syncFromNotion]);
 
   const sharpen = useM1(
     () => (notionPayload && window.buildSharpenFromNotion
       ? window.buildSharpenFromNotion(notionPayload, TIPS, refreshSeed)
       : { areas: [], generatedAt: null, source: null, sessionCount: 0 }),
-    [notionPayload, refreshSeed],
+    [notionPayload, payloadRevision, notionUpdatedAt, refreshSeed],
   );
 
-  const refreshedLabel = sharpen.generatedAt
-    ? new Date(sharpen.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  const refreshedIso = lastSyncedAt || notionUpdatedAt || sharpen.generatedAt || null;
+  const refreshedLabel = refreshedIso
+    ? new Date(refreshedIso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
     : null;
 
   const handleRefresh = async () => {
-    setRefreshSeed((n) => n + 1);
-    if (syncFromNotion) await syncFromNotion();
+    if (!syncFromNotion) return;
+    const data = await syncFromNotion();
+    if (data) {
+      setLastSyncedAt(new Date().toISOString());
+      setRefreshSeed((n) => n + 1);
+    }
   };
 
   const libraryData = TIPS[cat];
