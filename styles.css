@@ -1514,6 +1514,94 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   z-index: 2;
   transition: left 100ms ease, top 100ms ease, width 100ms ease, height 100ms ease;
 }
+
+/* Today dashboard panels */
+.toolkit-panel--focus {
+  background: linear-gradient(135deg, rgba(21, 128, 61, 0.36), #0f1e35);
+  border-color: rgba(134, 239, 172, 0.35);
+  box-shadow: var(--shadow-md);
+}
+.toolkit-panel--focus .toolkit-panel-header {
+  background: transparent;
+  border-bottom-color: rgba(134, 239, 172, 0.2);
+}
+.toolkit-panel--focus .toolkit-panel-title {
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.today-focus-inner { position: relative; }
+.today-focus-inner .ball-deco {
+  position: absolute;
+  right: -40px;
+  top: -40px;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--brand-primary-300), var(--brand-primary-500));
+  opacity: 0.14;
+  pointer-events: none;
+}
+.today-focus-headline {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+  color: var(--ink);
+}
+.toolkit-panel--focus .focus-body {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink-2);
+}
+.toolkit-panel--focus .focus-section-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 14px 0 6px;
+}
+.toolkit-panel--focus .focus-body ul { margin: 6px 0 0; padding: 0 0 0 16px; }
+.toolkit-panel--focus .focus-body li { margin-bottom: 4px; }
+.toolkit-panel--focus .focus-body.is-collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.toolkit-panel--focus .focus-cta {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.toolkit-panel--focus .btn-primary {
+  background: var(--btn-primary-bg);
+  color: #ffffff;
+  border-color: var(--btn-primary-bg);
+  font-weight: 700;
+}
+.toolkit-panel--focus .btn-ghost {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--ink-2);
+  border: 1px solid var(--border);
+  padding: 9px 16px;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+}
+.overview-card-inner .overview-week-badge {
+  display: inline-block;
+  margin-bottom: 12px;
+}
+.activity-tabs-in-panel { margin-bottom: 12px; }
+.page-head + .toolkit-grid-wrap { margin-bottom: 28px; }
+
 .toolkit-terms-lede a {
   color: var(--accent);
   text-decoration: none;

@@ -333,127 +333,110 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
     setFocusClampable(fullHeight > lineHeight * 3 + 2);
   }, [focusContentKey, focusExpanded, state.notionLoading]);
 
-  return (
-    <>
-      <div className="page-head">
-        <div>
-          <div className="kicker">{todayStr}</div>
-          <h1>Good day for <em>tennis.</em></h1>
-        </div>
-        <div className="meta">
-          {state.notionLoading ? (
-            <>Syncing from Notion…</>
-          ) : (
-            <>
-              {streak > 0 ? `${streak}-day streak` : 'Play today to extend streak'}<br />
-              {totalSessions} sessions from Notion
-            </>
-          )}
-        </div>
-      </div>
+  const todayGrid = useDraggableDashboardGrid({
+    storageKey: TODAY_LAYOUT_STORAGE,
+    loadLayout: loadTodayLayout,
+  });
 
-      {/* AI Focus Brief */}
-      <div className="focus-card mb-28">
-        <div className="ball-deco" aria-hidden="true"></div>
-        <div className="kicker">Weekly Focus · From Notion</div>
-        <h2>
-          {state.notionLoading
-            ? 'Syncing your brief…'
-            : `"${focus?.headline || 'Weekly focus from Notion'}"`}
-        </h2>
-        <div
-          ref={focusBodyRef}
-          className={`focus-body ${!focusExpanded ? 'is-collapsed' : ''}`}
-        >
-          {state.notionError ? (
-            <div>{state.notionError}</div>
-          ) : focus ? (
-            <>
-              <div className="focus-detail-text">{focusBody}</div>
-              {focusSections.map((section, i) => (
-                <div key={i} className="focus-section">
-                  <div className="focus-section-label">{section.title}</div>
-                  <ul>{section.items.map((item, j) => <li key={j}>{item}</li>)}</ul>
-                </div>
-              ))}
-            </>
-          ) : (
-            <div>Your weekly focus loads from Needs improvement and Things to try in last week&apos;s Notion log.</div>
-          )}
-        </div>
-        {focusClampable && (
-          <button
-            type="button"
-            className="focus-show-more"
-            onClick={() => setFocusExpanded((v) => !v)}
-          >
-            {focusExpanded ? 'Show less' : 'Show more'}
-          </button>
-        )}
-        {refreshedLabel && (
-          <div className="mono-small" style={{ marginTop: 8 }}>
-            Last refreshed on {refreshedLabel}
+  const renderTodayCard = (id) => {
+    switch (id) {
+      case 'focus':
+        return (
+          <div className="today-focus-inner">
+            <div className="ball-deco" aria-hidden="true"></div>
+            <h2 className="today-focus-headline">
+              {state.notionLoading
+                ? 'Syncing your brief…'
+                : `"${focus?.headline || 'Weekly focus from Notion'}"`}
+            </h2>
+            <div
+              ref={focusBodyRef}
+              className={`focus-body ${!focusExpanded ? 'is-collapsed' : ''}`}
+            >
+              {state.notionError ? (
+                <div>{state.notionError}</div>
+              ) : focus ? (
+                <>
+                  <div className="focus-detail-text">{focusBody}</div>
+                  {focusSections.map((section, i) => (
+                    <div key={i} className="focus-section">
+                      <div className="focus-section-label">{section.title}</div>
+                      <ul>{section.items.map((item, j) => <li key={j}>{item}</li>)}</ul>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <div>Your weekly focus loads from Needs improvement and Things to try in last week&apos;s Notion log.</div>
+              )}
+            </div>
+            {focusClampable && (
+              <button
+                type="button"
+                className="focus-show-more"
+                onClick={() => setFocusExpanded((v) => !v)}
+              >
+                {focusExpanded ? 'Show less' : 'Show more'}
+              </button>
+            )}
+            {refreshedLabel && (
+              <div className="mono-small" style={{ marginTop: 8 }}>
+                Last refreshed on {refreshedLabel}
+              </div>
+            )}
+            <div className="focus-cta">
+              <button className="btn-primary" onClick={handleRefresh} disabled={state.notionLoading}>
+                {state.notionLoading && <span className="spinner"></span>}
+                {state.notionLoading ? 'Syncing…' : 'Refresh from Notion'}
+              </button>
+              {notionPage && (
+                <a className="btn-ghost notion-open" href={notionPage} target="_blank" rel="noopener noreferrer">
+                  Open Notion page ↗
+                </a>
+              )}
+            </div>
           </div>
-        )}
-        <div className="focus-cta">
-          <button className="btn-primary" onClick={handleRefresh} disabled={state.notionLoading}>
-            {state.notionLoading && <span className="spinner"></span>}
-            {state.notionLoading ? 'Syncing…' : 'Refresh from Notion'}
-          </button>
-          {notionPage && (
-            <a className="btn-ghost notion-open" href={notionPage} target="_blank" rel="noopener noreferrer">
-              Open Notion page ↗
-            </a>
-          )}
-        </div>
-      </div>
-
-      <div className="dash-grid mb-28">
-
-        {/* Overview card */}
-        <div className="overview-card">
-          <div className="overview-card-title">
-            Practice Overview
+        );
+      case 'conditions':
+        return <ToolkitConditionsContent />;
+      case 'overview':
+        return (
+          <div className="overview-card-inner">
             <span className="overview-week-badge">From Notion</span>
-          </div>
-          <div className="overview-body">
-            <div className="overview-sessions">
-              <div className="big-num">{totalSessions}</div>
-              <div className="big-label">Sessions tracked</div>
-              <div className="big-delta">{streak > 0 ? `↑ ${streak}-day streak` : 'Start a streak today'}</div>
+            <div className="overview-body">
+              <div className="overview-sessions">
+                <div className="big-num">{totalSessions}</div>
+                <div className="big-label">Sessions tracked</div>
+                <div className="big-delta">{streak > 0 ? `↑ ${streak}-day streak` : 'Start a streak today'}</div>
+              </div>
+              <div className="overview-donut">
+                <DonutChart value={totalHours} max={Math.max(totalHours, 20)} centerLabel="hrs" />
+              </div>
             </div>
-            <div className="overview-donut">
-              <DonutChart value={totalHours} max={Math.max(totalHours, 20)} centerLabel="hrs" />
-            </div>
           </div>
-        </div>
-
-        {/* Top skills card */}
-        <div className="skills-card">
-          <div className="skills-card-title">Top Skills Practiced</div>
-          {topSkills.length === 0 ? (
-            <div style={{color:'var(--ink-3)',fontStyle:'italic',fontSize:13}}>Add daily reflections in Notion to populate skills.</div>
-          ) : (
-            topSkills.map((s, i) => (
+        );
+      case 'skills':
+        return topSkills.length === 0 ? (
+          <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 13 }}>Add daily reflections in Notion to populate skills.</div>
+        ) : (
+          <div className="skills-card-inner">
+            {topSkills.map((s, i) => (
               <div key={i} className={`skill-row skill-series skill-series-${i}`}>
                 <div className="skill-left">
                   <div className="skill-dot"></div>
                   <div className="skill-name">{s.label}</div>
                 </div>
                 <div className="skill-bar-wrap">
-                  <div className="skill-bar" style={{ width: s.pct + '%' }}></div>
+                  <div className="skill-bar" style={{ width: `${s.pct}%` }}></div>
                 </div>
                 <div className="skill-pct">{s.pct}%</div>
               </div>
-            ))
-          )}
-        </div>
-
-        {/* Activity chart card */}
-        <div className="activity-card">
-          <div className="activity-card-head">
-            <div className="activity-card-title">Activity</div>
-            <div className="activity-tabs" role="tablist" aria-label="Activity range">
+            ))}
+          </div>
+        );
+      case 'activity':
+        return (
+          <>
+            <div className="activity-tabs activity-tabs-in-panel" role="tablist" aria-label="Activity range">
               {[
                 { k: '7d', l: '7 days' },
                 { k: '30d', l: '30 days' },
@@ -471,19 +454,17 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
                 </button>
               ))}
             </div>
+            <ActivityChart entries={todayEntries} range={activityRange} />
+          </>
+        );
+      case 'recent':
+        return recentSessions.length === 0 ? (
+          <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 13 }}>
+            {state.notionLoading ? 'Loading sessions from Notion…' : 'No daily reflections found in Notion yet.'}
           </div>
-          <ActivityChart entries={todayEntries} range={activityRange} />
-        </div>
-
-        {/* Recent sessions card */}
-        <div className="recent-card">
-          <div className="recent-card-title">Recent Sessions</div>
-          {recentSessions.length === 0 ? (
-            <div style={{color:'var(--ink-3)',fontStyle:'italic',fontSize:13}}>
-              {state.notionLoading ? 'Loading sessions from Notion…' : 'No daily reflections found in Notion yet.'}
-            </div>
-          ) : (
-            recentSessions.map((e, i) => (
+        ) : (
+          <div className="recent-card-inner">
+            {recentSessions.map((e) => (
               <div key={e.id} className="recent-row">
                 <div className="recent-dot">
                   <svg viewBox="0 0 24 24">
@@ -494,25 +475,57 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
                 <div className="recent-info">
                   <div className="recent-date">{new Date(e.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
                   <div className="recent-tags">
-                    {e.context || (e.tags || []).slice(0, 3).map(k => (PRACTICE_TAGS.find(p => p.k === k) || {}).l).filter(Boolean).join(' · ') || 'Practice session'}
+                    {e.context || (e.tags || []).slice(0, 3).map((k) => (PRACTICE_TAGS.find((p) => p.k === k) || {}).l).filter(Boolean).join(' · ') || 'Practice session'}
                   </div>
                 </div>
                 <div className="recent-dur">{e.duration || 60}m</div>
               </div>
-            ))
+            ))}
+            {notionPage && (
+              <a
+                href={notionPage}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ marginTop: 12, display: 'inline-block', color: 'var(--accent)', fontSize: 12, fontFamily: 'var(--mono)', letterSpacing: '0.1em', textTransform: 'uppercase', textDecoration: 'none' }}
+              >
+                Open Notion journal ↗
+              </a>
+            )}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <>
+      <div className="page-head">
+        <div>
+          <div className="kicker">{todayStr}</div>
+          <h1>Good day for <em>tennis.</em></h1>
+        </div>
+        <div className="meta">
+          {state.notionLoading ? (
+            <>Syncing from Notion…</>
+          ) : (
+            <>
+              {streak > 0 ? `${streak}-day streak` : 'Play today to extend streak'}<br />
+              {totalSessions} sessions from Notion
+            </>
           )}
-          {notionPage && (
-            <a
-              href={notionPage}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{marginTop:12,display:'inline-block',color:'var(--accent)',fontSize:12,fontFamily:'var(--mono)',letterSpacing:'0.1em',textTransform:'uppercase',textDecoration:'none'}}
-            >
-              Open Notion journal ↗
-            </a>
-          )}
+          <br />
+          Drag to rearrange · Resize panels
         </div>
       </div>
+
+      <DashboardGrid
+        {...todayGrid}
+        cardTitles={TODAY_CARD_TITLES}
+        renderCardContent={renderTodayCard}
+        getPanelVariant={(id) => (id === 'focus' ? 'toolkit-panel--focus' : '')}
+        isExpandable={(id) => id === 'focus' || id === 'activity'}
+      />
     </>
   );
 }
@@ -1944,10 +1957,14 @@ const USTA_TERMS = [
 ];
 
 const TOOLKIT_LAYOUT_STORAGE = 'ace-toolkit-layout';
+const TODAY_LAYOUT_STORAGE = 'ace-today-layout';
 const TERMS_LAYOUT_STORAGE = 'ace-toolkit-terms-layout';
-const TOOLKIT_CARD_IDS = ['timer', 'conditions', 'gear', 'terms'];
+const TOOLKIT_CARD_IDS = ['timer', 'gear', 'terms'];
+const TODAY_CARD_IDS = ['focus', 'conditions', 'overview', 'skills', 'activity', 'recent'];
 const DEFAULT_CARD_H = 280;
 const EXPANDED_TERMS_H = 480;
+const EXPANDED_FOCUS_H = 420;
+const EXPANDED_ACTIVITY_H = 360;
 const TERMS_GRID_H = 6;
 const TERMS_GRID_H_EXPANDED = 10;
 const DEFAULT_GRID_H = 6;
@@ -1955,9 +1972,23 @@ const TGL = typeof window !== 'undefined' ? window.ToolkitGridLayout : null;
 
 const TOOLKIT_CARD_TITLES = {
   timer: 'Drill Timer',
-  conditions: 'Court Conditions',
   gear: 'Gear Reminders',
   terms: 'Tennis terms & words',
+};
+
+const TODAY_CARD_TITLES = {
+  focus: 'Weekly Focus · From Notion',
+  conditions: 'Court Conditions',
+  overview: 'Practice Overview',
+  skills: 'Top Skills Practiced',
+  activity: 'Activity',
+  recent: 'Recent Sessions',
+};
+
+const EXPANDABLE_CARD_HEIGHTS = {
+  terms: { collapsed: TERMS_GRID_H, expanded: TERMS_GRID_H_EXPANDED },
+  focus: { collapsed: 9, expanded: 13 },
+  activity: { collapsed: 8, expanded: 11 },
 };
 
 function getToolkitGridConfig(containerWidth) {
@@ -1970,24 +2001,43 @@ function getToolkitGridConfig(containerWidth) {
   };
 }
 
-function makeDefaultItems(cols) {
+function makeDefaultToolkitItems(cols) {
   if (cols <= 6) {
     return [
       { i: 'timer', x: 0, y: 0, w: 6, h: DEFAULT_GRID_H },
-      { i: 'conditions', x: 0, y: DEFAULT_GRID_H, w: 6, h: DEFAULT_GRID_H },
-      { i: 'gear', x: 0, y: DEFAULT_GRID_H * 2, w: 6, h: DEFAULT_GRID_H },
-      { i: 'terms', x: 0, y: DEFAULT_GRID_H * 3, w: 6, h: TERMS_GRID_H, expanded: false },
+      { i: 'gear', x: 0, y: DEFAULT_GRID_H, w: 6, h: DEFAULT_GRID_H },
+      { i: 'terms', x: 0, y: DEFAULT_GRID_H * 2, w: 6, h: TERMS_GRID_H, expanded: false },
     ];
   }
   return [
     { i: 'timer', x: 0, y: 0, w: 6, h: DEFAULT_GRID_H },
-    { i: 'conditions', x: 6, y: 0, w: 6, h: DEFAULT_GRID_H },
-    { i: 'gear', x: 0, y: DEFAULT_GRID_H, w: 6, h: DEFAULT_GRID_H },
-    { i: 'terms', x: 6, y: DEFAULT_GRID_H, w: 6, h: TERMS_GRID_H, expanded: false },
+    { i: 'gear', x: 6, y: 0, w: 6, h: DEFAULT_GRID_H },
+    { i: 'terms', x: 0, y: DEFAULT_GRID_H, w: 12, h: TERMS_GRID_H, expanded: false },
   ];
 }
 
-function normalizeToolkitItem(raw, cols) {
+function makeDefaultTodayItems(cols) {
+  if (cols <= 6) {
+    return [
+      { i: 'focus', x: 0, y: 0, w: 6, h: 9, expanded: false },
+      { i: 'conditions', x: 0, y: 9, w: 6, h: 6 },
+      { i: 'overview', x: 0, y: 15, w: 6, h: 6 },
+      { i: 'skills', x: 0, y: 21, w: 6, h: 6 },
+      { i: 'activity', x: 0, y: 27, w: 6, h: 8, expanded: false },
+      { i: 'recent', x: 0, y: 35, w: 6, h: 7 },
+    ];
+  }
+  return [
+    { i: 'focus', x: 0, y: 0, w: 12, h: 9, expanded: false },
+    { i: 'conditions', x: 0, y: 9, w: 4, h: 6 },
+    { i: 'overview', x: 4, y: 9, w: 4, h: 6 },
+    { i: 'skills', x: 8, y: 9, w: 4, h: 6 },
+    { i: 'activity', x: 0, y: 15, w: 8, h: 8, expanded: false },
+    { i: 'recent', x: 8, y: 15, w: 4, h: 8 },
+  ];
+}
+
+function normalizeGridItem(raw, cols, cardIds) {
   const item = {
     i: raw.i,
     x: typeof raw.x === 'number' ? raw.x : 0,
@@ -1995,74 +2045,93 @@ function normalizeToolkitItem(raw, cols) {
     w: TGL ? TGL.clamp(typeof raw.w === 'number' ? raw.w : 6, 1, cols) : 6,
     h: TGL ? TGL.clamp(typeof raw.h === 'number' ? raw.h : DEFAULT_GRID_H, 1, 24) : DEFAULT_GRID_H,
   };
-  if (raw.i === 'terms') {
+  const expandCfg = EXPANDABLE_CARD_HEIGHTS[item.i];
+  if (expandCfg) {
     item.expanded = !!raw.expanded;
-    if (item.expanded && item.h <= TERMS_GRID_H) item.h = TERMS_GRID_H_EXPANDED;
+    if (item.expanded && item.h <= expandCfg.collapsed) item.h = expandCfg.expanded;
   }
   item.x = TGL ? TGL.clamp(item.x, 0, Math.max(0, cols - item.w)) : item.x;
   item.y = Math.max(0, item.y);
   return item;
 }
 
-function makeDefaultToolkitLayout(containerWidth) {
-  const cols = containerWidth <= 920 ? 6 : 12;
-  return { mode: 'grid', items: makeDefaultItems(cols) };
+function normalizeToolkitItem(raw, cols) {
+  return normalizeGridItem(raw, cols, TOOLKIT_CARD_IDS);
 }
 
-function loadToolkitLayout() {
+function normalizeTodayItem(raw, cols) {
+  return normalizeGridItem(raw, cols, TODAY_CARD_IDS);
+}
+
+function makeDefaultToolkitLayout(containerWidth) {
+  const cols = containerWidth <= 920 ? 6 : 12;
+  return { mode: 'grid', items: makeDefaultToolkitItems(cols) };
+}
+
+function makeDefaultTodayLayout(containerWidth) {
+  const cols = containerWidth <= 920 ? 6 : 12;
+  return { mode: 'grid', items: makeDefaultTodayItems(cols) };
+}
+
+function loadGridLayout({ storageKey, cardIds, makeDefaultItems, normalizeItem }) {
   const fallbackWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
+  const cols = fallbackWidth <= 920 ? 6 : 12;
   try {
-    const raw = localStorage.getItem(TOOLKIT_LAYOUT_STORAGE);
+    const raw = localStorage.getItem(storageKey);
     if (raw) {
       const j = JSON.parse(raw);
-      if (Array.isArray(j.items) && j.items.length === 4
-        && TOOLKIT_CARD_IDS.every((id) => j.items.some((it) => it.i === id))) {
-        const cols = fallbackWidth <= 920 ? 6 : 12;
-        const items = TOOLKIT_CARD_IDS.map((id) => {
+      if (Array.isArray(j.items) && j.items.length === cardIds.length
+        && cardIds.every((id) => j.items.some((it) => it.i === id))) {
+        const items = cardIds.map((id) => {
           const found = j.items.find((it) => it.i === id);
-          return normalizeToolkitItem(found || { i: id, x: 0, y: 0, w: 6, h: DEFAULT_GRID_H }, cols);
+          return normalizeItem(found || { i: id, x: 0, y: 0, w: 6, h: DEFAULT_GRID_H }, cols);
         });
         return { mode: j.mode === 'dashboard' ? 'dashboard' : 'grid', items };
       }
       if ((j.mode === 'dashboard' || j.mode === 'grid') && j.cards
-        && TOOLKIT_CARD_IDS.every((id) => j.cards[id])) {
-        const termsCard = j.cards.terms || {};
-        const cols = fallbackWidth <= 920 ? 6 : 12;
-        const items = makeDefaultItems(cols);
-        const termsItem = items.find((it) => it.i === 'terms');
-        if (termsItem && termsCard.expanded) {
-          termsItem.expanded = true;
-          termsItem.h = TERMS_GRID_H_EXPANDED;
-        }
-        return { mode: j.mode === 'dashboard' ? 'dashboard' : 'grid', items };
-      }
-      if (Array.isArray(j.order) && j.order.length === 4 && j.sizes) {
-        const cols = fallbackWidth <= 920 ? 6 : 12;
-        const items = makeDefaultItems(cols);
-        const termsItem = items.find((it) => it.i === 'terms');
-        const s = j.sizes.terms || {};
-        if (termsItem && typeof s.minHeight === 'number' && s.minHeight > 300) {
-          termsItem.expanded = true;
-          termsItem.h = TERMS_GRID_H_EXPANDED;
-        }
-        return { mode: 'grid', items };
+        && cardIds.every((id) => j.cards[id])) {
+        return {
+          mode: j.mode === 'dashboard' ? 'dashboard' : 'grid',
+          items: makeDefaultItems(cols),
+        };
       }
     }
-    const oldRaw = localStorage.getItem(TERMS_LAYOUT_STORAGE);
-    if (oldRaw) {
-      const old = JSON.parse(oldRaw);
-      if (typeof old.h === 'number') {
-        const layout = makeDefaultToolkitLayout(fallbackWidth);
-        const termsItem = layout.items.find((it) => it.i === 'terms');
-        if (termsItem && old.h > 300) {
-          termsItem.expanded = true;
-          termsItem.h = TERMS_GRID_H_EXPANDED;
+    if (storageKey === TOOLKIT_LAYOUT_STORAGE) {
+      const oldRaw = localStorage.getItem(TERMS_LAYOUT_STORAGE);
+      if (oldRaw) {
+        const old = JSON.parse(oldRaw);
+        if (typeof old.h === 'number') {
+          const layout = makeDefaultToolkitLayout(fallbackWidth);
+          const termsItem = layout.items.find((it) => it.i === 'terms');
+          if (termsItem && old.h > 300) {
+            termsItem.expanded = true;
+            termsItem.h = TERMS_GRID_H_EXPANDED;
+          }
+          return layout;
         }
-        return layout;
       }
     }
   } catch (e) { /* keep default */ }
-  return makeDefaultToolkitLayout(fallbackWidth);
+  const items = makeDefaultItems(cols);
+  return { mode: 'grid', items };
+}
+
+function loadToolkitLayout() {
+  return loadGridLayout({
+    storageKey: TOOLKIT_LAYOUT_STORAGE,
+    cardIds: TOOLKIT_CARD_IDS,
+    makeDefaultItems: makeDefaultToolkitItems,
+    normalizeItem: normalizeToolkitItem,
+  });
+}
+
+function loadTodayLayout() {
+  return loadGridLayout({
+    storageKey: TODAY_LAYOUT_STORAGE,
+    cardIds: TODAY_CARD_IDS,
+    makeDefaultItems: makeDefaultTodayItems,
+    normalizeItem: normalizeTodayItem,
+  });
 }
 
 function captureGridAsDashboardItems(wrapEl, layout, config) {
@@ -2082,12 +2151,334 @@ function getItemById(items, id) {
   return items.find((it) => it.i === id) || { i: id, x: 0, y: 0, w: 6, h: DEFAULT_GRID_H };
 }
 
-function getToolkitPanelHeight(id, item, mode) {
+function getDashboardPanelHeight(id, item, mode) {
   if (mode === 'grid') {
     if (id === 'terms' && item.expanded) return EXPANDED_TERMS_H;
+    if (id === 'focus' && item.expanded) return EXPANDED_FOCUS_H;
+    if (id === 'activity' && item.expanded) return EXPANDED_ACTIVITY_H;
+    if (id === 'focus') return 300;
     return DEFAULT_CARD_H;
   }
   return null;
+}
+
+function useDraggableDashboardGrid({ storageKey, loadLayout }) {
+  const [layout, setLayout] = useS1(loadLayout);
+  const [draggingId, setDraggingId] = useS1(null);
+  const [dropSlot, setDropSlot] = useS1(null);
+  const dropSlotRef = useR1(null);
+  const [resizingId, setResizingId] = useS1(null);
+  const [containerWidth, setContainerWidth] = useS1(
+    typeof window !== 'undefined' ? window.innerWidth : 1200,
+  );
+  const layoutRef = useR1(layout);
+  const wrapRef = useR1(null);
+  const dashboardRef = useR1(null);
+
+  useE1(() => { layoutRef.current = layout; }, [layout]);
+  useE1(() => { dropSlotRef.current = dropSlot; }, [dropSlot]);
+
+  const getDashboardRect = useC1(() => {
+    const el = dashboardRef.current || wrapRef.current;
+    return el ? el.getBoundingClientRect() : null;
+  }, []);
+
+  const gridConfig = useM1(() => getToolkitGridConfig(containerWidth), [containerWidth]);
+
+  useE1(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => setContainerWidth(el.clientWidth));
+    ro.observe(el);
+    setContainerWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  const persistLayout = useC1((next) => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(next));
+    } catch (e) { /* ignore */ }
+  }, [storageKey]);
+
+  const updateLayout = useC1((updater) => {
+    setLayout((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      layoutRef.current = next;
+      persistLayout(next);
+      return next;
+    });
+  }, [persistLayout]);
+
+  const ensureDashboardMode = useC1(() => {
+    if (layoutRef.current.mode === 'dashboard') return layoutRef.current;
+    const wrap = wrapRef.current;
+    if (!wrap || !TGL) return layoutRef.current;
+    const next = captureGridAsDashboardItems(wrap, layoutRef.current, gridConfig);
+    layoutRef.current = next;
+    setLayout(next);
+    persistLayout(next);
+    return next;
+  }, [gridConfig, persistLayout]);
+
+  const dashboardLayout = useM1(() => {
+    if (!TGL || layout.mode !== 'dashboard') return layout.items;
+    if (!draggingId || !dropSlot) return layout.items;
+    return TGL.applyDropSlot(layout.items, draggingId, dropSlot);
+  }, [layout.mode, layout.items, draggingId, dropSlot]);
+
+  const canvasHeight = useM1(() => {
+    if (!TGL || layout.mode !== 'dashboard') return null;
+    const preview = draggingId && dropSlot
+      ? TGL.applyDropSlot(layout.items, draggingId, dropSlot)
+      : layout.items;
+    return TGL.calcContainerHeight(preview, gridConfig);
+  }, [layout.mode, layout.items, draggingId, dropSlot, gridConfig]);
+
+  const attachDrag = useC1((cardId, ev) => {
+    if (!TGL) return;
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    ev.preventDefault();
+    const headerEl = ev.currentTarget;
+    if (headerEl.setPointerCapture) headerEl.setPointerCapture(ev.pointerId);
+
+    let current = layoutRef.current;
+    if (current.mode === 'grid') {
+      current = ensureDashboardMode();
+    }
+
+    const containerRect = getDashboardRect();
+    const dragItem = getItemById(current.items, cardId);
+    const initialSlot = { i: cardId, x: dragItem.x, y: dragItem.y, w: dragItem.w, h: dragItem.h };
+
+    setDraggingId(cardId);
+    setDropSlot(initialSlot);
+    dropSlotRef.current = initialSlot;
+
+    let rafId = null;
+    let pendingSlot = null;
+
+    const commitSlot = () => {
+      rafId = null;
+      if (!pendingSlot) return;
+      setDropSlot(pendingSlot);
+      dropSlotRef.current = pendingSlot;
+      pendingSlot = null;
+    };
+
+    const scheduleCommit = () => {
+      if (rafId) return;
+      rafId = (typeof window !== 'undefined' && window.requestAnimationFrame)
+        ? window.requestAnimationFrame(commitSlot)
+        : commitSlot();
+    };
+
+    const onMove = (e) => {
+      const rect = getDashboardRect();
+      if (!rect) return;
+      const slot = TGL.getDropSlot(layoutRef.current.items, cardId, e.clientX, e.clientY, rect, gridConfig);
+      if (slot) {
+        pendingSlot = slot;
+        scheduleCommit();
+      }
+    };
+
+    const onUp = () => {
+      if (headerEl.releasePointerCapture) headerEl.releasePointerCapture(ev.pointerId);
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+
+      if (rafId && typeof window !== 'undefined' && window.cancelAnimationFrame) {
+        window.cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      commitSlot();
+
+      const slot = dropSlotRef.current || initialSlot;
+      setLayout((prev) => {
+        const placed = TGL.applyDropSlot(prev.items, cardId, slot);
+        const compacted = TGL.compactVertical(placed, gridConfig.cols);
+        const next = { ...prev, mode: 'dashboard', items: compacted };
+        layoutRef.current = next;
+        persistLayout(next);
+        return next;
+      });
+
+      setDraggingId(null);
+      setDropSlot(null);
+      dropSlotRef.current = null;
+    };
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+  }, [ensureDashboardMode, getDashboardRect, gridConfig, persistLayout]);
+
+  const attachResize = useC1((cardId, ev) => {
+    if (!TGL) return;
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const el = ev.currentTarget;
+    if (el.setPointerCapture) el.setPointerCapture(ev.pointerId);
+
+    if (layoutRef.current.mode === 'grid') {
+      ensureDashboardMode();
+    }
+
+    const startItem = getItemById(layoutRef.current.items, cardId);
+    const startX = ev.clientX;
+    const startY = ev.clientY;
+    const startW = startItem.w;
+    const startH = startItem.h;
+
+    setResizingId(cardId);
+
+    const onMove = (e) => {
+      const delta = TGL.pixelsDeltaToGrid(
+        e.clientX - startX,
+        e.clientY - startY,
+        gridConfig,
+        containerWidth,
+      );
+      setLayout((prev) => {
+        const resized = TGL.resizeItemGrid(
+          prev.items,
+          cardId,
+          startW + delta.dw,
+          startH + delta.dh,
+          gridConfig.cols,
+        );
+        const next = { ...prev, mode: 'dashboard', items: resized };
+        layoutRef.current = next;
+        return next;
+      });
+    };
+
+    const onUp = () => {
+      if (el.releasePointerCapture) el.releasePointerCapture(ev.pointerId);
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+      setLayout((prev) => {
+        const compacted = TGL.compactVertical(prev.items, gridConfig.cols);
+        const next = { ...prev, items: compacted };
+        layoutRef.current = next;
+        persistLayout(next);
+        return next;
+      });
+      setResizingId(null);
+    };
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+  }, [containerWidth, ensureDashboardMode, gridConfig, persistLayout]);
+
+  const toggleExpand = useC1((cardId) => {
+    updateLayout((prev) => {
+      const expandCfg = EXPANDABLE_CARD_HEIGHTS[cardId];
+      const items = prev.items.map((item) => {
+        if (item.i !== cardId || !expandCfg) return item;
+        const expanded = !item.expanded;
+        const h = expanded ? expandCfg.expanded : expandCfg.collapsed;
+        return { ...item, expanded, h };
+      });
+      const compacted = TGL ? TGL.compactVertical(items, gridConfig.cols) : items;
+      return { ...prev, items: compacted };
+    });
+  }, [gridConfig.cols, updateLayout]);
+
+  const placeholderStyle = useM1(() => {
+    if (!TGL || !dropSlot || layout.mode !== 'dashboard') return null;
+    return TGL.calcPosition(dropSlot, gridConfig, containerWidth);
+  }, [dropSlot, layout.mode, gridConfig, containerWidth]);
+
+  return {
+    layout,
+    wrapRef,
+    dashboardRef,
+    draggingId,
+    resizingId,
+    containerWidth,
+    gridConfig,
+    attachDrag,
+    attachResize,
+    toggleExpand,
+    dashboardLayout,
+    canvasHeight,
+    placeholderStyle,
+  };
+}
+
+function DashboardGrid({
+  layout,
+  wrapRef,
+  dashboardRef,
+  draggingId,
+  resizingId,
+  containerWidth,
+  gridConfig,
+  attachDrag,
+  attachResize,
+  toggleExpand,
+  dashboardLayout,
+  canvasHeight,
+  placeholderStyle,
+  cardTitles,
+  renderCardContent,
+  getPanelVariant,
+  isExpandable,
+}) {
+  return (
+    <div
+      ref={wrapRef}
+      className={`toolkit-grid-wrap${layout.mode === 'dashboard' ? ' is-dashboard-mode' : ''}${draggingId ? ' is-dragging-active' : ''}${resizingId ? ' is-resizing-active' : ''}`}
+    >
+      <div
+        ref={dashboardRef}
+        className={layout.mode === 'dashboard' ? 'toolkit-dashboard' : 'toolkit-grid'}
+        style={layout.mode === 'dashboard' && canvasHeight ? { height: canvasHeight } : undefined}
+      >
+        {layout.mode === 'dashboard' && placeholderStyle && draggingId && (
+          <div
+            className="toolkit-panel-placeholder"
+            style={{
+              left: placeholderStyle.left,
+              top: placeholderStyle.top,
+              width: placeholderStyle.width,
+              height: placeholderStyle.height,
+            }}
+            aria-hidden="true"
+          />
+        )}
+        {(layout.mode === 'dashboard' ? dashboardLayout : layout.items).map((item) => {
+          const pixelStyle = layout.mode === 'dashboard' && TGL
+            ? TGL.calcPosition(item, gridConfig, containerWidth)
+            : null;
+          return (
+            <ToolkitPanel
+              key={item.i}
+              id={item.i}
+              title={cardTitles[item.i] || item.i}
+              mode={layout.mode}
+              item={item}
+              pixelStyle={pixelStyle}
+              isDragging={draggingId === item.i}
+              showExpand={isExpandable ? isExpandable(item.i) : false}
+              expanded={!!item.expanded}
+              onDragStart={attachDrag}
+              onResizeStart={attachResize}
+              onToggleExpand={toggleExpand}
+              variant={getPanelVariant ? getPanelVariant(item.i) : ''}
+            >
+              {renderCardContent(item.i)}
+            </ToolkitPanel>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function ToolkitPanel({
@@ -2102,9 +2493,10 @@ function ToolkitPanel({
   onDragStart,
   onResizeStart,
   onToggleExpand,
+  variant = '',
   children,
 }) {
-  const gridHeight = getToolkitPanelHeight(id, item, mode);
+  const gridHeight = getDashboardPanelHeight(id, item, mode);
   const panelStyle = mode === 'dashboard' && pixelStyle
     ? {
         left: pixelStyle.left,
@@ -2117,7 +2509,7 @@ function ToolkitPanel({
   return (
     <div
       data-toolkit-id={id}
-      className={`toolkit-panel card drag-handle${mode === 'dashboard' ? ' is-dashboard' : ''}${isDragging ? ' is-dragging' : ''}`}
+      className={`toolkit-panel card drag-handle${variant ? ` ${variant}` : ''}${mode === 'dashboard' ? ' is-dashboard' : ''}${isDragging ? ' is-dragging' : ''}`}
       style={panelStyle}
       role="region"
       aria-label={title}
@@ -2246,62 +2638,10 @@ function Toolkit() {
   const [preset, setPreset] = useS1(120);
   const intervalRef = useR1(null);
 
-  const [layout, setLayout] = useS1(loadToolkitLayout);
-  const [draggingId, setDraggingId] = useS1(null);
-  const [dropSlot, setDropSlot] = useS1(null);
-  const dropSlotRef = useR1(null);
-  const [resizingId, setResizingId] = useS1(null);
-  const [containerWidth, setContainerWidth] = useS1(
-    typeof window !== 'undefined' ? window.innerWidth : 1200
-  );
-  const layoutRef = useR1(layout);
-  const wrapRef = useR1(null);
-  const dashboardRef = useR1(null);
-
-  useE1(() => { layoutRef.current = layout; }, [layout]);
-  useE1(() => { dropSlotRef.current = dropSlot; }, [dropSlot]);
-
-  const getDashboardRect = React.useCallback(() => {
-    const el = dashboardRef.current || wrapRef.current;
-    return el ? el.getBoundingClientRect() : null;
-  }, []);
-
-  const gridConfig = useM1(() => getToolkitGridConfig(containerWidth), [containerWidth]);
-
-  useE1(() => {
-    const el = wrapRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return undefined;
-    const ro = new ResizeObserver(() => setContainerWidth(el.clientWidth));
-    ro.observe(el);
-    setContainerWidth(el.clientWidth);
-    return () => ro.disconnect();
-  }, []);
-
-  const persistLayout = React.useCallback((next) => {
-    try {
-      localStorage.setItem(TOOLKIT_LAYOUT_STORAGE, JSON.stringify(next));
-    } catch (e) { /* ignore */ }
-  }, []);
-
-  const updateLayout = React.useCallback((updater) => {
-    setLayout((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      layoutRef.current = next;
-      persistLayout(next);
-      return next;
-    });
-  }, [persistLayout]);
-
-  const ensureDashboardMode = React.useCallback(() => {
-    if (layoutRef.current.mode === 'dashboard') return layoutRef.current;
-    const wrap = wrapRef.current;
-    if (!wrap || !TGL) return layoutRef.current;
-    const next = captureGridAsDashboardItems(wrap, layoutRef.current, gridConfig);
-    layoutRef.current = next;
-    setLayout(next);
-    persistLayout(next);
-    return next;
-  }, [gridConfig, persistLayout]);
+  const toolkitGrid = useDraggableDashboardGrid({
+    storageKey: TOOLKIT_LAYOUT_STORAGE,
+    loadLayout: loadToolkitLayout,
+  });
 
   useE1(() => {
     if (running && seconds > 0) {
@@ -2322,175 +2662,7 @@ function Toolkit() {
     { name: 'Water + electrolytes', detail: '600ml per hour minimum on hot courts', meta: '2hr cap' },
   ];
 
-  const dashboardLayout = useM1(() => {
-    if (!TGL || layout.mode !== 'dashboard') return layout.items;
-    if (!draggingId || !dropSlot) return layout.items;
-    return TGL.applyDropSlot(layout.items, draggingId, dropSlot);
-  }, [layout.mode, layout.items, draggingId, dropSlot]);
-
-  const canvasHeight = useM1(() => {
-    if (!TGL || layout.mode !== 'dashboard') return null;
-    const preview = draggingId && dropSlot
-      ? TGL.applyDropSlot(layout.items, draggingId, dropSlot)
-      : layout.items;
-    return TGL.calcContainerHeight(preview, gridConfig);
-  }, [layout.mode, layout.items, draggingId, dropSlot, gridConfig]);
-
-  const attachDrag = React.useCallback((cardId, ev) => {
-    if (!TGL) return;
-    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
-    ev.preventDefault();
-    const headerEl = ev.currentTarget;
-    if (headerEl.setPointerCapture) headerEl.setPointerCapture(ev.pointerId);
-
-    let current = layoutRef.current;
-    if (current.mode === 'grid') {
-      current = ensureDashboardMode();
-    }
-
-    const containerRect = getDashboardRect();
-    const dragItem = getItemById(current.items, cardId);
-    const initialSlot = { i: cardId, x: dragItem.x, y: dragItem.y, w: dragItem.w, h: dragItem.h };
-
-    setDraggingId(cardId);
-    setDropSlot(initialSlot);
-    dropSlotRef.current = initialSlot;
-
-    let rafId = null;
-    let pendingSlot = null;
-
-    const commitSlot = () => {
-      rafId = null;
-      if (!pendingSlot) return;
-      setDropSlot(pendingSlot);
-      dropSlotRef.current = pendingSlot;
-      pendingSlot = null;
-    };
-
-    const scheduleCommit = () => {
-      if (rafId) return;
-      rafId = (typeof window !== 'undefined' && window.requestAnimationFrame)
-        ? window.requestAnimationFrame(commitSlot)
-        : commitSlot();
-    };
-
-    const onMove = (e) => {
-      const rect = getDashboardRect();
-      if (!rect) return;
-      const slot = TGL.getDropSlot(layoutRef.current.items, cardId, e.clientX, e.clientY, rect, gridConfig);
-      if (slot) {
-        pendingSlot = slot;
-        scheduleCommit();
-      }
-    };
-
-    const onUp = () => {
-      if (headerEl.releasePointerCapture) headerEl.releasePointerCapture(ev.pointerId);
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      document.removeEventListener('pointercancel', onUp);
-
-      if (rafId && typeof window !== 'undefined' && window.cancelAnimationFrame) {
-        window.cancelAnimationFrame(rafId);
-        rafId = null;
-      }
-      commitSlot();
-
-      const slot = dropSlotRef.current || initialSlot;
-      setLayout((prev) => {
-        const placed = TGL.applyDropSlot(prev.items, cardId, slot);
-        const compacted = TGL.compactVertical(placed, gridConfig.cols);
-        const next = { ...prev, mode: 'dashboard', items: compacted };
-        layoutRef.current = next;
-        persistLayout(next);
-        return next;
-      });
-
-      setDraggingId(null);
-      setDropSlot(null);
-      dropSlotRef.current = null;
-    };
-
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
-    document.addEventListener('pointercancel', onUp);
-  }, [ensureDashboardMode, getDashboardRect, gridConfig, persistLayout]);
-
-  const attachResize = React.useCallback((cardId, ev) => {
-    if (!TGL) return;
-    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
-    ev.preventDefault();
-    ev.stopPropagation();
-    const el = ev.currentTarget;
-    if (el.setPointerCapture) el.setPointerCapture(ev.pointerId);
-
-    if (layoutRef.current.mode === 'grid') {
-      ensureDashboardMode();
-    }
-
-    const startItem = getItemById(layoutRef.current.items, cardId);
-    const startX = ev.clientX;
-    const startY = ev.clientY;
-    const startW = startItem.w;
-    const startH = startItem.h;
-
-    setResizingId(cardId);
-
-    const onMove = (e) => {
-      const delta = TGL.pixelsDeltaToGrid(
-        e.clientX - startX,
-        e.clientY - startY,
-        gridConfig,
-        containerWidth
-      );
-      setLayout((prev) => {
-        const resized = TGL.resizeItemGrid(
-          prev.items,
-          cardId,
-          startW + delta.dw,
-          startH + delta.dh,
-          gridConfig.cols
-        );
-        const next = { ...prev, mode: 'dashboard', items: resized };
-        layoutRef.current = next;
-        return next;
-      });
-    };
-
-    const onUp = () => {
-      if (el.releasePointerCapture) el.releasePointerCapture(ev.pointerId);
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      document.removeEventListener('pointercancel', onUp);
-      setLayout((prev) => {
-        const compacted = TGL.compactVertical(prev.items, gridConfig.cols);
-        const next = { ...prev, items: compacted };
-        layoutRef.current = next;
-        persistLayout(next);
-        return next;
-      });
-      setResizingId(null);
-    };
-
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
-    document.addEventListener('pointercancel', onUp);
-  }, [containerWidth, ensureDashboardMode, gridConfig, persistLayout]);
-
-  const toggleExpand = React.useCallback((cardId) => {
-    updateLayout((prev) => {
-      const items = prev.items.map((item) => {
-        if (item.i !== cardId) return item;
-        const expanded = !item.expanded;
-        const h = expanded ? TERMS_GRID_H_EXPANDED : TERMS_GRID_H;
-        return { ...item, expanded, h };
-      });
-      const compacted = TGL ? TGL.compactVertical(items, gridConfig.cols) : items;
-      return { ...prev, items: compacted };
-    });
-  }, [gridConfig.cols, updateLayout]);
-
-  const renderCardContent = (id) => {
+  const renderToolkitCard = (id) => {
     switch (id) {
       case 'timer':
         return (
@@ -2503,8 +2675,6 @@ function Toolkit() {
             setSeconds={setSeconds}
           />
         );
-      case 'conditions':
-        return <ToolkitConditionsContent />;
       case 'gear':
         return <ToolkitGearContent gear={gear} />;
       case 'terms':
@@ -2513,11 +2683,6 @@ function Toolkit() {
         return null;
     }
   };
-
-  const placeholderStyle = useM1(() => {
-    if (!TGL || !dropSlot || layout.mode !== 'dashboard') return null;
-    return TGL.calcPosition(dropSlot, gridConfig, containerWidth);
-  }, [dropSlot, layout.mode, gridConfig, containerWidth]);
 
   return (
     <>
@@ -2529,52 +2694,12 @@ function Toolkit() {
         <div className="meta">Drag to rearrange · Expand terms for full glossary</div>
       </div>
 
-      <div
-        ref={wrapRef}
-        className={`toolkit-grid-wrap${layout.mode === 'dashboard' ? ' is-dashboard-mode' : ''}${draggingId ? ' is-dragging-active' : ''}${resizingId ? ' is-resizing-active' : ''}`}
-      >
-        <div
-          ref={dashboardRef}
-          className={layout.mode === 'dashboard' ? 'toolkit-dashboard' : 'toolkit-grid'}
-          style={layout.mode === 'dashboard' && canvasHeight ? { height: canvasHeight } : undefined}
-        >
-          {layout.mode === 'dashboard' && placeholderStyle && draggingId && (
-            <div
-              className="toolkit-panel-placeholder"
-              style={{
-                left: placeholderStyle.left,
-                top: placeholderStyle.top,
-                width: placeholderStyle.width,
-                height: placeholderStyle.height,
-              }}
-              aria-hidden="true"
-            />
-          )}
-          {(layout.mode === 'dashboard' ? dashboardLayout : layout.items).map((item) => {
-            const pixelStyle = layout.mode === 'dashboard' && TGL
-              ? TGL.calcPosition(item, gridConfig, containerWidth)
-              : null;
-            return (
-              <ToolkitPanel
-                key={item.i}
-                id={item.i}
-                title={TOOLKIT_CARD_TITLES[item.i]}
-                mode={layout.mode}
-                item={item}
-                pixelStyle={pixelStyle}
-                isDragging={draggingId === item.i}
-                showExpand={item.i === 'terms'}
-                expanded={!!item.expanded}
-                onDragStart={attachDrag}
-                onResizeStart={attachResize}
-                onToggleExpand={toggleExpand}
-              >
-                {renderCardContent(item.i)}
-              </ToolkitPanel>
-            );
-          })}
-        </div>
-      </div>
+      <DashboardGrid
+        {...toolkitGrid}
+        cardTitles={TOOLKIT_CARD_TITLES}
+        renderCardContent={renderToolkitCard}
+        isExpandable={(id) => id === 'terms'}
+      />
     </>
   );
 }
