@@ -480,55 +480,57 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
         </div>
       </div>
 
-      <div className="today-dashboard-bar">
-        <div className="today-dashboard-bar-meta">
-          {refreshedLabel ? (
-            <span className="mono-small">Last refreshed {refreshedLabel}</span>
-          ) : (
-            <span className="mono-small muted">Notion sync</span>
-          )}
-        </div>
-        <div className="today-dashboard-bar-actions">
-          <button
-            type="button"
-            className="today-bar-btn today-bar-btn--primary"
-            onClick={handleRefresh}
-            disabled={state.notionLoading}
-          >
-            {state.notionLoading && <span className="spinner"></span>}
-            {state.notionLoading ? 'Syncing…' : 'Refresh from Notion'}
-          </button>
-          {notionPage && (
-            <a
-              className="today-bar-btn today-bar-btn--ghost"
-              href={notionPage}
-              target="_blank"
-              rel="noopener noreferrer"
+      <div className={`today-dashboard${todayGrid.layout.mode === 'dashboard' ? ' today-dashboard--positioned' : ''}`}>
+        <div className="today-dashboard-bar">
+          <div className="today-dashboard-bar-meta">
+            {refreshedLabel ? (
+              <span className="mono-small">Last refreshed {refreshedLabel}</span>
+            ) : (
+              <span className="mono-small muted">Notion sync</span>
+            )}
+          </div>
+          <div className="today-dashboard-bar-actions">
+            <button
+              type="button"
+              className="today-bar-btn today-bar-btn--primary"
+              onClick={handleRefresh}
+              disabled={state.notionLoading}
             >
-              Open Notion page ↗
-            </a>
-          )}
-          <button
-            type="button"
-            className="today-bar-btn today-bar-btn--icon"
-            onClick={todayGrid.resetLayout}
-            aria-label="Reset card layout to default"
-            title="Reset layout"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-              <path d="M3 3v5h5" />
-            </svg>
-          </button>
+              {state.notionLoading && <span className="spinner"></span>}
+              {state.notionLoading ? 'Syncing…' : 'Refresh from Notion'}
+            </button>
+            {notionPage && (
+              <a
+                className="today-bar-btn today-bar-btn--ghost"
+                href={notionPage}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open Notion page ↗
+              </a>
+            )}
+            <button
+              type="button"
+              className="today-bar-btn today-bar-btn--icon"
+              onClick={todayGrid.resetLayout}
+              aria-label="Reset card layout to default"
+              title="Reset layout"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <DashboardGrid
-        {...todayGrid}
-        cardTitles={TODAY_CARD_TITLES}
-        renderCardContent={renderTodayCard}
-        getPanelVariant={(id) => (id === 'focus' ? 'toolkit-panel--focus' : '')}
-      />
+        <DashboardGrid
+          {...todayGrid}
+          cardTitles={TODAY_CARD_TITLES}
+          renderCardContent={renderTodayCard}
+          getPanelVariant={(id) => (id === 'focus' ? 'toolkit-panel--focus' : '')}
+        />
+      </div>
     </>
   );
 }

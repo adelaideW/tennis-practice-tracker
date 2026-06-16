@@ -1519,6 +1519,16 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
 }
 
 /* Today dashboard panels */
+.today-dashboard {
+  width: 100%;
+}
+.today-dashboard .toolkit-grid {
+  grid-template-columns: 1fr;
+}
+.today-dashboard--positioned .today-dashboard-bar {
+  margin-left: 24px;
+  margin-right: 24px;
+}
 .today-dashboard-bar {
   display: flex;
   flex-wrap: wrap;
@@ -1674,6 +1684,7 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   margin-bottom: 12px;
 }
 .activity-tabs-in-panel { margin-bottom: 12px; }
+.page-head + .today-dashboard,
 .page-head + .toolkit-grid-wrap { margin-bottom: 28px; }
 .recent-card-scroll {
   max-height: 240px;
