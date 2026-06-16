@@ -2426,8 +2426,8 @@ function useDraggableDashboardGrid({ storageKey, loadLayout, makeDefaultLayout, 
         const defaultH = item.defaultH ?? item.h;
         return { ...item, expanded: false, h: defaultH };
       });
-      const compacted = TGL ? TGL.compactVertical(items, gridConfig.cols) : items;
-      return { ...prev, items: compacted };
+      const reflowed = TGL ? TGL.reflowPreserveLayout(items, gridConfig.cols) : items;
+      return { ...prev, items: reflowed };
     });
   }, [gridConfig.cols, updateLayout]);
 
@@ -2438,8 +2438,8 @@ function useDraggableDashboardGrid({ storageKey, loadLayout, makeDefaultLayout, 
         if (item.i !== cardId) return item;
         return { ...item, h: TGL.clamp(h, 1, 24) };
       });
-      const compacted = TGL.compactVertical(items, gridConfig.cols);
-      return { ...prev, items: compacted };
+      const reflowed = TGL.reflowPreserveLayout(items, gridConfig.cols);
+      return { ...prev, items: reflowed };
     });
   }, [gridConfig.cols, updateLayout]);
 
@@ -2650,7 +2650,7 @@ function ToolkitPanel({
         left: pixelStyle.left,
         top: pixelStyle.top,
         width: pixelStyle.width,
-        height: expanded ? 'auto' : pixelStyle.height,
+        height: pixelStyle.height,
       }
     : expanded
       ? { '--panel-min-h': `${gridHeight}px`, height: 'auto' }

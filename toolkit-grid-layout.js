@@ -67,6 +67,32 @@
     return out;
   }
 
+  /** Keep each item's saved y when possible; only push down to resolve collisions. */
+  function reflowPreserveLayout(items, cols) {
+    var sorted = items.slice().sort(function (a, b) {
+      return a.y - b.y || a.x - b.x;
+    });
+    var out = [];
+    sorted.forEach(function (item) {
+      var y = item.y;
+      var guard = 0;
+      while (guard < 500) {
+        var test = { i: item.i, x: item.x, y: y, w: item.w, h: item.h };
+        var pushY = -1;
+        out.forEach(function (other) {
+          if (collides(test, other)) {
+            pushY = Math.max(pushY, other.y + other.h);
+          }
+        });
+        if (pushY < 0) break;
+        y = pushY;
+        guard += 1;
+      }
+      out.push(Object.assign({}, item, { y: y }));
+    });
+    return out;
+  }
+
   function getDropSlot(items, dragId, clientX, clientY, containerRect, config) {
     var dragItem = items.find(function (it) { return it.i === dragId; });
     if (!dragItem || !containerRect) return null;
@@ -138,6 +164,7 @@
     calcPosition: calcPosition,
     calcContainerHeight: calcContainerHeight,
     compactVertical: compactVertical,
+    reflowPreserveLayout: reflowPreserveLayout,
     getDropSlot: getDropSlot,
     pixelsToGridItem: pixelsToGridItem,
     applyDropSlot: applyDropSlot,
