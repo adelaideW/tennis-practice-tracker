@@ -1589,6 +1589,21 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   min-height: auto;
   max-height: none;
   scrollbar-gutter: auto;
+  padding-bottom: 16px;
+}
+.toolkit-panel.is-panel-expanded .toolkit-panel-body > :last-child {
+  margin-bottom: 0;
+}
+.toolkit-panel.is-panel-expanded .focus-body li:last-child,
+.toolkit-panel.is-panel-expanded .recent-row:last-child,
+.toolkit-panel.is-panel-expanded .skill-row:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.toolkit-panel.is-panel-expanded .activity-card-inner,
+.toolkit-panel.is-panel-expanded .today-focus-inner {
+  height: auto;
+  flex: none;
 }
 .toolkit-panel-resize {
   position: absolute;

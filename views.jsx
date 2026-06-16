@@ -2110,8 +2110,8 @@ function measurePanelGridRows(panelEl, gridConfig, minRows) {
   const bodyEl = panelEl.querySelector('.toolkit-panel-body');
   if (bodyEl) bodyEl.classList.add('is-measuring');
 
-  // Force layout at natural content height before reading dimensions.
-  const totalPx = panelEl.offsetHeight + 10;
+  // Measure natural content height (expanded body uses 16px bottom padding).
+  const totalPx = panelEl.offsetHeight;
 
   panelEl.classList.remove('is-measuring');
   if (bodyEl) bodyEl.classList.remove('is-measuring');
@@ -2762,7 +2762,7 @@ function ToolkitPanel({
         left: pixelStyle.left,
         top: pixelStyle.top,
         width: pixelStyle.width,
-        height: pixelStyle.height,
+        height: expanded ? 'auto' : pixelStyle.height,
       }
     : expanded
       ? { '--panel-min-h': `${gridHeight}px`, height: 'auto' }
