@@ -504,7 +504,48 @@ input, textarea, select { font-family: inherit; }
   padding: 26px;
   box-shadow: var(--shadow-sm);
 }
-.activity-card-title { font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 18px; }
+.activity-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.activity-card-title { font-size: 16px; font-weight: 600; color: var(--ink); }
+.activity-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+}
+.activity-tab {
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  transition: background 130ms, color 130ms;
+  white-space: nowrap;
+}
+.activity-tab:hover { color: var(--ink-2); }
+.activity-tab.active {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+.activity-total {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 10px;
+}
 
 /* ============ Recent sessions card ============ */
 .recent-card {
@@ -577,6 +618,24 @@ input, textarea, select { font-family: inherit; }
 }
 .focus-card .focus-body ul { margin: 6px 0 0; padding: 0 0 0 16px; }
 .focus-card .focus-body li { margin: 4px 0; }
+.focus-card .focus-body.is-collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.focus-show-more {
+  margin-top: 10px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  position: relative;
+}
+.focus-show-more:hover { text-decoration: underline; }
 .focus-card .focus-cta { display: flex; gap: 8px; margin-top: 18px; position: relative; }
 .focus-card .btn-primary { background: var(--btn-primary-bg); color: #ffffff; border-color: var(--btn-primary-bg); font-weight: 700; box-shadow: 0 8px 20px var(--btn-primary-shadow); }
 .focus-card .btn-primary:hover { background: var(--btn-primary-hover); border-color: var(--btn-primary-hover); color: #ffffff; }

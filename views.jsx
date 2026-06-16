@@ -28,41 +28,106 @@ function DonutChart({ value, max, centerLabel }) {
   );
 }
 
-function ActivityChart({ entries }) {
-  const days = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    const iso = d.toISOString().slice(0, 10);
-    const mins = entries.filter(e => e.date.slice(0, 10) === iso).reduce((a, e) => a + (e.duration || 60), 0);
-    days.push({ label: d.toLocaleDateString('en-US', { weekday: 'short' }), mins });
-  }
-  const maxMins = Math.max(...days.map(d => d.mins), 60);
-  const W = 260, H = 72, padX = 12, padY = 8;
+function ActivityChart({ entries, range = '7d' }) {
+  const days = useM1(() => {
+    const minutesOnDate = (iso) => entries
+      .filter((e) => e.date.slice(0, 10) === iso)
+      .reduce((a, e) => a + (e.duration || 60), 0);
+
+    if (range === '30d') {
+      const out = [];
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - i);
+        const iso = d.toISOString().slice(0, 10);
+        const showLabel = i % 5 === 0 || i === 0 || i === 29;
+        out.push({
+          label: showLabel
+            ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            : '',
+          mins: minutesOnDate(iso),
+        });
+      }
+      return out;
+    }
+
+    if (range === 'all') {
+      const byMonth = new Map();
+      entries.forEach((e) => {
+        const d = new Date(e.date);
+        if (Number.isNaN(d.getTime())) return;
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        byMonth.set(key, (byMonth.get(key) || 0) + (e.duration || 60));
+      });
+      const months = [...byMonth.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([key, mins]) => {
+          const [y, m] = key.split('-');
+          const d = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
+          return {
+            label: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+            mins,
+          };
+        });
+      return months.length ? months : [{ label: '', mins: 0 }];
+    }
+
+    const out = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - i);
+      const iso = d.toISOString().slice(0, 10);
+      out.push({
+        label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        mins: minutesOnDate(iso),
+      });
+    }
+    return out;
+  }, [entries, range]);
+
+  const totalMins = days.reduce((a, d) => a + d.mins, 0);
+  const totalHrs = (totalMins / 60).toFixed(1);
+  const n = Math.max(days.length, 1);
+  const maxMins = Math.max(...days.map((d) => d.mins), 60);
+  const W = range === '30d' ? 520 : range === 'all' ? Math.max(280, n * 32) : 260;
+  const H = 72;
+  const padX = 12;
+  const padY = 8;
   const pts = days.map((d, i) => {
-    const x = padX + (i / 6) * (W - 2 * padX);
+    const x = padX + (n <= 1 ? 0 : i / (n - 1)) * (W - 2 * padX);
     const y = H - padY - (d.mins / maxMins) * (H - 2 * padY);
     return { x, y, mins: d.mins, label: d.label };
   });
-  const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
-  const area = `${pts[0].x},${H} ` + polyline + ` ${pts[pts.length - 1].x},${H}`;
+  const polyline = pts.map((p) => `${p.x},${p.y}`).join(' ');
+  const area = `${pts[0].x},${H} ${polyline} ${pts[pts.length - 1].x},${H}`;
+  const gradId = `actGrad-${range}`;
 
   return (
-    <svg width="100%" viewBox={`0 0 ${W} ${H + 20}`} style={{overflow:'visible', display:'block'}}>
-      <defs>
-        <linearGradient id="actGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--chart-1)" stopOpacity="0.25"/>
-          <stop offset="100%" stopColor="var(--chart-1)" stopOpacity="0"/>
-        </linearGradient>
-      </defs>
-      <polygon points={area} fill="url(#actGrad)"/>
-      <polyline points={polyline} fill="none" stroke="var(--chart-1)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-      {pts.map((p, i) => (
-        <g key={i}>
-          {p.mins > 0 && <circle cx={p.x} cy={p.y} r={3.5} fill="var(--chart-1)" stroke="var(--surface)" strokeWidth="1.5"/>}
-          <text x={p.x} y={H + 16} textAnchor="middle" fill="var(--ink-3)" fontSize="8" fontFamily="var(--mono)" letterSpacing="0.6">{p.label.toUpperCase()}</text>
-        </g>
-      ))}
-    </svg>
+    <>
+      <div className="activity-total">{totalHrs} hrs played</div>
+      <svg width="100%" viewBox={`0 0 ${W} ${H + 20}`} style={{ overflow: 'visible', display: 'block' }}>
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--chart-1)" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="var(--chart-1)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <polygon points={area} fill={`url(#${gradId})`} />
+        <polyline points={polyline} fill="none" stroke="var(--chart-1)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        {pts.map((p, i) => (
+          <g key={i}>
+            {p.mins > 0 && <circle cx={p.x} cy={p.y} r={range === '30d' ? 2.5 : 3.5} fill="var(--chart-1)" stroke="var(--surface)" strokeWidth="1.5" />}
+            {p.label && (
+              <text x={p.x} y={H + 16} textAnchor="middle" fill="var(--ink-3)" fontSize="8" fontFamily="var(--mono)" letterSpacing="0.6">
+                {p.label.toUpperCase()}
+              </text>
+            )}
+          </g>
+        ))}
+      </svg>
+    </>
   );
 }
 
@@ -71,6 +136,10 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
   const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const [refreshSeed, setRefreshSeed] = useS1(0);
   const [lastRefreshedAt, setLastRefreshedAt] = useS1(null);
+  const [focusExpanded, setFocusExpanded] = useS1(false);
+  const [focusClampable, setFocusClampable] = useS1(false);
+  const [activityRange, setActivityRange] = useS1('7d');
+  const focusBodyRef = useR1(null);
   const todayDashboard = useM1(() => {
     if (notionPayload && window.applyNotionPayload) {
       return window.applyNotionPayload({ ...notionPayload, _refreshSeed: refreshSeed });
@@ -136,6 +205,23 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
     }
   };
 
+  const focusContentKey = `${focusBody}|${focusCues.join('¦')}`;
+
+  useE1(() => {
+    setFocusExpanded(false);
+  }, [focusContentKey]);
+
+  useE1(() => {
+    const el = focusBodyRef.current;
+    if (!el || state.notionLoading) return;
+    const wasCollapsed = el.classList.contains('is-collapsed');
+    el.classList.remove('is-collapsed');
+    const fullHeight = el.scrollHeight;
+    if (wasCollapsed && !focusExpanded) el.classList.add('is-collapsed');
+    const lineHeight = parseFloat(window.getComputedStyle(el).lineHeight) || 22;
+    setFocusClampable(fullHeight > lineHeight * 3 + 2);
+  }, [focusContentKey, focusExpanded, state.notionLoading]);
+
   return (
     <>
       <div className="page-head">
@@ -164,7 +250,10 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
             ? 'Syncing your brief…'
             : `"${focus?.headline || focus?.cues?.[0] || 'Stay loose and present'}"`}
         </h2>
-        <div className="focus-body">
+        <div
+          ref={focusBodyRef}
+          className={`focus-body ${!focusExpanded ? 'is-collapsed' : ''}`}
+        >
           {state.notionError ? (
             <div>{state.notionError}</div>
           ) : focus ? (
@@ -178,6 +267,15 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
             <div>Your focus brief loads from weekly priorities and the latest daily reflection in Notion.</div>
           )}
         </div>
+        {focusClampable && (
+          <button
+            type="button"
+            className="focus-show-more"
+            onClick={() => setFocusExpanded((v) => !v)}
+          >
+            {focusExpanded ? 'Show less' : 'Show more'}
+          </button>
+        )}
         {refreshedLabel && (
           <div className="mono-small" style={{ marginTop: 8 }}>
             Last refreshed on {refreshedLabel}
@@ -239,8 +337,28 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
 
         {/* Activity chart card */}
         <div className="activity-card">
-          <div className="activity-card-title">7-Day Activity</div>
-          <ActivityChart entries={todayEntries} />
+          <div className="activity-card-head">
+            <div className="activity-card-title">Activity</div>
+            <div className="activity-tabs" role="tablist" aria-label="Activity range">
+              {[
+                { k: '7d', l: '7 days' },
+                { k: '30d', l: '30 days' },
+                { k: 'all', l: 'All time' },
+              ].map((tab) => (
+                <button
+                  key={tab.k}
+                  type="button"
+                  role="tab"
+                  aria-selected={activityRange === tab.k}
+                  className={`activity-tab ${activityRange === tab.k ? 'active' : ''}`}
+                  onClick={() => setActivityRange(tab.k)}
+                >
+                  {tab.l}
+                </button>
+              ))}
+            </div>
+          </div>
+          <ActivityChart entries={todayEntries} range={activityRange} />
         </div>
 
         {/* Recent sessions card */}
