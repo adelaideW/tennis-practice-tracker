@@ -712,6 +712,17 @@ function isExcludedCheatPlayer(name) {
   return /^ball\s*machine$/i.test(String(name || '').trim());
 }
 
+/** Display labels for opponent cards (canonical Notion keys → shown title). */
+const PLAYER_DISPLAY_NAMES = {
+  Coach: 'Coach (Michael G)',
+  Jessika: 'Jessika W',
+};
+
+function getPlayerDisplayName(name) {
+  const key = String(name || '').trim();
+  return PLAYER_DISPLAY_NAMES[key] || key;
+}
+
 function buildCheatNotesFromNotion(payload) {
   if (!payload?.cheatNotes?.length) {
     return {
@@ -731,7 +742,7 @@ function buildCheatNotesFromNotion(payload) {
       const goodAt = goodRaw.map((n) => formatCheatNoteLine(n)).filter(Boolean);
       const badAt = badRaw.map((n) => formatCheatNoteLine(n)).filter(Boolean);
       return {
-        name: row.name,
+        name: getPlayerDisplayName(row.name),
         goodAt,
         badAt,
         summary: buildCheatSummary(goodAt, badAt),
@@ -804,6 +815,7 @@ window.buildFocusFromNotion = buildFocusFromNotion;
 window.applyNotionPayload = applyNotionPayload;
 window.buildSharpenFromNotion = buildSharpenFromNotion;
 window.buildCheatNotesFromNotion = buildCheatNotesFromNotion;
+window.getPlayerDisplayName = getPlayerDisplayName;
 window.rankTopImprovementAreas = rankTopImprovementAreas;
 window.notionPayloadRevision = notionPayloadRevision;
 if (typeof window.groupEntriesByDate !== 'function') {

@@ -453,6 +453,8 @@ const MY_PERFORMANCE_RE =
 const PLAYER_ALIASES = {
   Jessy: 'Jessie',
   Jessie: 'Jessie',
+  'Jessika W': 'Jessika',
+  Jessika: 'Jessika',
   coach: 'Coach',
 };
 
