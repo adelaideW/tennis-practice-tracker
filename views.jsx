@@ -2327,34 +2327,76 @@ function normalizeTodayItem(raw, cols) {
 
 function makeDefaultToolkitLayout(containerWidth) {
   const cols = containerWidth <= 920 ? 6 : 12;
-  return { mode: 'grid', items: makeDefaultToolkitItems(cols) };
+  return { mode: 'dashboard', items: makeDefaultToolkitItems(cols) };
 }
 
 function makeDefaultTodayLayout(containerWidth) {
   const cols = containerWidth <= 920 ? 6 : 12;
-  return { mode: 'grid', items: makeDefaultTodayItems(cols) };
+  return { mode: 'dashboard', items: makeDefaultTodayItems(cols) };
+}
+
+function sortItemsReadingOrder(items) {
+  return items.slice().sort((a, b) => a.y - b.y || a.x - b.x);
+}
+
+function layoutDiffersFromDefault(items, defaults) {
+  const defById = Object.fromEntries(defaults.map((d) => [d.i, d]));
+  return items.some((it) => {
+    const def = defById[it.i];
+    if (!def) return true;
+    return it.x !== def.x || it.y !== def.y || it.w !== def.w;
+  });
+}
+
+function resolveLayoutMode(savedMode, items, defaults) {
+  if (savedMode === 'dashboard') return 'dashboard';
+  if (layoutDiffersFromDefault(items, defaults)) return 'dashboard';
+  return savedMode === 'grid' ? 'grid' : 'dashboard';
+}
+
+function mergeSavedGridItems(savedItems, cardIds, makeDefaultItems, normalizeItem, cols) {
+  const defaults = makeDefaultItems(cols);
+  const defaultById = Object.fromEntries(defaults.map((d) => [d.i, d]));
+  const savedById = {};
+  (savedItems || []).forEach((it) => {
+    if (it?.i) savedById[it.i] = it;
+  });
+
+  const orderedIds = [];
+  (savedItems || []).forEach((it) => {
+    if (it?.i && cardIds.includes(it.i) && !orderedIds.includes(it.i)) {
+      orderedIds.push(it.i);
+    }
+  });
+  cardIds.forEach((id) => {
+    if (!orderedIds.includes(id)) orderedIds.push(id);
+  });
+
+  return orderedIds.map((id) => normalizeItem(
+    savedById[id] || defaultById[id] || { i: id, x: 0, y: 0, w: 6, h: DEFAULT_GRID_H },
+    cols,
+  ));
 }
 
 function loadGridLayout({ storageKey, cardIds, makeDefaultItems, normalizeItem }) {
   const fallbackWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
   const cols = fallbackWidth <= 920 ? 6 : 12;
+  const defaultItems = makeDefaultItems(cols);
   try {
     const raw = localStorage.getItem(storageKey);
     if (raw) {
       const j = JSON.parse(raw);
-      if (Array.isArray(j.items) && j.items.length === cardIds.length
-        && cardIds.every((id) => j.items.some((it) => it.i === id))) {
-        const items = cardIds.map((id) => {
-          const found = j.items.find((it) => it.i === id);
-          return normalizeItem(found || { i: id, x: 0, y: 0, w: 6, h: DEFAULT_GRID_H }, cols);
-        });
-        return { mode: j.mode === 'dashboard' ? 'dashboard' : 'grid', items };
+      if (Array.isArray(j.items) && j.items.length > 0
+        && j.items.some((it) => it?.i && cardIds.includes(it.i))) {
+        const items = mergeSavedGridItems(j.items, cardIds, makeDefaultItems, normalizeItem, cols);
+        const mode = resolveLayoutMode(j.mode, items, defaultItems);
+        return { mode, items: sortItemsReadingOrder(items) };
       }
       if ((j.mode === 'dashboard' || j.mode === 'grid') && j.cards
         && cardIds.every((id) => j.cards[id])) {
         return {
-          mode: j.mode === 'dashboard' ? 'dashboard' : 'grid',
-          items: makeDefaultItems(cols),
+          mode: 'dashboard',
+          items: defaultItems,
         };
       }
     }
@@ -2375,8 +2417,7 @@ function loadGridLayout({ storageKey, cardIds, makeDefaultItems, normalizeItem }
       }
     }
   } catch (e) { /* keep default */ }
-  const items = makeDefaultItems(cols);
-  return { mode: 'grid', items };
+  return { mode: 'dashboard', items: defaultItems };
 }
 
 function loadToolkitLayout() {
@@ -2456,9 +2497,28 @@ function useDraggableDashboardGrid({ storageKey, loadLayout, makeDefaultLayout, 
     return () => ro.disconnect();
   }, []);
 
+  useE1(() => {
+    if (!makeDefaultLayout || !TGL) return undefined;
+    setLayout((prev) => {
+      if (prev.mode === 'dashboard') return prev;
+      const defaults = makeDefaultLayout(containerWidth).items;
+      if (!layoutDiffersFromDefault(prev.items, defaults)) return prev;
+      const next = { ...prev, mode: 'dashboard', items: sortItemsReadingOrder(prev.items) };
+      layoutRef.current = next;
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch (e) { /* ignore */ }
+      return next;
+    });
+  }, [containerWidth, makeDefaultLayout, storageKey]);
+
   const persistLayout = useC1((next) => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify(next));
+      const payload = {
+        ...next,
+        items: sortItemsReadingOrder(next.items),
+      };
+      localStorage.setItem(storageKey, JSON.stringify(payload));
     } catch (e) { /* ignore */ }
   }, [storageKey]);
 
@@ -2650,7 +2710,7 @@ function useDraggableDashboardGrid({ storageKey, loadLayout, makeDefaultLayout, 
         return { ...item, expanded: false, h: defaultH, measuredPx: undefined };
       });
       const reflowed = TGL ? TGL.reflowPreserveLayout(items, gridConfig.cols) : items;
-      return { ...prev, items: reflowed };
+      return { ...prev, mode: 'dashboard', items: reflowed };
     });
   }, [gridConfig.cols, updateLayout]);
 
@@ -2666,7 +2726,7 @@ function useDraggableDashboardGrid({ storageKey, loadLayout, makeDefaultLayout, 
         };
       });
       const reflowed = TGL.reflowPreserveLayout(items, gridConfig.cols);
-      return { ...prev, items: reflowed };
+      return { ...prev, mode: 'dashboard', items: reflowed };
     });
   }, [gridConfig.cols, updateLayout]);
 
