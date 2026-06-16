@@ -1391,6 +1391,18 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   position: relative;
   transition: left 200ms ease, top 200ms ease, width 200ms ease, height 200ms ease;
 }
+.toolkit-panel.is-panel-expanded {
+  overflow: visible;
+}
+.toolkit-panel.is-panel-expanded:not(.is-dashboard) {
+  height: auto;
+  min-height: var(--panel-min-h, 280px);
+}
+.toolkit-panel.is-measuring {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
 
 .toolkit-grid-wrap.is-dragging-active .toolkit-panel,
 .toolkit-grid-wrap.is-dragging-active .toolkit-panel-placeholder,
@@ -1473,8 +1485,12 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   overflow: hidden;
   padding: 14px 16px 18px;
 }
+.toolkit-panel-body.is-measuring,
 .toolkit-panel.is-panel-expanded .toolkit-panel-body {
   overflow: visible;
+  flex: none;
+  min-height: auto;
+  max-height: none;
 }
 .toolkit-panel-resize {
   position: absolute;
@@ -1668,6 +1684,12 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
 }
 .toolkit-panel--focus.is-panel-expanded .focus-body {
   overflow: visible;
+  flex: none;
+  min-height: auto;
+}
+.toolkit-panel--focus.is-panel-expanded .today-focus-inner {
+  height: auto;
+  min-height: 0;
 }
 .toolkit-panel--focus .focus-section-label {
   font-family: var(--mono);
@@ -1691,6 +1713,10 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   overflow-y: auto;
   padding-right: 4px;
   margin-right: -4px;
+}
+.toolkit-panel.is-panel-expanded .recent-card-scroll {
+  max-height: none;
+  overflow: visible;
 }
 .recent-card-scroll .recent-row:last-child { border-bottom: 0; padding-bottom: 0; }
 

@@ -1990,13 +1990,16 @@ function gridRowsToPanelPx(rows, config) {
 }
 
 function measurePanelGridRows(panelEl, gridConfig, minRows) {
-  const headerH = panelEl.querySelector('.toolkit-panel-header')?.offsetHeight || 44;
+  panelEl.classList.add('is-measuring');
   const bodyEl = panelEl.querySelector('.toolkit-panel-body');
-  if (!bodyEl) return minRows;
-  const bodyStyle = window.getComputedStyle(bodyEl);
-  const padY = parseFloat(bodyStyle.paddingTop) + parseFloat(bodyStyle.paddingBottom);
-  const contentH = bodyEl.scrollHeight;
-  const totalPx = headerH + contentH + padY + 6;
+  if (bodyEl) bodyEl.classList.add('is-measuring');
+
+  // Force layout at natural content height before reading dimensions.
+  const totalPx = panelEl.offsetHeight + 10;
+
+  panelEl.classList.remove('is-measuring');
+  if (bodyEl) bodyEl.classList.remove('is-measuring');
+
   return Math.max(minRows, gridRowsFromPanelPx(totalPx, gridConfig));
 }
 
@@ -2572,16 +2575,29 @@ function ToolkitPanel({
 
   useE1(() => {
     if (!expanded || !panelRef.current || !onMeasureExpanded) return undefined;
-    let cancelled = false;
-    const run = () => {
-      if (!cancelled && panelRef.current) {
-        onMeasureExpanded(id, panelRef.current);
-      }
+
+    let rafId = 0;
+    const scheduleMeasure = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        if (panelRef.current) onMeasureExpanded(id, panelRef.current);
+      });
     };
-    const raf = requestAnimationFrame(run);
+
+    scheduleMeasure();
+    const secondPass = requestAnimationFrame(scheduleMeasure);
+
+    let ro;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(scheduleMeasure);
+      if (panelRef.current) ro.observe(panelRef.current);
+      if (bodyRef.current) ro.observe(bodyRef.current);
+    }
+
     return () => {
-      cancelled = true;
-      cancelAnimationFrame(raf);
+      cancelAnimationFrame(rafId);
+      cancelAnimationFrame(secondPass);
+      ro?.disconnect();
     };
   }, [expanded, children, id, onMeasureExpanded]);
 
@@ -2592,9 +2608,11 @@ function ToolkitPanel({
         left: pixelStyle.left,
         top: pixelStyle.top,
         width: pixelStyle.width,
-        height: pixelStyle.height,
+        height: expanded ? 'auto' : pixelStyle.height,
       }
-    : { '--panel-min-h': `${gridHeight}px` };
+    : expanded
+      ? { '--panel-min-h': `${gridHeight}px`, height: 'auto' }
+      : { '--panel-min-h': `${gridHeight}px` };
 
   return (
     <div
