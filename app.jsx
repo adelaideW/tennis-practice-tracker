@@ -162,16 +162,20 @@ function themeToggleLabel(theme, themeLocked) {
 // ============== APP ==============
 function App() {
   const [route, setRoute] = useState('today');
+  const cachedBootstrap = useMemo(() => {
+    if (!window.applyCachedNotionState || !window.loadNotionPayloadCache) return null;
+    return window.applyCachedNotionState(window.loadNotionPayloadCache());
+  }, []);
   const [state, setState] = useState({
-    entries: [],
-    lastSession: null,
-    focus: null,
-    notionUpdatedAt: null,
-    notionSource: null,
-    notionLoading: true,
-    notionError: null,
+    entries: cachedBootstrap?.entries || [],
+    lastSession: cachedBootstrap?.lastSession || null,
+    focus: cachedBootstrap?.focus || null,
+    notionUpdatedAt: cachedBootstrap?.notionUpdatedAt || null,
+    notionSource: cachedBootstrap?.notionSource || null,
+    notionLoading: !cachedBootstrap,
+    notionError: cachedBootstrap?.notionError || null,
   });
-  const [notionPayload, setNotionPayload] = useState(null);
+  const [notionPayload, setNotionPayload] = useState(cachedBootstrap?.payload || null);
   const [cheatUnlocked, setCheatUnlocked] = useState(false);
   const [themeLocked, setThemeLocked] = useState(false);
   const [lockedTheme, setLockedTheme] = useState('dark');
@@ -179,10 +183,13 @@ function App() {
   const t = window.useTweaks ? window.useTweaks(TWEAK_DEFAULTS) : [TWEAK_DEFAULTS, () => {}];
   const [tweaks, setTweak] = t;
 
-  const syncFromNotion = React.useCallback(async () => {
-    setState((s) => ({ ...s, notionLoading: true, notionError: null }));
+  const syncFromNotion = React.useCallback(async (options = {}) => {
+    const { force = false, background = false } = options;
+    if (!background) {
+      setState((s) => ({ ...s, notionLoading: true, notionError: null }));
+    }
     try {
-      const data = await window.fetchNotionInsights();
+      const data = await window.fetchNotionInsights({ force });
       const applied = window.applyNotionPayload(data);
       setNotionPayload(data);
       setState((s) => ({
@@ -205,8 +212,8 @@ function App() {
   }, []);
 
   useEffect(() => {
-    syncFromNotion();
-  }, [syncFromNotion]);
+    syncFromNotion({ background: Boolean(cachedBootstrap) });
+  }, [syncFromNotion, cachedBootstrap]);
 
   useEffect(() => {
     if (!state.notionLoading) saveState(state);

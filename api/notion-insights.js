@@ -131,7 +131,7 @@ async function notionFetch(path) {
   return res.json();
 }
 
-async function notionFetchAllChildren(blockId) {
+async function notionFetchAllChildrenRaw(blockId) {
   const results = [];
   let cursor;
   do {
@@ -143,6 +143,28 @@ async function notionFetchAllChildren(blockId) {
   } while (cursor);
   return results;
 }
+
+/** Per-request block cache — dedupes repeated children fetches during one sync. */
+let blockCache = null;
+
+function beginBlockCache() {
+  blockCache = new Map();
+}
+
+function endBlockCache() {
+  blockCache = null;
+}
+
+async function notionFetchAllChildren(blockId) {
+  if (blockCache?.has(blockId)) return blockCache.get(blockId);
+  const results = await notionFetchAllChildrenRaw(blockId);
+  blockCache?.set(blockId, results);
+  return results;
+}
+
+/** Warm serverless cache — survives across requests in the same instance. */
+let responseCache = null;
+const RESPONSE_CACHE_TTL_MS = 90_000;
 
 async function loadSnapshot() {
   const { readFile } = await import('node:fs/promises');
@@ -212,8 +234,8 @@ function parseToggleLines(lines) {
 }
 
 /** Parse every daily reflection toggle under "Daily reflection". */
-async function parseAllDailySessions(pageId) {
-  const blocks = await notionFetchAllChildren(pageId);
+async function parseAllDailySessions(pageId, rootBlocks = null) {
+  const blocks = rootBlocks || (await notionFetchAllChildren(pageId));
   const sessions = [];
   const LINE_BLOCK_TYPES = new Set(['bulleted_list_item', 'numbered_list_item', 'paragraph']);
   const DAY_TITLE_RE = /(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i;
@@ -273,10 +295,8 @@ async function parseAllDailySessions(pageId) {
 
   const parseDailyContainer = async (containerId) => {
     const children = await notionFetchAllChildren(containerId);
-    for (const child of children) {
-      if (child.type !== 'toggle') continue;
-      await parseSessionToggle(child);
-    }
+    const toggles = children.filter((child) => child.type === 'toggle');
+    await Promise.all(toggles.map((child) => parseSessionToggle(child)));
   };
 
   let inDailySection = false;
@@ -313,8 +333,8 @@ async function parseAllDailySessions(pageId) {
 
 const WEEKLY_LINE_BLOCK_TYPES = new Set(['bulleted_list_item', 'numbered_list_item', 'paragraph']);
 
-async function findWeeklyInsightsContainer(pageId) {
-  const blocks = await notionFetchAllChildren(pageId);
+async function findWeeklyInsightsContainer(pageId, rootBlocks = null) {
+  const blocks = rootBlocks || (await notionFetchAllChildren(pageId));
   for (const block of blocks) {
     const text = blockPlainText(block);
     if (!/weekly\s+insights/i.test(text)) continue;
@@ -324,11 +344,11 @@ async function findWeeklyInsightsContainer(pageId) {
 }
 
 /** Latest "Week of …" block under Weekly insights → priorities + overview focus/drill. */
-async function parseWeeklyPriorities(pageId) {
-  const weeklyContainerId = await findWeeklyInsightsContainer(pageId);
-  if (!weeklyContainerId) return null;
+async function parseWeeklyPriorities(pageId, weeklyContainerId = null) {
+  const containerId = weeklyContainerId || (await findWeeklyInsightsContainer(pageId));
+  if (!containerId) return null;
 
-  const weekToggles = (await notionFetchAllChildren(weeklyContainerId)).filter(
+  const weekToggles = (await notionFetchAllChildren(containerId)).filter(
     (b) => b.type === 'toggle' && /^week\s+of\b/i.test(blockPlainText(b)),
   );
   if (!weekToggles.length) return null;
@@ -712,24 +732,42 @@ async function ingestPlayerAnalysisBlock(parentId, byPlayer, parentTitle = '') {
   await walkBlocks(top, rootPlayer);
 }
 
-/** Ingest Good / Loophole notes from every weekly "Analysis on other Player's style" block. */
-async function parseWeeklyCheatNotes(pageId, byPlayer) {
-  const weeklyContainerId = await findWeeklyInsightsContainer(pageId);
-  if (!weeklyContainerId) return;
+/** Live cheat notes from the latest week only — historical weeks stay in snapshot merge. */
+async function parseLatestWeeklyCheatNotes(weeklyContainerId) {
+  const byPlayer = new Map();
+  if (!weeklyContainerId) return [];
 
   const weekToggles = (await notionFetchAllChildren(weeklyContainerId)).filter(
     (b) => b.type === 'toggle' && /^week\s+of\b/i.test(blockPlainText(b)),
   );
+  if (!weekToggles.length) return [];
 
-  for (const weekToggle of weekToggles) {
-    const weekChildren = await notionFetchAllChildren(weekToggle.id);
-    for (const child of weekChildren) {
-      if (child.type !== 'toggle') continue;
-      const title = blockPlainText(child);
-      if (!/analysis on other/i.test(title)) continue;
-      await ingestPlayerAnalysisBlock(child.id, byPlayer, title);
+  const parseWeekToggleDate = (title) => {
+    const t = String(title || '').trim();
+    const iso = t.match(/(\d{4}-\d{2}-\d{2})/);
+    if (iso) return new Date(iso[1]).getTime();
+    const monthDay = t.match(/week\s+of\s+([a-z]+)\s+(\d{1,2})/i);
+    if (monthDay) {
+      const parsed = Date.parse(`${monthDay[1]} ${monthDay[2]}, ${new Date().getFullYear()}`);
+      if (!Number.isNaN(parsed)) return parsed;
     }
-  }
+    return 0;
+  };
+
+  weekToggles.sort(
+    (a, b) => parseWeekToggleDate(blockPlainText(b)) - parseWeekToggleDate(blockPlainText(a)),
+  );
+
+  const latestWeek = weekToggles[0];
+  const weekChildren = await notionFetchAllChildren(latestWeek.id);
+  const analysisToggles = weekChildren.filter(
+    (child) => child.type === 'toggle' && /analysis on other/i.test(blockPlainText(child)),
+  );
+  await Promise.all(
+    analysisToggles.map((child) => ingestPlayerAnalysisBlock(child.id, byPlayer, blockPlainText(child))),
+  );
+
+  return [...byPlayer.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** Walk entire insights page — all weekly / historical player analysis toggles. */
@@ -739,7 +777,21 @@ async function parseGameCheatNotes(pageId) {
   const SESSION_TOGGLE_RE =
     /(\d{4}-\d{2}-\d{2})|^(mon|tue|wed|thu|fri|sat|sun)(day)?\b/i;
 
-  await parseWeeklyCheatNotes(pageId, byPlayer);
+  const weeklyContainerId = await findWeeklyInsightsContainer(pageId);
+  if (weeklyContainerId) {
+    const weekToggles = (await notionFetchAllChildren(weeklyContainerId)).filter(
+      (b) => b.type === 'toggle' && /^week\s+of\b/i.test(blockPlainText(b)),
+    );
+    for (const weekToggle of weekToggles) {
+      const weekChildren = await notionFetchAllChildren(weekToggle.id);
+      for (const child of weekChildren) {
+        if (child.type !== 'toggle') continue;
+        const title = blockPlainText(child);
+        if (!/analysis on other/i.test(title)) continue;
+        await ingestPlayerAnalysisBlock(child.id, byPlayer, title);
+      }
+    }
+  }
 
   async function visitToggle(toggleId, title = '') {
     const toggleTitle = title || '';
@@ -891,7 +943,7 @@ function removeSessionNoteLeakage(cheatNotes = [], sessions = []) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Cache-Control', 'private, max-age=30, stale-while-revalidate=60');
 
   if (!process.env.NOTION_TOKEN) {
     try {
@@ -908,52 +960,69 @@ export default async function handler(req, res) {
   }
 
   try {
+    beginBlockCache();
     const pageId = normalizeId(PAGE_ID);
-    const page = await notionFetch(`/pages/${pageId}`);
-    const snap = await loadSnapshot();
-    const sessions = await parseAllDailySessions(pageId);
+    const [page, snap, rootBlocks] = await Promise.all([
+      notionFetch(`/pages/${pageId}`),
+      loadSnapshot(),
+      notionFetchAllChildren(pageId),
+    ]);
+
+    const pageUpdatedAt = page.last_edited_time || snap.updatedAt;
+    const forceRefresh = req.query?.force === '1';
+    const cached = !forceRefresh
+      && responseCache
+      && responseCache.updatedAt === pageUpdatedAt
+      && Date.now() - responseCache.at < RESPONSE_CACHE_TTL_MS
+      ? responseCache.payload
+      : null;
+    if (cached) {
+      endBlockCache();
+      return res.status(200).json(cached);
+    }
+
+    const weeklyContainerId = await findWeeklyInsightsContainer(pageId, rootBlocks);
+
+    const [sessions, weeklyLive, liveCheat] = await Promise.all([
+      parseAllDailySessions(pageId, rootBlocks),
+      weeklyContainerId
+        ? parseWeeklyPriorities(pageId, weeklyContainerId)
+        : Promise.resolve(null),
+      weeklyContainerId
+        ? parseLatestWeeklyCheatNotes(weeklyContainerId)
+        : Promise.resolve([]),
+    ]);
+
     const sessionsForPayload = sessions.length ? sessions : snap.sessions || [];
-    let liveCheat = [];
     let cheatNotesSource = 'snapshot';
     const snapCheat = normalizeCheatNoteRows(snap.cheatNotes || []);
-    try {
-      liveCheat = await parseGameCheatNotes(pageId);
-      if (liveCheat.length && snapCheat.length) {
-        cheatNotesSource = 'notion+snapshot';
-      } else if (liveCheat.length) {
-        cheatNotesSource = 'notion';
-      } else {
-        cheatNotesSource = snapCheat.length ? 'snapshot' : 'notion';
-      }
-    } catch (cheatErr) {
-      liveCheat = [];
+    if (liveCheat.length && snapCheat.length) {
+      cheatNotesSource = 'notion+snapshot';
+    } else if (liveCheat.length) {
+      cheatNotesSource = 'notion';
+    } else {
       cheatNotesSource = snapCheat.length ? 'snapshot' : 'notion';
     }
     const mergedCheat = mergeCheatNotes(liveCheat, snapCheat);
-    let cheatNotes = removeSessionNoteLeakage(mergedCheat, sessionsForPayload);
+    const cheatNotes = removeSessionNoteLeakage(mergedCheat, sessionsForPayload);
 
     let weeklyPriorities = snap.weeklyPriorities || [];
     let weeklyOverview = snap.weeklyOverview || { focus: '', drill: '' };
     let focus = snap.focus;
     let weeklySource = 'snapshot';
-    try {
-      const weeklyLive = await parseWeeklyPriorities(pageId);
-      if (weeklyLive?.weeklyPriorities?.length) {
-        weeklyPriorities = weeklyLive.weeklyPriorities;
-        weeklySource = 'notion';
-        focus = undefined;
-      }
-      if (weeklyLive?.weeklyOverview?.focus || weeklyLive?.weeklyOverview?.drill) {
-        weeklyOverview = weeklyLive.weeklyOverview;
-        weeklySource = 'notion';
-      }
-    } catch (_) {
-      /* keep snapshot weekly fields */
+    if (weeklyLive?.weeklyPriorities?.length) {
+      weeklyPriorities = weeklyLive.weeklyPriorities;
+      weeklySource = 'notion';
+      focus = undefined;
+    }
+    if (weeklyLive?.weeklyOverview?.focus || weeklyLive?.weeklyOverview?.drill) {
+      weeklyOverview = weeklyLive.weeklyOverview;
+      weeklySource = 'notion';
     }
 
     const payload = {
       pageUrl: page.url || snap.pageUrl,
-      updatedAt: page.last_edited_time || snap.updatedAt,
+      updatedAt: pageUpdatedAt,
       weeklyPriorities,
       weeklyOverview,
       weeklySource,
@@ -963,11 +1032,14 @@ export default async function handler(req, res) {
       latestDaily: sessions[0] || snap.latestDaily,
       cheatNotes,
       cheatNotesSource,
-      parserVersion: 'cheat-filter-v9',
+      parserVersion: 'cheat-filter-v10-fast',
     };
 
+    responseCache = { updatedAt: pageUpdatedAt, at: Date.now(), payload };
+    endBlockCache();
     return res.status(200).json(payload);
   } catch (e) {
+    endBlockCache();
     try {
       const snap = await loadSnapshot();
       return res.status(200).json({

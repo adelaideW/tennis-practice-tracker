@@ -3,6 +3,8 @@
  * Notion is the source of truth for sessions, stats, and today's focus brief.
  */
 const NOTION_SYNC_STORAGE_KEY = 'tennis-notion-sync-v1';
+const NOTION_PAYLOAD_CACHE_KEY = 'tennis-notion-payload-v1';
+let notionFetchInFlight = null;
 
 const TAG_RULES = [
   { k: 'volley', re: /volley|net play|at the net/i },
@@ -151,6 +153,41 @@ function saveNotionSyncMeta(meta) {
   } catch (e) {}
 }
 
+function loadNotionPayloadCache() {
+  try {
+    const raw = localStorage.getItem(NOTION_PAYLOAD_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.data) return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveNotionPayloadCache(data) {
+  try {
+    localStorage.setItem(
+      NOTION_PAYLOAD_CACHE_KEY,
+      JSON.stringify({ data, savedAt: Date.now() }),
+    );
+  } catch (e) {}
+}
+
+function applyCachedNotionState(cached) {
+  if (!cached?.data || !isValidNotionPayload(cached.data)) return null;
+  const applied = applyNotionPayload(cached.data);
+  return {
+    payload: cached.data,
+    entries: applied.entries,
+    focus: applied.focus,
+    lastSession: applied.lastSession,
+    notionUpdatedAt: cached.data.updatedAt,
+    notionSource: cached.data.source,
+    notionError: cached.data.syncWarning || cached.data.apiError || null,
+  };
+}
+
 function isValidNotionPayload(data) {
   if (!data || data.error) return false;
   return Boolean(
@@ -162,38 +199,69 @@ function isValidNotionPayload(data) {
   );
 }
 
-async function fetchNotionInsights() {
-  let apiFailure = null;
+async function fetchNotionInsights({ force = false } = {}) {
+  if (notionFetchInFlight) return notionFetchInFlight;
+
+  notionFetchInFlight = (async () => {
+    let apiFailure = null;
+
+    try {
+      const res = await fetch(
+        `/api/notion-insights?t=${Date.now()}${force ? '&force=1' : ''}`,
+        { cache: 'no-store' },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (isValidNotionPayload(data)) {
+          saveNotionPayloadCache(data);
+          saveNotionSyncMeta({
+            updatedAt: data.updatedAt,
+            importedAt: new Date().toISOString(),
+            source: data.source,
+          });
+          return { ...data, source: data.source || 'api' };
+        }
+        apiFailure = data?.apiError || data?.error || 'Notion API returned an empty payload';
+      } else {
+        const errText = await res.text().catch(() => '');
+        apiFailure = errText || `Notion API error (${res.status})`;
+      }
+    } catch (e) {
+      apiFailure = e.message || 'Could not reach Notion API';
+    }
+
+    const cached = loadNotionPayloadCache();
+    if (cached?.data && isValidNotionPayload(cached.data)) {
+      return {
+        ...cached.data,
+        source: cached.data.source || 'cache',
+        apiError: apiFailure || cached.data.apiError || null,
+        syncWarning:
+          cached.data.syncWarning
+          || (apiFailure ? 'Live Notion API unavailable — showing cached data' : null),
+      };
+    }
+
+    const fallback = await fetch(`notion-data.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (!fallback.ok) throw new Error(apiFailure || 'Could not load Notion insights');
+    const data = await fallback.json();
+    return {
+      ...data,
+      source: 'snapshot',
+      cheatNotesSource: 'snapshot',
+      weeklySource: 'snapshot',
+      apiError: apiFailure || data.apiError || null,
+      syncWarning:
+        data.syncWarning
+        || (apiFailure ? 'Live Notion API unavailable — showing offline snapshot' : null),
+    };
+  })();
 
   try {
-    const res = await fetch(`/api/notion-insights?t=${Date.now()}`, { cache: 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      if (isValidNotionPayload(data)) {
-        return { ...data, source: data.source || 'api' };
-      }
-      apiFailure = data?.apiError || data?.error || 'Notion API returned an empty payload';
-    } else {
-      const errText = await res.text().catch(() => '');
-      apiFailure = errText || `Notion API error (${res.status})`;
-    }
-  } catch (e) {
-    apiFailure = e.message || 'Could not reach Notion API';
+    return await notionFetchInFlight;
+  } finally {
+    notionFetchInFlight = null;
   }
-
-  const fallback = await fetch(`notion-data.json?t=${Date.now()}`, { cache: 'no-store' });
-  if (!fallback.ok) throw new Error(apiFailure || 'Could not load Notion insights');
-  const data = await fallback.json();
-  return {
-    ...data,
-    source: 'snapshot',
-    cheatNotesSource: 'snapshot',
-    weeklySource: 'snapshot',
-    apiError: apiFailure || data.apiError || null,
-    syncWarning:
-      data.syncWarning ||
-      (apiFailure ? 'Live Notion API unavailable — showing offline snapshot' : null),
-  };
 }
 
 function useNotionInsights() {
@@ -600,6 +668,8 @@ function buildSharpenFromNotion(payload, tipsLib, refreshSeed = 0) {
 window.useNotionInsights = useNotionInsights;
 window.formatNotionNotes = formatNotionNotes;
 window.fetchNotionInsights = fetchNotionInsights;
+window.loadNotionPayloadCache = loadNotionPayloadCache;
+window.applyCachedNotionState = applyCachedNotionState;
 window.buildSessionsFromNotion = buildSessionsFromNotion;
 window.buildFocusFromNotion = buildFocusFromNotion;
 window.applyNotionPayload = applyNotionPayload;

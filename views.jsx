@@ -200,7 +200,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
   const handleRefresh = async () => {
     setRefreshSeed((n) => n + 1);
     if (syncFromNotion) {
-      const data = await syncFromNotion();
+      const data = await syncFromNotion({ force: true });
       if (data) setLastRefreshedAt(new Date().toISOString());
     }
   };
@@ -415,10 +415,6 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
     ? window.notionPayloadRevision(notionPayload)
     : notionPayload?.updatedAt;
 
-  useE1(() => {
-    if (syncFromNotion) syncFromNotion();
-  }, [syncFromNotion]);
-
   const sharpen = useM1(
     () => (notionPayload && window.buildSharpenFromNotion
       ? window.buildSharpenFromNotion(notionPayload, TIPS, refreshSeed)
@@ -433,7 +429,7 @@ function Tips({ notionPayload, syncFromNotion, notionLoading, notionUpdatedAt, n
 
   const handleRefresh = async () => {
     if (!syncFromNotion) return;
-    const data = await syncFromNotion();
+    const data = await syncFromNotion({ force: true });
     if (data) {
       setLastSyncedAt(new Date().toISOString());
       setRefreshSeed((n) => n + 1);
@@ -663,7 +659,7 @@ function GameCheatNotes({ notionPayload, syncFromNotion, notionLoading, notionEr
   const handleRefresh = async () => {
     setRefreshSeed((n) => n + 1);
     if (!syncFromNotion) return;
-    const data = await syncFromNotion();
+    const data = await syncFromNotion({ force: true });
     if (data) setLastSyncedAt(new Date().toISOString());
   };
 
