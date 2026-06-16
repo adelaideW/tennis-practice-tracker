@@ -2709,14 +2709,18 @@ function useDraggableDashboardGrid({ storageKey, loadLayout, makeDefaultLayout, 
         const defaultH = item.defaultH ?? item.h;
         return { ...item, expanded: false, h: defaultH, measuredPx: undefined };
       });
+      if (prev.mode === 'grid') {
+        return { ...prev, items };
+      }
       const reflowed = TGL ? TGL.reflowPreserveLayout(items, gridConfig.cols) : items;
-      return { ...prev, mode: 'dashboard', items: reflowed };
+      return { ...prev, items: reflowed };
     });
   }, [gridConfig.cols, updateLayout]);
 
   const setItemGridHeight = useC1((cardId, h, measuredPx) => {
     if (!TGL) return;
     updateLayout((prev) => {
+      if (prev.mode === 'grid') return prev;
       const items = prev.items.map((item) => {
         if (item.i !== cardId) return item;
         return {
@@ -2726,7 +2730,7 @@ function useDraggableDashboardGrid({ storageKey, loadLayout, makeDefaultLayout, 
         };
       });
       const reflowed = TGL.reflowPreserveLayout(items, gridConfig.cols);
-      return { ...prev, mode: 'dashboard', items: reflowed };
+      return { ...prev, items: reflowed };
     });
   }, [gridConfig.cols, updateLayout]);
 
@@ -2790,6 +2794,7 @@ function DashboardGrid({
   getPanelVariant,
 }) {
   const handleMeasureExpanded = useC1((cardId, panelEl) => {
+    if (layout.mode !== 'dashboard') return;
     const item = layout.items.find((it) => it.i === cardId);
     const minRows = item?.defaultH ?? item?.h ?? DEFAULT_GRID_H;
     const measuredPx = panelEl.offsetHeight;
@@ -2797,7 +2802,7 @@ function DashboardGrid({
     if (item && (item.h !== rows || item.measuredPx !== measuredPx)) {
       setItemGridHeight(cardId, rows, measuredPx);
     }
-  }, [layout.items, gridConfig, setItemGridHeight]);
+  }, [layout.mode, layout.items, gridConfig, setItemGridHeight]);
 
   const dashboardPositions = useM1(() => {
     if (!TGL || layout.mode !== 'dashboard') return null;
@@ -2957,7 +2962,9 @@ function ToolkitPanel({
         left: pixelStyle.left,
         top: pixelStyle.top,
         width: pixelStyle.width,
-        height: expanded ? (item.measuredPx ?? 'auto') : pixelStyle.height,
+        minWidth: pixelStyle.width,
+        maxWidth: pixelStyle.width,
+        height: expanded ? (item.measuredPx ?? pixelStyle.height) : pixelStyle.height,
       }
     : expanded
       ? { '--panel-min-h': `${gridHeight}px`, height: 'auto' }

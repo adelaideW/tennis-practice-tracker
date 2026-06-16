@@ -1491,6 +1491,10 @@ textarea.notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; b
   position: absolute;
   min-height: 0;
   height: auto;
+  box-sizing: border-box;
+}
+.toolkit-panel.is-dashboard.is-panel-expanded {
+  transition: left 200ms ease, top 200ms ease, height 200ms ease;
 }
 .toolkit-grid-wrap.is-dragging-active .toolkit-panel.is-dashboard:not(.is-dragging) {
   transition: left 200ms ease, top 200ms ease;
