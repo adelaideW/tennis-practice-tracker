@@ -633,6 +633,7 @@ input, textarea, select { font-family: inherit; }
   scrollbar-color: var(--ink-4) transparent;
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 .activity-chart-scroll::-webkit-scrollbar {
   height: 6px;

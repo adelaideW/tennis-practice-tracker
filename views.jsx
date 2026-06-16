@@ -96,6 +96,8 @@ function ActivityChart({ entries, range = '7d', panelExpanded = false }) {
   const [containerW, setContainerW] = useS1(0);
   const wrapRef = useR1(null);
   const scrollRef = useR1(null);
+  const zoomPendingScrollRef = useR1(null);
+  const lastZoomPointerRef = useR1(null);
 
   const updateTooltipPos = useC1((e) => {
     setTooltipPos({ x: e.clientX, y: e.clientY });
@@ -110,6 +112,9 @@ function ActivityChart({ entries, range = '7d', panelExpanded = false }) {
     setZoom(1);
     setHoverIdx(null);
     setTooltipPos(null);
+    zoomPendingScrollRef.current = null;
+    const scroll = scrollRef.current;
+    if (scroll) scroll.scrollLeft = 0;
   }, [range]);
 
   useE1(() => {
@@ -147,15 +152,35 @@ function ActivityChart({ entries, range = '7d', panelExpanded = false }) {
     setZoom((prev) => clampActivityZoom(prev, 1, mz));
   }, [range, getMaxZoom]);
 
-  const bumpZoom = useC1((delta) => {
-    setZoom((prev) => clampActivityZoom(prev + delta, 1, getMaxZoom()));
-  }, [getMaxZoom]);
+  const bumpZoomAt = useC1((delta, clientX, clientY) => {
+    const scroll = scrollRef.current;
+    const prevZ = zoom;
+    const nextZ = clampActivityZoom(prevZ + delta, 1, getMaxZoom());
+    if (nextZ === prevZ) return;
+
+    if (scroll) {
+      const rect = scroll.getBoundingClientRect();
+      const pointerX = typeof clientX === 'number' ? clientX - rect.left : scroll.clientWidth / 2;
+      const contentX = scroll.scrollLeft + pointerX;
+      zoomPendingScrollRef.current = {
+        contentX,
+        pointerX,
+        scale: nextZ / prevZ,
+      };
+    }
+    setZoom(nextZ);
+  }, [zoom, getMaxZoom]);
+
+  const bumpZoomFromControl = useC1((delta) => {
+    const p = lastZoomPointerRef.current;
+    bumpZoomAt(delta, p?.x, p?.y);
+  }, [bumpZoomAt]);
 
   const handleWheel = useC1((e) => {
     if (!e.ctrlKey && !e.metaKey) return;
     e.preventDefault();
-    bumpZoom(e.deltaY > 0 ? -0.12 : 0.12);
-  }, [bumpZoom]);
+    bumpZoomAt(e.deltaY > 0 ? -0.12 : 0.12, e.clientX, e.clientY);
+  }, [bumpZoomAt]);
 
   useE1(() => {
     const el = scrollRef.current;
@@ -273,14 +298,15 @@ function ActivityChart({ entries, range = '7d', panelExpanded = false }) {
   const strokeW = range === '7d' ? 1.9 : 2.2;
 
   useE1(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    if (W > el.clientWidth + 2) {
-      el.scrollLeft = Math.max(0, (el.scrollWidth - el.clientWidth) / 2);
-    } else {
-      el.scrollLeft = 0;
-    }
-  }, [W, containerW, range, zoomLevel]);
+    const scroll = scrollRef.current;
+    const pending = zoomPendingScrollRef.current;
+    if (!scroll || !pending) return undefined;
+    zoomPendingScrollRef.current = null;
+    const rafId = requestAnimationFrame(() => {
+      scroll.scrollLeft = Math.max(0, pending.contentX * pending.scale - pending.pointerX);
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [zoomLevel]);
 
   return (
     <div
@@ -296,7 +322,7 @@ function ActivityChart({ entries, range = '7d', panelExpanded = false }) {
             className="activity-zoom-btn"
             aria-label="Zoom out"
             disabled={zoomLevel <= 1}
-            onClick={() => bumpZoom(-0.2)}
+            onClick={() => bumpZoomFromControl(-0.2)}
           >
             −
           </button>
@@ -306,7 +332,7 @@ function ActivityChart({ entries, range = '7d', panelExpanded = false }) {
             className="activity-zoom-btn"
             aria-label="Zoom in"
             disabled={zoomLevel >= maxZoom - 0.01}
-            onClick={() => bumpZoom(0.2)}
+            onClick={() => bumpZoomFromControl(0.2)}
           >
             +
           </button>
@@ -315,7 +341,8 @@ function ActivityChart({ entries, range = '7d', panelExpanded = false }) {
       <div
         ref={scrollRef}
         className={`activity-chart-scroll${panelExpanded ? ' is-expanded' : ''}`}
-        style={!panelExpanded && scrollMaxH > 0 ? { maxHeight: scrollMaxH } : undefined}
+        style={!panelExpanded && scrollMaxH > 0 ? { maxHeight: scrollMaxH, minHeight: scrollMaxH } : undefined}
+        onMouseMove={(e) => { lastZoomPointerRef.current = { x: e.clientX, y: e.clientY }; }}
       >
         <svg
           width={W}
