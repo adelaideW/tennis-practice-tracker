@@ -645,7 +645,20 @@ input, textarea, select { font-family: inherit; }
   position: relative;
 }
 .focus-card .focus-body ul { margin: 6px 0 0; padding: 0 0 0 16px; }
-.focus-card .focus-body li { margin: 4px 0; }
+.focus-card .focus-body li {
+  margin: 4px 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.focus-section { margin-top: 14px; }
+.focus-section-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
 .focus-card .focus-body.is-collapsed {
   display: -webkit-box;
   -webkit-line-clamp: 3;

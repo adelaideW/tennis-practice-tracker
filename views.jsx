@@ -258,6 +258,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
   const notionPage = window.NOTION_INSIGHTS_PAGE;
   const focusBody = focus?.body || '';
   const focusCues = focus?.cues || [];
+  const focusSections = focus?.sections || [];
   const refreshedIso = lastRefreshedAt || state.notionUpdatedAt || notionPayload?.updatedAt || null;
   const refreshedLabel = refreshedIso
     ? new Date(refreshedIso).toLocaleString('en-US', {
@@ -276,7 +277,7 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
     }
   };
 
-  const focusContentKey = `${focusBody}|${focusCues.join('¦')}`;
+  const focusContentKey = `${focusBody}|${focusCues.join('¦')}|${focusSections.map((s) => `${s.title}:${s.items.join('¦')}`).join('§')}`;
 
   useE1(() => {
     setFocusExpanded(false);
@@ -331,8 +332,17 @@ function Today({ state, setRoute, syncFromNotion, notionPayload }) {
             <>
               <div className="focus-detail-text">{focusBody}</div>
               {focusCues.length > 0 && (
-                <ul>{focusCues.map((c, i) => <li key={i}>{c}</li>)}</ul>
+                <div className="focus-section">
+                  <div className="focus-section-label">Weekly priorities</div>
+                  <ul>{focusCues.map((c, i) => <li key={i}>{c}</li>)}</ul>
+                </div>
               )}
+              {focusSections.map((section, i) => (
+                <div key={i} className="focus-section">
+                  <div className="focus-section-label">{section.title}</div>
+                  <ul>{section.items.map((item, j) => <li key={j}>{item}</li>)}</ul>
+                </div>
+              ))}
             </>
           ) : (
             <div>Your focus brief loads from weekly priorities and the latest daily reflection in Notion.</div>

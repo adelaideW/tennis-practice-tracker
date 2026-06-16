@@ -84,46 +84,61 @@ function buildSessionsFromNotion(payload) {
 
 function buildFocusFromNotion(payload) {
   if (!payload) return null;
-  if (payload.focus?.cues?.length) {
+  if (payload.focus?.cues?.length && !payload.weeklyPriorities?.length) {
     return { ...payload.focus, generated: payload.updatedAt || new Date().toISOString() };
   }
 
-  const priorities = payload.weeklyPriorities || [];
+  const priorities = (payload.weeklyPriorities || [])
+    .map((line) => String(line).replace(/^\*+/, '').trim())
+    .filter(Boolean);
+  const overview = payload.weeklyOverview || {};
   const latest = payload.latestDaily;
-  const needs = [...(latest?.bad || []), ...(priorities || [])];
 
-  const cues = needs.slice(0, 3).map((line) => {
-    const short = line.split('—')[0].split(' - ')[0].trim();
-    return short.length > 48 ? `${short.slice(0, 45)}…` : short;
-  });
+  const headline = priorities[0]
+    || overview.focus?.split(/[;,]/).map((s) => s.trim()).find(Boolean)
+    || latest?.context
+    || 'Stay loose and present';
 
-  while (cues.length < 3 && priorities[cues.length]) {
-    const p = priorities[cues.length].split('—')[0].trim();
-    cues.push(p.length > 48 ? `${p.slice(0, 45)}…` : p);
+  const cues = [...priorities];
+
+  const sections = [];
+
+  const overviewFocus = overview.focus
+    ? overview.focus.split(/[;,]/).map((s) => s.trim()).filter(Boolean)
+    : [];
+  if (overviewFocus.length) {
+    sections.push({ title: "This week's focus", items: overviewFocus });
+  }
+  if (overview.drill?.trim()) {
+    sections.push({ title: 'Planned drills', items: [overview.drill.trim()] });
   }
 
-  const fallbackCues = ['Stay loose', 'Watch contact', 'Recover behind baseline'];
-  const finalCues = cues.length >= 2 ? cues : fallbackCues;
+  if (latest) {
+    const sessionItems = [];
+    if (latest.context) sessionItems.push(`Context: ${latest.context}`);
+    if (latest.timeText) sessionItems.push(`Time: ${latest.timeText}`);
+    (latest.good || []).forEach((g) => sessionItems.push(`Good: ${g}`));
+    (latest.bad || []).forEach((b) => sessionItems.push(`Needs work: ${b}`));
+    (latest.learning || []).forEach((l) => sessionItems.push(`Learning: ${l}`));
+    if (sessionItems.length) {
+      sections.push({
+        title: `Latest session (${latest.date || 'recent'})`,
+        items: sessionItems,
+      });
+    }
+  }
 
-  const bodyParts = [];
-  if (priorities.length) {
-    bodyParts.push(
-      `This week in Notion you're prioritizing ${priorities.slice(0, 3).join('; ')}.`,
-    );
-  }
-  if (latest?.context) {
-    bodyParts.push(
-      `Latest session (${latest.date || 'recent'}): ${latest.context}. Build on what worked and address the needs-work items before you play again.`,
-    );
-  }
-  if (!bodyParts.length) {
-    bodyParts.push('Open your Notion practice insights page to add a daily reflection — the dashboard updates automatically.');
-  }
+  const body = priorities.length
+    ? `${priorities.length} weekly priorit${priorities.length === 1 ? 'y' : 'ies'} synced from Notion — expand for drills and your latest session notes.`
+    : sections.length
+      ? 'Synced from your Notion practice insights — expand for full details.'
+      : 'Open your Notion practice insights page to add a daily reflection — the dashboard updates automatically.';
 
   return {
-    headline: finalCues[0],
-    body: bodyParts.join(' '),
-    cues: finalCues,
+    headline: String(headline).replace(/^\*+/, '').trim(),
+    body,
+    cues,
+    sections,
     generated: payload.updatedAt || new Date().toISOString(),
   };
 }
