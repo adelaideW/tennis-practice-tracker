@@ -624,16 +624,7 @@ input, textarea, select { font-family: inherit; }
   flex: 1;
   min-height: 0;
 }
-.activity-chart-wrap.is-7d {
-  flex: none;
-}
 .activity-chart-scroll {
-  overflow: visible;
-}
-.activity-chart-scroll.is-7d {
-  overflow: visible;
-}
-.activity-chart-scroll.is-wide {
   flex: 1;
   min-height: 0;
   overflow-x: auto;
@@ -641,10 +632,10 @@ input, textarea, select { font-family: inherit; }
   scrollbar-width: thin;
   scrollbar-color: var(--ink-4) transparent;
 }
-.activity-chart-scroll.is-wide::-webkit-scrollbar {
+.activity-chart-scroll::-webkit-scrollbar {
   height: 6px;
 }
-.activity-chart-scroll.is-wide::-webkit-scrollbar-thumb {
+.activity-chart-scroll::-webkit-scrollbar-thumb {
   background: var(--ink-4);
   border-radius: 4px;
 }

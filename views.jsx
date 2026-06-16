@@ -79,6 +79,7 @@ function ActivityChart({ entries, range = '7d' }) {
   const [tooltipPos, setTooltipPos] = useS1(null);
   const [zoom, setZoom] = useS1(1);
   const [scrollMaxH, setScrollMaxH] = useS1(0);
+  const [containerW, setContainerW] = useS1(0);
   const wrapRef = useR1(null);
   const scrollRef = useR1(null);
 
@@ -98,30 +99,32 @@ function ActivityChart({ entries, range = '7d' }) {
   }, [range]);
 
   useE1(() => {
-    if (range === '7d') return undefined;
     const wrap = wrapRef.current;
-    if (!wrap || typeof ResizeObserver === 'undefined') return undefined;
+    const scroll = scrollRef.current;
+    if (!wrap || !scroll || typeof ResizeObserver === 'undefined') return undefined;
 
     const measure = () => {
       const head = wrap.querySelector('.activity-chart-head');
       const headH = head ? head.offsetHeight : 0;
       setScrollMaxH(Math.max(52, wrap.clientHeight - headH));
+      setContainerW(scroll.clientWidth);
     };
 
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(wrap);
+    ro.observe(scroll);
     return () => ro.disconnect();
   }, [range]);
 
+  const getBasePlotH = useC1(() => (range === '7d' ? 40 : 36), [range]);
+
   const getMaxZoom = useC1(() => {
-    if (range === '7d') return 1;
-    const chartFootprint = 36 + 14 + 4;
+    const chartFootprint = getBasePlotH() + 14 + 4;
     return scrollMaxH > 0 ? Math.max(1, scrollMaxH / chartFootprint) : 2.4;
-  }, [range, scrollMaxH]);
+  }, [getBasePlotH, scrollMaxH]);
 
   useE1(() => {
-    if (range === '7d') return;
     const mz = getMaxZoom();
     setZoom((prev) => clampActivityZoom(prev, 1, mz));
   }, [range, getMaxZoom]);
@@ -131,18 +134,17 @@ function ActivityChart({ entries, range = '7d' }) {
   }, [getMaxZoom]);
 
   const handleWheel = useC1((e) => {
-    if (range === '7d') return;
     if (!e.ctrlKey && !e.metaKey) return;
     e.preventDefault();
     bumpZoom(e.deltaY > 0 ? -0.12 : 0.12);
-  }, [range, bumpZoom]);
+  }, [bumpZoom]);
 
   useE1(() => {
     const el = scrollRef.current;
-    if (!el || range === '7d') return undefined;
+    if (!el) return undefined;
     el.addEventListener('wheel', handleWheel, { passive: false });
     return () => el.removeEventListener('wheel', handleWheel);
-  }, [range, handleWheel]);
+  }, [handleWheel]);
 
   const days = useM1(() => {
     const minutesOnDate = (iso) => entries
@@ -225,16 +227,17 @@ function ActivityChart({ entries, range = '7d' }) {
   const n = Math.max(days.length, 1);
   const maxMins = Math.max(...days.map((d) => d.mins), 60);
 
-  const isZoomable = range === '30d' || range === 'all';
-  const basePlotH = range === '7d' ? 40 : 36;
+  const basePlotH = getBasePlotH();
   const labelH = 14;
-  const maxZoom = isZoomable ? getMaxZoom() : 1;
-  const zoomLevel = isZoomable ? clampActivityZoom(zoom, 1, maxZoom) : 1;
+  const maxZoom = getMaxZoom();
+  const zoomLevel = clampActivityZoom(zoom, 1, maxZoom);
 
-  const baseW = range === '7d' ? 220 : range === '30d' ? 440 : Math.max(260, n * 11);
-  const W = isZoomable ? baseW * zoomLevel : baseW;
+  const fallbackW = range === '30d' ? 440 : range === 'all' ? Math.max(280, n * 11) : 320;
+  const fitW = containerW > 0 ? containerW : fallbackW;
+  const baseW = range === 'all' ? Math.max(fitW, Math.max(280, n * 11)) : fitW;
+  const W = baseW * zoomLevel;
   const H = basePlotH * zoomLevel;
-  const padX = range === '7d' ? 10 : 12;
+  const padX = 12;
   const padY = range === '7d' ? 6 : 8;
   const pts = days.map((d, i) => {
     const x = padX + (n <= 1 ? 0 : i / (n - 1)) * (W - 2 * padX);
@@ -254,46 +257,44 @@ function ActivityChart({ entries, range = '7d' }) {
   return (
     <div
       ref={wrapRef}
-      className={`activity-chart-wrap${isZoomable ? ' is-zoomable' : ' is-7d'}`}
+      className="activity-chart-wrap is-zoomable"
       onMouseLeave={clearHover}
     >
       <div className="activity-chart-head">
         <div className="activity-total">{totalHrs} hrs played</div>
-        {isZoomable && (
-          <div className="activity-chart-zoom" role="group" aria-label="Chart zoom">
-            <button
-              type="button"
-              className="activity-zoom-btn"
-              aria-label="Zoom out"
-              disabled={zoomLevel <= 1}
-              onClick={() => bumpZoom(-0.2)}
-            >
-              −
-            </button>
-            <span className="activity-zoom-label">{Math.round(zoomLevel * 100)}%</span>
-            <button
-              type="button"
-              className="activity-zoom-btn"
-              aria-label="Zoom in"
-              disabled={zoomLevel >= maxZoom - 0.01}
-              onClick={() => bumpZoom(0.2)}
-            >
-              +
-            </button>
-          </div>
-        )}
+        <div className="activity-chart-zoom" role="group" aria-label="Chart zoom">
+          <button
+            type="button"
+            className="activity-zoom-btn"
+            aria-label="Zoom out"
+            disabled={zoomLevel <= 1}
+            onClick={() => bumpZoom(-0.2)}
+          >
+            −
+          </button>
+          <span className="activity-zoom-label">{Math.round(zoomLevel * 100)}%</span>
+          <button
+            type="button"
+            className="activity-zoom-btn"
+            aria-label="Zoom in"
+            disabled={zoomLevel >= maxZoom - 0.01}
+            onClick={() => bumpZoom(0.2)}
+          >
+            +
+          </button>
+        </div>
       </div>
       <div
         ref={scrollRef}
-        className={`activity-chart-scroll${range === '7d' ? ' is-7d' : ' is-wide'}`}
-        style={isZoomable && scrollMaxH > 0 ? { maxHeight: scrollMaxH } : undefined}
+        className="activity-chart-scroll"
+        style={scrollMaxH > 0 ? { maxHeight: scrollMaxH } : undefined}
       >
         <svg
-          width={isZoomable ? W : '100%'}
+          width={W}
           height={chartHeight}
           viewBox={`0 0 ${W} ${chartHeight}`}
           preserveAspectRatio="xMinYMid meet"
-          style={isZoomable ? { minWidth: W, display: 'block' } : { overflow: 'visible', display: 'block' }}
+          style={{ minWidth: W, display: 'block' }}
         >
           <defs>
             <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
